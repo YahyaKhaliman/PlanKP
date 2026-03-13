@@ -95,21 +95,22 @@ class _LoginScreenState extends State<LoginScreen> {
                               fontWeight: FontWeight.w700,
                               color: AppColors.textPrimary)),
                       const SizedBox(height: 4),
-                      const Text('Gunakan NIK dan password Anda',
+                      const Text('Gunakan username dan password Anda',
                           style: TextStyle(
                               fontSize: 13, color: AppColors.textSecondary)),
                       const SizedBox(height: 28),
 
-                      // NIK
+                      // username
                       TextFormField(
                         controller: _nikCtrl,
                         decoration: const InputDecoration(
-                          labelText: 'NIK',
+                          labelText: 'username',
                           prefixIcon: Icon(Icons.badge_outlined),
                         ),
                         keyboardType: TextInputType.number,
-                        validator: (v) =>
-                            (v == null || v.isEmpty) ? 'NIK wajib diisi' : null,
+                        validator: (v) => (v == null || v.isEmpty)
+                            ? 'username wajib diisi'
+                            : null,
                       ),
                       const SizedBox(height: 16),
 

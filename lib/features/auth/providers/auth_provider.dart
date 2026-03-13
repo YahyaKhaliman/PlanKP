@@ -29,14 +29,14 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> login(String nik, String password) async {
+  Future<bool> login(String username, String password) async {
     _loading = true;
     _error = null;
     notifyListeners();
     try {
       final res = await ApiClient.post(
         ApiConfig.login,
-        {'user_nik': nik, 'password': password},
+        {'user_name': username, 'password': password},
         auth: false,
       );
       final token = res['data']['token'] as String;
