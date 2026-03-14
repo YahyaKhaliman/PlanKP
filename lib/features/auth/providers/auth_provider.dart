@@ -65,7 +65,8 @@ class AuthProvider extends ChangeNotifier {
     required String userNama,
     required String userPassword,
     required String userDivisi,
-    String? userNik,
+    required String userCabang,
+    required String userNik,
   }) async {
     _loading = true;
     _error = null;
@@ -75,10 +76,10 @@ class AuthProvider extends ChangeNotifier {
         'user_nama': userNama,
         'user_password': userPassword,
         'user_divisi': userDivisi,
+        'user_jabatan': 'user',
+        'user_cabang': userCabang,
+        'user_nik': userNik,
       };
-      if (userNik != null && userNik.isNotEmpty) {
-        body['user_nik'] = userNik;
-      }
       final res = await ApiClient.post(
         ApiConfig.register,
         body,

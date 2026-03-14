@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../../core/constants/app_constants.dart';
-import '../../../core/theme/app_theme.dart';
 import '../providers/auth_provider.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -17,6 +15,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _passwordCtrl = TextEditingController();
   final _nikCtrl = TextEditingController();
   final _divisiCtrl = TextEditingController();
+  final _cabangCtrl = TextEditingController();
   bool _obscure = true;
 
   @override
@@ -25,6 +24,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _passwordCtrl.dispose();
     _nikCtrl.dispose();
     _divisiCtrl.dispose();
+    _cabangCtrl.dispose();
     super.dispose();
   }
 
@@ -35,7 +35,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
       userNama: _namaCtrl.text.trim(),
       userPassword: _passwordCtrl.text,
       userDivisi: _divisiCtrl.text.trim(),
-      userNik: _nikCtrl.text.trim().isEmpty ? null : _nikCtrl.text.trim(),
+      userCabang: _cabangCtrl.text.trim(),
+      userNik: _nikCtrl.text.trim(),
     );
     if (ok && mounted) {
       Navigator.pop(context);
@@ -62,11 +63,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
               TextFormField(
                 controller: _nikCtrl,
                 decoration: const InputDecoration(labelText: 'NIK'),
+                validator: (v) =>
+                    v == null || v.isEmpty ? 'NIK wajib diisi' : null,
               ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _divisiCtrl,
                 decoration: const InputDecoration(labelText: 'Divisi'),
+                validator: (v) =>
+                    v == null || v.isEmpty ? 'Divisi wajib diisi' : null,
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _cabangCtrl,
+                decoration: const InputDecoration(labelText: 'Cabang'),
+                validator: (v) =>
+                    v == null || v.isEmpty ? 'Cabang wajib diisi' : null,
               ),
               const SizedBox(height: 12),
               TextFormField(
