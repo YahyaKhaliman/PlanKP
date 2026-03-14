@@ -1,3 +1,5 @@
+// ignore_for_file: non_constant_identifier_names
+
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -29,14 +31,14 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> login(String username, String password) async {
+  Future<bool> login(String user_nama, String user_password) async {
     _loading = true;
     _error = null;
     notifyListeners();
     try {
       final res = await ApiClient.post(
         ApiConfig.login,
-        {'user_name': username, 'password': password},
+        {'user_nama': user_nama, 'user_password': user_password},
         auth: false,
       );
       final token = res['data']['token'] as String;
