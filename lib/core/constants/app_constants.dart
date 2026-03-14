@@ -6,6 +6,7 @@ class ApiConfig {
   // Device fisik     : IP mesin dev, misal 192.168.1.x
 
   static const String login = '/auth/login';
+  static const String register = '/auth/register';
   static const String me = '/auth/me';
   static const String changePass = '/auth/change-password';
 }
@@ -13,6 +14,7 @@ class ApiConfig {
 class AppRoutes {
   static const String login = '/login';
   static const String dashboard = '/dashboard';
+  static const String register = '/register';
 }
 
 class StorageKeys {

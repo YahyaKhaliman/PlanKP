@@ -4,6 +4,7 @@ import 'core/theme/app_theme.dart';
 import 'core/constants/app_constants.dart';
 import 'features/auth/providers/auth_provider.dart';
 import 'features/auth/screens/login_screen.dart';
+import 'features/auth/screens/register_screen.dart';
 import 'features/dashboard/screens/dashboard_screen.dart';
 
 void main() {
@@ -28,7 +29,8 @@ class PlanKPApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
       routes: {
-        AppRoutes.login:     (_) => const LoginScreen(),
+        AppRoutes.login: (_) => const LoginScreen(),
+        AppRoutes.register: (_) => const RegisterScreen(),
         AppRoutes.dashboard: (_) => const DashboardScreen(),
       },
       home: const _AuthGate(),

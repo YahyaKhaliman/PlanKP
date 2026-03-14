@@ -61,6 +61,49 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  Future<bool> register({
+    required String userNama,
+    required String userPassword,
+    required String userDivisi,
+    String? userNik,
+  }) async {
+    _loading = true;
+    _error = null;
+    notifyListeners();
+    try {
+      final body = <String, dynamic>{
+        'user_nama': userNama,
+        'user_password': userPassword,
+        'user_divisi': userDivisi,
+      };
+      if (userNik != null && userNik.isNotEmpty) {
+        body['user_nik'] = userNik;
+      }
+      final res = await ApiClient.post(
+        ApiConfig.register,
+        body,
+        auth: false,
+      );
+      final token = res['data']['token'] as String;
+      _user = res['data']['user'];
+      await _storage.write(key: StorageKeys.token, value: token);
+      await _storage.write(key: StorageKeys.userData, value: jsonEncode(_user));
+      _loading = false;
+      notifyListeners();
+      return true;
+    } on ApiException catch (e) {
+      _error = e.message;
+      _loading = false;
+      notifyListeners();
+      return false;
+    } catch (_) {
+      _error = 'Tidak dapat terhubung ke server';
+      _loading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
   Future<void> logout() async {
     _user = null;
     await _storage.deleteAll();

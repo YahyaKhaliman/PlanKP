@@ -161,15 +161,24 @@ class _LoginScreenState extends State<LoginScreen> {
 
                       // Tombol login
                       Consumer<AuthProvider>(
-                        builder: (_, auth, __) => ElevatedButton(
-                          onPressed: auth.loading ? null : _submit,
-                          child: auth.loading
-                              ? const SizedBox(
-                                  height: 20,
-                                  width: 20,
-                                  child: CircularProgressIndicator(
-                                      color: Colors.white, strokeWidth: 2))
-                              : const Text('Masuk'),
+                        builder: (_, auth, __) => Column(
+                          children: [
+                            ElevatedButton(
+                              onPressed: auth.loading ? null : _submit,
+                              child: auth.loading
+                                  ? const SizedBox(
+                                      height: 20,
+                                      width: 20,
+                                      child: CircularProgressIndicator(
+                                          color: Colors.white, strokeWidth: 2))
+                                  : const Text('Masuk'),
+                            ),
+                            TextButton(
+                              onPressed: () => Navigator.pushNamed(
+                                  context, AppRoutes.register),
+                              child: const Text('Belum punya akun? Daftar'),
+                            ),
+                          ],
                         ),
                       ),
                     ],
