@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
+import '../../../core/widgets/app_notifier.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -31,6 +32,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     final auth = context.read<AuthProvider>();
+    if (auth.loading) return;
     final ok = await auth.register(
       userNama: _namaCtrl.text.trim(),
       userPassword: _passwordCtrl.text,
@@ -40,6 +42,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
     if (ok && mounted) {
       Navigator.pop(context);
+    } else if (mounted) {
+      final error = auth.error ?? 'Tidak dapat mendaftar saat ini';
+      AppNotifier.showError(context, error);
     }
   }
 

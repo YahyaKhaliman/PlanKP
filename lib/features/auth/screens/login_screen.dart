@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/constants/app_constants.dart';
 import '../providers/auth_provider.dart';
+import '../../../core/widgets/app_notifier.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -29,9 +30,13 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     final auth = context.read<AuthProvider>();
+    if (auth.loading) return;
     final ok = await auth.login(_nikCtrl.text.trim(), _passCtrl.text);
     if (ok && mounted) {
       Navigator.pushReplacementNamed(context, AppRoutes.dashboard);
+    } else if (mounted) {
+      final error = auth.error ?? 'Tidak dapat login saat ini';
+      AppNotifier.showError(context, error);
     }
   }
 
@@ -135,28 +140,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       const SizedBox(height: 8),
 
-                      // Error
-                      Consumer<AuthProvider>(
-                        builder: (_, auth, __) {
-                          if (auth.error == null)
-                            return const SizedBox.shrink();
-                          return Padding(
-                            padding: const EdgeInsets.only(top: 8),
-                            child: Row(
-                              children: [
-                                const Icon(Icons.error_outline,
-                                    color: AppColors.danger, size: 16),
-                                const SizedBox(width: 6),
-                                Expanded(
-                                    child: Text(auth.error!,
-                                        style: const TextStyle(
-                                            color: AppColors.danger,
-                                            fontSize: 13))),
-                              ],
-                            ),
-                          );
-                        },
-                      ),
                       const SizedBox(height: 28),
 
                       // Tombol login
