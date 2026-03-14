@@ -242,6 +242,7 @@ class _InventarisFormState extends State<_InventarisForm> {
   final _lokasiCtrl = TextEditingController();
   final _merkCtrl = TextEditingController();
   final _snCtrl = TextEditingController();
+  final _picCtrl = TextEditingController();
   final _notesCtrl = TextEditingController();
   String _kategori = 'Mesin';
   String _kondisi = 'Baik';
@@ -260,6 +261,7 @@ class _InventarisFormState extends State<_InventarisForm> {
       _lokasiCtrl.text = d.invLokasi ?? '';
       _merkCtrl.text = d.invMerk ?? '';
       _snCtrl.text = d.invSerialNumber ?? '';
+      _picCtrl.text = d.invPic ?? '';
       _notesCtrl.text = d.invNotes ?? '';
       _kategori = d.invKategori;
       _kondisi = d.invKondisi;
@@ -274,6 +276,7 @@ class _InventarisFormState extends State<_InventarisForm> {
     _lokasiCtrl.dispose();
     _merkCtrl.dispose();
     _snCtrl.dispose();
+    _picCtrl.dispose();
     _notesCtrl.dispose();
     super.dispose();
   }
@@ -291,6 +294,7 @@ class _InventarisFormState extends State<_InventarisForm> {
       'inv_merk': _merkCtrl.text.trim().isEmpty ? null : _merkCtrl.text.trim(),
       'inv_serial_number':
           _snCtrl.text.trim().isEmpty ? null : _snCtrl.text.trim(),
+      'inv_pic': _picCtrl.text.trim().isEmpty ? null : _picCtrl.text.trim(),
       'inv_kondisi': _kondisi,
       'inv_notes':
           _notesCtrl.text.trim().isEmpty ? null : _notesCtrl.text.trim(),
@@ -352,6 +356,7 @@ class _InventarisFormState extends State<_InventarisForm> {
                 _field(_lokasiCtrl, 'Lokasi', Icons.location_on_outlined),
                 _field(_merkCtrl, 'Merk', Icons.branding_watermark_outlined),
                 _field(_snCtrl, 'Serial Number', Icons.qr_code_outlined),
+                _field(_picCtrl, 'PIC', Icons.person_outline),
 
                 // Kondisi
                 DropdownButtonFormField<String>(

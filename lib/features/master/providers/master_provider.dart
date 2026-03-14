@@ -4,14 +4,12 @@ import '../models/inventaris_model.dart';
 import '../models/checklist_template_model.dart';
 import '../models/user_model.dart';
 import '../models/divisi_model.dart';
-import '../models/mesin_model.dart';
 
 class MasterProvider extends ChangeNotifier {
   List<InventarisModel> inventarisList = [];
   List<ChecklistTemplateModel> checklistList = [];
   List<UserModel> userList = [];
   List<DivisiModel> divisiList = [];
-  List<MesinModel> mesinList = [];
 
   bool _loading = false;
   String? _error;
@@ -47,47 +45,6 @@ class MasterProvider extends ChangeNotifier {
       _setError(e.message);
     } finally {
       _setLoading(false);
-    }
-  }
-
-  // ── MESIN ──────────────────────────────────────────────────────
-  Future<void> fetchMesin() async {
-    _setLoading(true);
-    try {
-      final res = await ApiClient.get('/master/mesin');
-      mesinList =
-          (res['data'] as List).map((e) => MesinModel.fromJson(e)).toList();
-      _setError(null);
-    } on ApiException catch (e) {
-      _setError(e.message);
-    } finally {
-      _setLoading(false);
-    }
-  }
-
-  Future<bool> saveMesin(Map<String, dynamic> body, {int? id}) async {
-    try {
-      if (id != null) {
-        await ApiClient.put('/master/mesin/$id', body);
-      } else {
-        await ApiClient.post('/master/mesin', body);
-      }
-      await fetchMesin();
-      return true;
-    } on ApiException catch (e) {
-      _setError(e.message);
-      return false;
-    }
-  }
-
-  Future<bool> toggleMesinAktif(int id) async {
-    try {
-      await ApiClient.patch('/master/mesin/$id/aktif', {});
-      await fetchMesin();
-      return true;
-    } on ApiException catch (e) {
-      _setError(e.message);
-      return false;
     }
   }
 
