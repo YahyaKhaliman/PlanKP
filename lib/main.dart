@@ -3,20 +3,14 @@ import 'package:provider/provider.dart';
 import 'core/theme/app_theme.dart';
 import 'core/constants/app_constants.dart';
 import 'features/auth/providers/auth_provider.dart';
+import 'features/master/providers/master_provider.dart';
 import 'features/auth/screens/login_screen.dart';
 import 'features/auth/screens/register_screen.dart';
 import 'features/dashboard/screens/dashboard_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => AuthProvider()),
-      ],
-      child: const PlanKPApp(),
-    ),
-  );
+  runApp(const PlanKPApp());
 }
 
 class PlanKPApp extends StatelessWidget {
@@ -24,16 +18,22 @@ class PlanKPApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'PlanKP',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.light,
-      routes: {
-        AppRoutes.login: (_) => const LoginScreen(),
-        AppRoutes.register: (_) => const RegisterScreen(),
-        AppRoutes.dashboard: (_) => const DashboardScreen(),
-      },
-      home: const _AuthGate(),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(create: (_) => MasterProvider()),
+      ],
+      child: MaterialApp(
+        title: 'PlanKP',
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.light,
+        routes: {
+          AppRoutes.login: (_) => const LoginScreen(),
+          AppRoutes.register: (_) => const RegisterScreen(),
+          AppRoutes.dashboard: (_) => const DashboardScreen(),
+        },
+        home: const _AuthGate(),
+      ),
     );
   }
 }

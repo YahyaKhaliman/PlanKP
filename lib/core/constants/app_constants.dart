@@ -9,6 +9,8 @@ class ApiConfig {
   static const String register = '/auth/register';
   static const String me = '/auth/me';
   static const String changePass = '/auth/change-password';
+  static const String checklistTemplate = '/master/checklist-template';
+  static const String inventaris = '/master/inventaris';
 }
 
 class AppRoutes {
