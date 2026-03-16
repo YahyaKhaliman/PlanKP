@@ -4,9 +4,12 @@ import 'core/theme/app_theme.dart';
 import 'core/constants/app_constants.dart';
 import 'features/auth/providers/auth_provider.dart';
 import 'features/master/providers/master_provider.dart';
+import 'features/jadwal/providers/jadwal_provider.dart';
 import 'features/auth/screens/login_screen.dart';
 import 'features/auth/screens/register_screen.dart';
 import 'features/dashboard/screens/dashboard_screen.dart';
+import 'features/jadwal/screens/jadwal_screen.dart';
+import 'features/jadwal/screens/realisasi_form_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -22,6 +25,7 @@ class PlanKPApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => MasterProvider()),
+        ChangeNotifierProvider(create: (_) => JadwalProvider()),
       ],
       child: MaterialApp(
         title: 'PlanKP',
@@ -31,6 +35,15 @@ class PlanKPApp extends StatelessWidget {
           AppRoutes.login: (_) => const LoginScreen(),
           AppRoutes.register: (_) => const RegisterScreen(),
           AppRoutes.dashboard: (_) => const DashboardScreen(),
+          AppRoutes.jadwalDetail: (ctx) {
+            final args = ModalRoute.of(ctx)!.settings.arguments as int;
+            return JadwalDetailScreen(jadwalId: args);
+          },
+          AppRoutes.realisasiForm: (ctx) {
+            final args =
+                ModalRoute.of(ctx)!.settings.arguments as Map<String, dynamic>;
+            return RealisasiFormScreen(args: args);
+          },
         },
         home: const _AuthGate(),
       ),

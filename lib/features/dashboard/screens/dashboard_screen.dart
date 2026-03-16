@@ -6,6 +6,7 @@ import '../../auth/providers/auth_provider.dart';
 import '../../master/screens/inventaris_screen.dart';
 import '../../master/screens/checklist_template_screen.dart';
 import '../../master/screens/user_screen.dart';
+import '../../jadwal/screens/jadwal_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
@@ -27,6 +28,18 @@ class DashboardScreen extends StatelessWidget {
         icon: Icons.assignment_outlined,
         color: AppColors.accent,
         builder: (_) => const ChecklistTemplateScreen(),
+      ),
+      _DashboardMenu(
+        title: 'Jadwal',
+        icon: Icons.schedule_outlined,
+        color: Colors.indigo,
+        builder: (_) => const JadwalScreen(),
+      ),
+      _DashboardMenu(
+        title: 'Realisasi',
+        icon: Icons.assignment_turned_in_outlined,
+        color: Colors.teal,
+        builder: (_) => const JadwalScreen(),
       ),
       _DashboardMenu(
         title: 'User',

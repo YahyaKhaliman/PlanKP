@@ -13,12 +13,16 @@ class ApiConfig {
   static const String inventaris = '/master/inv';
   static const String divisi = '/master/divisi';
   static const String users = '/master/users';
+  static const String jadwal = '/master/jadwal';
+  static const String realisasi = '/master/realisasi';
 }
 
 class AppRoutes {
   static const String login = '/login';
   static const String dashboard = '/dashboard';
   static const String register = '/register';
+  static const String jadwalDetail = '/jadwal/detail';
+  static const String realisasiForm = '/jadwal/realisasi-form';
 }
 
 class StorageKeys {
