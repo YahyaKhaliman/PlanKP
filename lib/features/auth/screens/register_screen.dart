@@ -114,8 +114,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     onPressed: () => setState(() => _obscure = !_obscure),
                   ),
                 ),
-                validator: (v) => v == null || v.length <= 3
-                    ? 'Password minimal 3 karakter'
+                validator: (v) => v == null || v.length <= 2
+                    ? 'Password minimal 2 karakter'
                     : null,
               ),
               const SizedBox(height: 24),
