@@ -3,6 +3,7 @@ class UserModel {
   final String userNama;
   final String userNik;
   final String userJabatan;
+  final String userDivisi;
   final String? userCabang;
   final bool userIsActive;
 
@@ -11,6 +12,7 @@ class UserModel {
     required this.userNama,
     required this.userNik,
     required this.userJabatan,
+    required this.userDivisi,
     this.userCabang,
     required this.userIsActive,
   });
@@ -20,6 +22,7 @@ class UserModel {
         userNama: j['user_nama'] ?? '',
         userNik: j['user_nik'] ?? '',
         userJabatan: j['user_jabatan'] ?? '',
+        userDivisi: j['user_divisi'] ?? '',
         userCabang: j['user_cabang'],
         userIsActive: _mapActive(j['user_is_active']),
       );
@@ -32,6 +35,22 @@ class UserModel {
   }
 
   bool get aktif => userIsActive;
+
+  static const List<String> divisiList = [
+    'Teknisi Jahit',
+    'Teknisi Umum',
+    'IT Support',
+    'Satpam',
+    'Kebersihan',
+  ];
+
+  static const Map<String, List<String>> kategoriToDivisi = {
+    'Mesin Jahit': ['Teknisi Jahit'],
+    'Mesin Umum': ['Teknisi Umum'],
+    'Hardware': ['IT Support'],
+    'APAR': ['Teknisi Jahit', 'Teknisi Umum', 'IT Support', 'Satpam'],
+    'Lainnya': divisiList,
+  };
 
   String get jabatanLabel {
     switch (userJabatan) {

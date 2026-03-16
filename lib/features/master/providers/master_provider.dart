@@ -199,11 +199,15 @@ class MasterProvider extends ChangeNotifier {
   }
 
   // ── USERS ──────────────────────────────────────────────────────
-  Future<void> fetchUsers({String? jabatan}) async {
+  Future<void> fetchUsers({String? jabatan, String? divisi}) async {
     _setLoading(true);
     try {
-      final query = jabatan != null ? {'jabatan': jabatan} : null;
-      final res = await ApiClient.get(ApiConfig.users, query: query);
+      final query = {
+        if (jabatan != null) 'jabatan': jabatan,
+        if (divisi != null) 'divisi': divisi,
+      };
+      final res = await ApiClient.get(ApiConfig.users,
+          query: query.isEmpty ? null : query);
       userList =
           (res['data'] as List).map((e) => UserModel.fromJson(e)).toList();
       _setError(null);
