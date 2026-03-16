@@ -137,7 +137,7 @@ class MasterProvider extends ChangeNotifier {
 
   Future<void> fetchJenis() async {
     try {
-      final res = await ApiClient.get('${ApiConfig.checklistTemplate}/jenis');
+      final res = await ApiClient.get('${ApiConfig.inventaris}/jenis');
       jenisChecklist = List<String>.from(res['data'] ?? []);
       notifyListeners();
     } on ApiException catch (e) {

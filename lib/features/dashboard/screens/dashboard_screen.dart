@@ -5,7 +5,6 @@ import '../../../core/constants/app_constants.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../master/screens/inventaris_screen.dart';
 import '../../master/screens/checklist_template_screen.dart';
-import '../../master/screens/divisi_screen.dart';
 import '../../master/screens/user_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
@@ -28,12 +27,6 @@ class DashboardScreen extends StatelessWidget {
         icon: Icons.assignment_outlined,
         color: AppColors.accent,
         builder: (_) => const ChecklistTemplateScreen(),
-      ),
-      _DashboardMenu(
-        title: 'Divisi',
-        icon: Icons.account_tree_outlined,
-        color: Colors.green,
-        builder: (_) => const DivisiScreen(),
       ),
       _DashboardMenu(
         title: 'User',

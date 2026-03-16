@@ -24,7 +24,7 @@ class _ChecklistTemplateScreenState extends State<ChecklistTemplateScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final p = context.read<MasterProvider>();
       p.fetchChecklist();
-      p.fetchInventaris();
+      p.fetchJenis();
     });
   }
 
@@ -571,9 +571,7 @@ class _SingleItemFormState extends State<_SingleItemForm> {
   Widget build(BuildContext context) {
     final isEdit = widget.item != null;
     final provider = context.watch<MasterProvider>();
-    // ambil jenis inventaris dari master inventaris
-    final allJenis =
-        provider.inventarisList.map((e) => e.invJenis).toSet().toList()..sort();
+    final allJenis = provider.jenisChecklist;
 
     return Padding(
       padding:
@@ -752,8 +750,7 @@ class _BulkInputFormState extends State<_BulkInputForm> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<MasterProvider>();
-    final allJenis =
-        provider.inventarisList.map((e) => e.invJenis).toSet().toList()..sort();
+    final allJenis = provider.jenisChecklist;
 
     return DraggableScrollableSheet(
       initialChildSize: 0.92,
