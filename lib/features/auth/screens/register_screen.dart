@@ -16,6 +16,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _passwordCtrl = TextEditingController();
   final _nikCtrl = TextEditingController();
   final _divisiCtrl = TextEditingController();
+  final _divisiOptions = const [
+    'Teknisi Jahit',
+    'Teknisi Umum',
+    'IT Support',
+    'Satpam',
+    'Kebersihan',
+  ];
   final _cabangCtrl = TextEditingController();
   bool _obscure = true;
 
@@ -72,9 +79,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     v == null || v.isEmpty ? 'NIK wajib diisi' : null,
               ),
               const SizedBox(height: 12),
-              TextFormField(
-                controller: _divisiCtrl,
+              DropdownButtonFormField<String>(
+                value: _divisiOptions.contains(_divisiCtrl.text)
+                    ? _divisiCtrl.text
+                    : null,
                 decoration: const InputDecoration(labelText: 'Divisi'),
+                items: _divisiOptions
+                    .map(
+                        (opt) => DropdownMenuItem(value: opt, child: Text(opt)))
+                    .toList(),
+                onChanged: (val) {
+                  if (val != null) _divisiCtrl.text = val;
+                },
                 validator: (v) =>
                     v == null || v.isEmpty ? 'Divisi wajib diisi' : null,
               ),
