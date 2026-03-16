@@ -36,7 +36,7 @@ class DashboardScreen extends StatelessWidget {
         builder: (_) => const DivisiScreen(),
       ),
       _DashboardMenu(
-        title: 'Pengguna',
+        title: 'User',
         icon: Icons.people_outline,
         color: Colors.purple,
         builder: (_) => const UserScreen(),

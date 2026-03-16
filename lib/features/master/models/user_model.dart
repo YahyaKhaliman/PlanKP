@@ -1,10 +1,10 @@
 class UserModel {
-  final int    userId;
+  final int userId;
   final String userNama;
   final String userNik;
   final String userJabatan;
   final String? userCabang;
-  final int    userIsActive;
+  final bool userIsActive;
 
   UserModel({
     required this.userId,
@@ -16,22 +16,33 @@ class UserModel {
   });
 
   factory UserModel.fromJson(Map<String, dynamic> j) => UserModel(
-    userId:       j['user_id'],
-    userNama:     j['user_nama']      ?? '',
-    userNik:      j['user_nik']       ?? '',
-    userJabatan:  j['user_jabatan']   ?? '',
-    userCabang:   j['user_cabang'],
-    userIsActive: j['user_is_active'] ?? 1,
-  );
+        userId: j['user_id'],
+        userNama: j['user_nama'] ?? '',
+        userNik: j['user_nik'] ?? '',
+        userJabatan: j['user_jabatan'] ?? '',
+        userCabang: j['user_cabang'],
+        userIsActive: _mapActive(j['user_is_active']),
+      );
 
-  bool get aktif => userIsActive == 1;
+  static bool _mapActive(dynamic value) {
+    if (value is bool) return value;
+    if (value is num) return value != 0;
+    if (value is String) return value == '1' || value.toLowerCase() == 'true';
+    return true;
+  }
+
+  bool get aktif => userIsActive;
 
   String get jabatanLabel {
     switch (userJabatan) {
-      case 'admin':      return 'Admin';
-      case 'teknisi':    return 'Teknisi';
-      case 'it_support': return 'IT Support';
-      default:           return userJabatan;
+      case 'admin':
+        return 'Admin';
+      case 'teknisi':
+        return 'Teknisi';
+      case 'it_support':
+        return 'IT Support';
+      default:
+        return userJabatan;
     }
   }
 }

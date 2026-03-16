@@ -10,7 +10,9 @@ class ApiConfig {
   static const String me = '/auth/me';
   static const String changePass = '/auth/change-password';
   static const String checklistTemplate = '/master/checklist-template';
-  static const String inventaris = '/master/inventaris';
+  static const String inventaris = '/master/inv';
+  static const String divisi = '/master/divisi';
+  static const String users = '/master/users';
 }
 
 class AppRoutes {

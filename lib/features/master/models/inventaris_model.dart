@@ -10,7 +10,7 @@ class InventarisModel {
   final String? invPic;
   final String? invTglBeli;
   final String invKondisi;
-  final int invIsActive;
+  final bool invIsActive;
   final String? invNotes;
 
   InventarisModel({
@@ -41,9 +41,9 @@ class InventarisModel {
         invPic: j['inv_pic'],
         invTglBeli: j['inv_tgl_beli'],
         invKondisi: j['inv_kondisi'] ?? 'Baik',
-        invIsActive: j['inv_is_active'] ?? 1,
+        invIsActive: j['inv_is_active'] == true || j['inv_is_active'] == 1,
         invNotes: j['inv_notes'],
       );
 
-  bool get aktif => invIsActive == 1;
+  bool get aktif => invIsActive;
 }
