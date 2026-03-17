@@ -15,6 +15,7 @@ class ApiConfig {
   static const String users = '/master/users';
   static const String jadwal = '/master/jadwal';
   static const String realisasi = '/master/realisasi';
+  static const String jenis = '/master/jenis';
 }
 
 class AppRoutes {

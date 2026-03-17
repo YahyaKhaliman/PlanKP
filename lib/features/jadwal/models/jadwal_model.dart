@@ -1,7 +1,8 @@
 class JadwalModel {
   final int jdwId;
   final String jdwJudul;
-  final String jdwInvJenis;
+  final int jdwJenisId;
+  final String? jdwInvJenis;
   final String jdwDivisi;
   final String jdwFrekuensi;
   final String jdwTglMulai;
@@ -18,7 +19,8 @@ class JadwalModel {
   JadwalModel({
     required this.jdwId,
     required this.jdwJudul,
-    required this.jdwInvJenis,
+    required this.jdwJenisId,
+    this.jdwInvJenis,
     required this.jdwDivisi,
     required this.jdwFrekuensi,
     required this.jdwTglMulai,
@@ -36,7 +38,8 @@ class JadwalModel {
   factory JadwalModel.fromJson(Map<String, dynamic> j) => JadwalModel(
         jdwId: j['jdw_id'],
         jdwJudul: j['jdw_judul'] ?? '',
-        jdwInvJenis: j['jdw_inv_jenis'] ?? '',
+        jdwJenisId: j['jdw_jenis_id'] ?? j['jdw_inv_jenis'] ?? 0,
+        jdwInvJenis: j['jdw_inv_jenis'],
         jdwDivisi: j['jdw_divisi'] ?? '',
         jdwFrekuensi: j['jdw_frekuensi'] ?? '',
         jdwTglMulai: j['jdw_tgl_mulai'] ?? '',

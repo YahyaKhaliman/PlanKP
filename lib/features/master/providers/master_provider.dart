@@ -4,6 +4,7 @@ import '../../../core/utils/api_client.dart';
 import '../models/checklist_template_model.dart';
 import '../models/divisi_model.dart';
 import '../models/inventaris_model.dart';
+import '../models/jenis_model.dart';
 import '../models/user_model.dart';
 
 class MasterProvider extends ChangeNotifier {
@@ -11,8 +12,8 @@ class MasterProvider extends ChangeNotifier {
   List<ChecklistTemplateModel> checklistList = [];
   List<UserModel> userList = [];
   List<DivisiModel> divisiList = [];
-  List<String> jenisChecklist = [];
-  final Map<String, String> _jenisKategoriMap = {};
+  List<JenisModel> jenisMaster = [];
+  final Map<int, String> _jenisKategoriMap = {};
 
   bool _loading = false;
   String? _error;
@@ -30,7 +31,14 @@ class MasterProvider extends ChangeNotifier {
   }
 
   // ── INVENTARIS ─────────────────────────────────────────────────
-  String? kategoriByJenis(String jenis) => _jenisKategoriMap[jenis];
+  String? kategoriByJenisId(int jenisId) => _jenisKategoriMap[jenisId];
+  JenisModel? jenisById(int jenisId) {
+    try {
+      return jenisMaster.firstWhere((j) => j.jenisId == jenisId);
+    } catch (_) {
+      return null;
+    }
+  }
 
   Future<void> fetchInventaris(
       {String? kategori,
@@ -49,11 +57,12 @@ class MasterProvider extends ChangeNotifier {
       inventarisList = (res['data'] as List)
           .map((e) => InventarisModel.fromJson(e))
           .toList();
-      if (updateKategoriMap) {
+      if (updateKategoriMap && jenisMaster.isNotEmpty) {
         _jenisKategoriMap
           ..clear()
-          ..addEntries(inventarisList
-              .map((inv) => MapEntry(inv.invJenis, inv.invKategori)));
+          ..addEntries(
+            jenisMaster.map((j) => MapEntry(j.jenisId, j.jenisKategori)),
+          );
       }
       _setError(null);
     } on ApiException catch (e) {
@@ -156,13 +165,48 @@ class MasterProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> fetchJenis() async {
+  Future<void> fetchJenis({bool showLoading = false}) async {
+    if (showLoading) _setLoading(true);
     try {
-      final res = await ApiClient.get('${ApiConfig.inventaris}/jenis');
-      jenisChecklist = List<String>.from(res['data'] ?? []);
-      notifyListeners();
+      final res = await ApiClient.get(ApiConfig.jenis);
+      jenisMaster =
+          (res['data'] as List).map((e) => JenisModel.fromJson(e)).toList();
+      _jenisKategoriMap
+        ..clear()
+        ..addEntries(
+            jenisMaster.map((j) => MapEntry(j.jenisId, j.jenisKategori)));
+      _setError(null);
     } on ApiException catch (e) {
       _setError(e.message);
+    } finally {
+      if (showLoading) _setLoading(false);
+    }
+    notifyListeners();
+  }
+
+  Future<bool> saveJenis(Map<String, dynamic> body, {int? id}) async {
+    try {
+      if (id != null) {
+        await ApiClient.put('${ApiConfig.jenis}/$id', body);
+      } else {
+        await ApiClient.post(ApiConfig.jenis, body);
+      }
+      await fetchJenis();
+      return true;
+    } on ApiException catch (e) {
+      _setError(e.message);
+      return false;
+    }
+  }
+
+  Future<bool> deleteJenis(int id) async {
+    try {
+      await ApiClient.delete('${ApiConfig.jenis}/$id');
+      await fetchJenis();
+      return true;
+    } on ApiException catch (e) {
+      _setError(e.message);
+      return false;
     }
   }
 
@@ -170,7 +214,7 @@ class MasterProvider extends ChangeNotifier {
       String jenis, List<Map<String, dynamic>> items) async {
     try {
       await ApiClient.post('${ApiConfig.checklistTemplate}/bulk', {
-        'ct_inv_jenis': jenis,
+        'ct_jenis_id': jenis,
         'items': items,
       });
       await fetchChecklist();

@@ -1,7 +1,7 @@
 class ChecklistTemplateModel {
   final int ctId;
-  final String ctInvJenis;
-  final String? ctDivisi;
+  final int ctJenisId;
+  final String? ctJenisNama;
   final String ctItem;
   final String? ctKeterangan;
   final int ctUrutan;
@@ -9,8 +9,8 @@ class ChecklistTemplateModel {
 
   ChecklistTemplateModel({
     required this.ctId,
-    required this.ctInvJenis,
-    this.ctDivisi,
+    required this.ctJenisId,
+    this.ctJenisNama,
     required this.ctItem,
     this.ctKeterangan,
     required this.ctUrutan,
@@ -20,8 +20,8 @@ class ChecklistTemplateModel {
   factory ChecklistTemplateModel.fromJson(Map<String, dynamic> j) =>
       ChecklistTemplateModel(
         ctId: j['ct_id'],
-        ctInvJenis: j['ct_inv_jenis'] ?? '',
-        ctDivisi: j['ct_divisi'],
+        ctJenisId: j['ct_jenis_id'] ?? 0,
+        ctJenisNama: j['jenis']?['jenis_nama'],
         ctItem: j['ct_item'] ?? '',
         ctKeterangan: j['ct_keterangan'],
         ctUrutan: j['ct_urutan'] ?? 1,

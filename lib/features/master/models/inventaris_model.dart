@@ -3,11 +3,11 @@ class InventarisModel {
   final String invNo;
   final String invNama;
   final String invKategori;
-  final String invJenis;
+  final int invJenisId;
   final String? invLokasi;
   final String? invMerk;
   final String? invSerialNumber;
-  final int? invPicId;
+  final String? invPic;
   final String? invTglBeli;
   final String invKondisi;
   final bool invIsActive;
@@ -18,11 +18,11 @@ class InventarisModel {
     required this.invNo,
     required this.invNama,
     required this.invKategori,
-    required this.invJenis,
+    required this.invJenisId,
     this.invLokasi,
     this.invMerk,
     this.invSerialNumber,
-    this.invPicId,
+    this.invPic,
     this.invTglBeli,
     required this.invKondisi,
     required this.invIsActive,
@@ -34,11 +34,11 @@ class InventarisModel {
         invNo: j['inv_no'] ?? '',
         invNama: j['inv_nama'] ?? '',
         invKategori: j['inv_kategori'] ?? '',
-        invJenis: j['inv_jenis'] ?? '',
+        invJenisId: j['inv_jenis_id'] ?? 0,
         invLokasi: j['inv_lokasi'],
         invMerk: j['inv_merk'],
         invSerialNumber: j['inv_serial_number'],
-        invPicId: j['inv_pic'],
+        invPic: j['inv_pic'],
         invTglBeli: j['inv_tgl_beli'],
         invKondisi: j['inv_kondisi'] ?? 'Baik',
         invIsActive: j['inv_is_active'] == true || j['inv_is_active'] == 1,

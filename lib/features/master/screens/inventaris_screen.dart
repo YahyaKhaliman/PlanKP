@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../models/inventaris_model.dart';
+import '../models/jenis_model.dart';
 import '../providers/master_provider.dart';
+import '../widgets/jenis_lookup_sheet.dart';
 
 class InventarisScreen extends StatefulWidget {
   const InventarisScreen({super.key});
@@ -35,6 +37,7 @@ class _InventarisScreenState extends State<InventarisScreen> {
   }
 
   Future<void> _openForm([InventarisModel? item]) async {
+    await context.read<MasterProvider>().fetchJenis(showLoading: false);
     await context
         .read<MasterProvider>()
         .fetchUsers(jabatan: 'pic', showLoading: false);
@@ -191,7 +194,7 @@ class _InventarisCard extends StatelessWidget {
                   ),
                 ]),
                 const SizedBox(height: 3),
-                Text('${item.invNo} · ${item.invJenis}',
+                Text('${item.invNo} · ID Jenis ${item.invJenisId}',
                     style: const TextStyle(
                         fontSize: 12, color: AppColors.textSecondary)),
                 if (item.invLokasi != null) ...[
@@ -248,10 +251,11 @@ class _InventarisFormState extends State<_InventarisForm> {
   final _noCtrl = TextEditingController();
   final _namaCtrl = TextEditingController();
   final _jenisCtrl = TextEditingController();
+  int? _jenisId;
   final _lokasiCtrl = TextEditingController();
   final _merkCtrl = TextEditingController();
   final _snCtrl = TextEditingController();
-  int? _selectedPic;
+  final _picCtrl = TextEditingController();
   final _notesCtrl = TextEditingController();
   String _kategori = 'Mesin Jahit';
   String _kondisi = 'Baik';
@@ -271,11 +275,13 @@ class _InventarisFormState extends State<_InventarisForm> {
     if (d != null) {
       _noCtrl.text = d.invNo;
       _namaCtrl.text = d.invNama;
-      _jenisCtrl.text = d.invJenis;
+      _jenisId = d.invJenisId;
+      final jenis = context.read<MasterProvider>().jenisById(d.invJenisId);
+      _jenisCtrl.text = jenis?.jenisNama ?? 'ID ${d.invJenisId}';
       _lokasiCtrl.text = d.invLokasi ?? '';
       _merkCtrl.text = d.invMerk ?? '';
       _snCtrl.text = d.invSerialNumber ?? '';
-      _selectedPic = d.invPicId;
+      _picCtrl.text = d.invPic ?? '';
       _notesCtrl.text = d.invNotes ?? '';
       _kategori = d.invKategori;
       _kondisi = d.invKondisi;
@@ -290,6 +296,7 @@ class _InventarisFormState extends State<_InventarisForm> {
     _lokasiCtrl.dispose();
     _merkCtrl.dispose();
     _snCtrl.dispose();
+    _picCtrl.dispose();
     _notesCtrl.dispose();
     super.dispose();
   }
@@ -301,13 +308,13 @@ class _InventarisFormState extends State<_InventarisForm> {
       'inv_no': _noCtrl.text.trim(),
       'inv_nama': _namaCtrl.text.trim(),
       'inv_kategori': _kategori,
-      'inv_jenis': _jenisCtrl.text.trim(),
+      'inv_jenis_id': _jenisId,
       'inv_lokasi':
           _lokasiCtrl.text.trim().isEmpty ? null : _lokasiCtrl.text.trim(),
       'inv_merk': _merkCtrl.text.trim().isEmpty ? null : _merkCtrl.text.trim(),
       'inv_serial_number':
           _snCtrl.text.trim().isEmpty ? null : _snCtrl.text.trim(),
-      'inv_pic': _selectedPic,
+      'inv_pic': _picCtrl.text.trim().isEmpty ? null : _picCtrl.text.trim(),
       'inv_kondisi': _kondisi,
       'inv_notes':
           _notesCtrl.text.trim().isEmpty ? null : _notesCtrl.text.trim(),
@@ -364,38 +371,12 @@ class _InventarisFormState extends State<_InventarisForm> {
                 ),
                 const SizedBox(height: 14),
 
-                _field(_jenisCtrl, 'Jenis', Icons.label_outline,
-                    required: true, hint: 'Sewing, Kompressor, Laptop...'),
+                _jenisPickerField(),
                 _field(_lokasiCtrl, 'Lokasi', Icons.location_on_outlined),
                 _field(_merkCtrl, 'Merk', Icons.branding_watermark_outlined),
                 _field(_snCtrl, 'Serial Number', Icons.qr_code_outlined),
-                DropdownButtonFormField<int?>(
-                  value: _selectedPic,
-                  decoration: const InputDecoration(
-                    labelText: 'PIC',
-                    prefixIcon: Icon(Icons.person_outline),
-                  ),
-                  hint: const Text('Pilih PIC'),
-                  items: [
-                    const DropdownMenuItem(
-                      value: null,
-                      child: Text('Tidak ada PIC'),
-                    ),
-                    ...context
-                        .watch<MasterProvider>()
-                        .userList
-                        .where((u) => u.userJabatan == 'pic')
-                        .map(
-                          (u) => DropdownMenuItem(
-                            value: u.userId,
-                            child: Text(u.userNama),
-                          ),
-                        ),
-                  ],
-                  onChanged: (value) {
-                    setState(() => _selectedPic = value);
-                  },
-                ),
+                _field(_picCtrl, 'PIC', Icons.person_outline,
+                    hint: 'Masukkan nama PIC'),
 
                 // Kondisi
                 DropdownButtonFormField<String>(
@@ -444,6 +425,50 @@ class _InventarisFormState extends State<_InventarisForm> {
         ),
       ),
     );
+  }
+
+  Widget _jenisPickerField() {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: TextFormField(
+        controller: _jenisCtrl,
+        readOnly: true,
+        decoration: InputDecoration(
+          labelText: 'Jenis',
+          hintText: 'Cari di master plan_jenis',
+          prefixIcon: const Icon(Icons.label_outline),
+          suffixIcon: IconButton(
+            icon: const Icon(Icons.search),
+            onPressed: _pickJenis,
+          ),
+        ),
+        validator: (_) => _jenisId == null ? 'Jenis wajib dipilih' : null,
+        onTap: _pickJenis,
+      ),
+    );
+  }
+
+  Future<void> _pickJenis() async {
+    final provider = context.read<MasterProvider>();
+    if (provider.jenisMaster.isEmpty) {
+      await provider.fetchJenis(showLoading: false);
+    }
+    if (!mounted) return;
+    final result = await showModalBottomSheet<JenisModel>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => JenisLookupSheet(
+        items: provider.jenisMaster,
+        initialId: _jenisId,
+      ),
+    );
+    if (result != null) {
+      setState(() {
+        _jenisId = result.jenisId;
+        _jenisCtrl.text = result.jenisNama;
+      });
+    }
   }
 
   Widget _field(TextEditingController ctrl, String label, IconData icon,

@@ -15,6 +15,7 @@ class JadwalProvider extends ChangeNotifier {
 
   bool _loading = false;
   String? _error;
+  bool _lastFetchDivisi = false;
   bool get loading => _loading;
   String? get error => _error;
 
@@ -36,12 +37,33 @@ class JadwalProvider extends ChangeNotifier {
   // ── JADWAL ─────────────────────────────────────────────────
   Future<void> fetchJadwal({String? status, String? jenis}) async {
     _setLoading(true);
+    _lastFetchDivisi = false;
     try {
       final query = <String, dynamic>{
         if (status != null) 'status': status,
         if (jenis != null) 'jenis': jenis,
       };
       final res = await ApiClient.get(ApiConfig.jadwal, query: query);
+      jadwalList =
+          (res['data'] as List).map((e) => JadwalModel.fromJson(e)).toList();
+      _setError(null);
+    } on ApiException catch (e) {
+      _setError(e.message);
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  Future<void> fetchJadwalByDivisi({String? status, String? jenis}) async {
+    _setLoading(true);
+    _lastFetchDivisi = true;
+    try {
+      final query = <String, dynamic>{
+        if (status != null) 'status': status,
+        if (jenis != null) 'jenis': jenis,
+      };
+      final res =
+          await ApiClient.get('${ApiConfig.jadwal}/divisi', query: query);
       jadwalList =
           (res['data'] as List).map((e) => JadwalModel.fromJson(e)).toList();
       _setError(null);
@@ -86,7 +108,11 @@ class JadwalProvider extends ChangeNotifier {
         await ApiClient.put('${ApiConfig.jadwal}/$id', body);
       else
         await ApiClient.post(ApiConfig.jadwal, body);
-      await fetchJadwal();
+      if (_lastFetchDivisi) {
+        await fetchJadwalByDivisi();
+      } else {
+        await fetchJadwal();
+      }
       return true;
     } on ApiException catch (e) {
       _setError(e.message);
@@ -98,7 +124,11 @@ class JadwalProvider extends ChangeNotifier {
     try {
       await ApiClient.patch(
           '${ApiConfig.jadwal}/$id/status', {'status': status});
-      await fetchJadwal();
+      if (_lastFetchDivisi) {
+        await fetchJadwalByDivisi();
+      } else {
+        await fetchJadwal();
+      }
       return true;
     } on ApiException catch (e) {
       _setError(e.message);
@@ -175,11 +205,10 @@ class JadwalProvider extends ChangeNotifier {
   }
 
   // Ambil template checklist untuk jenis inventaris tertentu
-  Future<List<ChecklistInputModel>> fetchTemplate(String invJenis) async {
+  Future<List<ChecklistInputModel>> fetchTemplate(int jenisId) async {
     try {
-      final encoded = Uri.encodeComponent(invJenis);
       final res =
-          await ApiClient.get('${ApiConfig.realisasi}/template/$encoded');
+          await ApiClient.get('${ApiConfig.realisasi}/template/$jenisId');
       return (res['data'] as List)
           .map((e) => ChecklistInputModel.fromTemplate(e))
           .toList();

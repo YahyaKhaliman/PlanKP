@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/constants/app_constants.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../../../features/master/models/user_model.dart';
 import '../../../features/master/providers/master_provider.dart';
+import '../../../features/master/widgets/jenis_lookup_sheet.dart';
+import '../../../features/master/models/jenis_model.dart';
 import '../models/jadwal_model.dart';
 import '../providers/jadwal_provider.dart';
 
@@ -26,7 +29,14 @@ class _JadwalScreenState extends State<JadwalScreen>
     super.initState();
     _tab = TabController(length: _statuses.length, vsync: this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<JadwalProvider>().fetchJadwal();
+      final auth = context.read<AuthProvider>();
+      final isAdmin = auth.user?['user_jabatan'] == 'admin';
+      final jadwalProvider = context.read<JadwalProvider>();
+      if (isAdmin) {
+        jadwalProvider.fetchJadwal();
+      } else {
+        jadwalProvider.fetchJadwalByDivisi();
+      }
       context.read<MasterProvider>().fetchJenis();
     });
   }
@@ -48,6 +58,8 @@ class _JadwalScreenState extends State<JadwalScreen>
 
   @override
   Widget build(BuildContext context) {
+    final auth = context.watch<AuthProvider>();
+    final isAdmin = auth.user?['user_jabatan'] == 'admin';
     return Scaffold(
       appBar: AppBar(
         title: const Text('Penjadwalan'),
@@ -60,11 +72,13 @@ class _JadwalScreenState extends State<JadwalScreen>
           tabs: _statuses.map((s) => Tab(text: s)).toList(),
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _openForm(),
-        icon: const Icon(Icons.add),
-        label: const Text('Buat Jadwal'),
-      ),
+      floatingActionButton: isAdmin
+          ? FloatingActionButton.extended(
+              onPressed: () => _openForm(),
+              icon: const Icon(Icons.add),
+              label: const Text('Buat Jadwal'),
+            )
+          : null,
       body: Consumer<JadwalProvider>(
         builder: (_, p, __) {
           if (p.loading)
@@ -182,7 +196,7 @@ class _JadwalCard extends StatelessWidget {
 
             // baris 2: jenis + frekuensi
             Wrap(spacing: 6, runSpacing: 4, children: [
-              _chip(jadwal.jdwInvJenis, Icons.label_outline),
+              _chip('Jenis ${jadwal.jdwJenisId}', Icons.label_outline),
               _chip(jadwal.jdwFrekuensi, Icons.repeat_outlined),
             ]),
             const SizedBox(height: 6),
@@ -301,13 +315,18 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
           if (p.jadwalDetail == null) return const SizedBox.shrink();
           if (p.jadwalDetail!.jdwStatus != 'Aktif')
             return const SizedBox.shrink();
+          final jenis = context
+              .read<MasterProvider>()
+              .jenisById(p.jadwalDetail!.jdwJenisId);
           return FloatingActionButton.extended(
             onPressed: () => Navigator.pushNamed(
               context,
               AppRoutes.realisasiForm,
               arguments: {
                 'jadwalId': widget.jadwalId,
-                'invJenis': p.jadwalDetail!.jdwInvJenis,
+                'invJenisId': p.jadwalDetail!.jdwJenisId,
+                'invJenisNama':
+                    jenis?.jenisNama ?? 'ID ${p.jadwalDetail!.jdwJenisId}',
               },
             ),
             icon: const Icon(Icons.assignment_turned_in_outlined),
@@ -335,7 +354,7 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
                           style: const TextStyle(
                               fontSize: 18, fontWeight: FontWeight.w700)),
                       const SizedBox(height: 12),
-                      _row('Jenis Inventaris', jdw.jdwInvJenis),
+                      _row('Jenis Inventaris', 'ID ${jdw.jdwJenisId}'),
                       _row('Frekuensi', jdw.jdwFrekuensi),
                       _row('Tanggal Mulai', jdw.jdwTglMulai),
                       if (jdw.jdwTglSelesai != null)
@@ -373,16 +392,29 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
                         style: const TextStyle(fontSize: 12)),
                     trailing: jdw.jdwStatus == 'Aktif'
                         ? ElevatedButton(
-                            onPressed: () => Navigator.pushNamed(
-                              context,
-                              AppRoutes.realisasiForm,
-                              arguments: {
-                                'jadwalId': widget.jadwalId,
-                                'invJenis': jdw.jdwInvJenis,
-                                'invId': inv['inv_id'],
-                                'invNama': inv['inv_nama'],
-                              },
-                            ),
+                            onPressed: () {
+                              final jenis = context
+                                  .read<MasterProvider>()
+                                  .jenisById(
+                                      inv['inv_jenis'] ?? jdw.jdwJenisId);
+                              Navigator.pushNamed(
+                                context,
+                                AppRoutes.realisasiForm,
+                                arguments: {
+                                  'jadwalId': widget.jadwalId,
+                                  'invJenisId':
+                                      inv['inv_jenis'] ?? jdw.jdwJenisId,
+                                  'invJenisNama': jenis?.jenisNama ??
+                                      'ID ${inv['inv_jenis'] ?? jdw.jdwJenisId}',
+                                  'invId': inv['inv_id'],
+                                  'invNama': inv['inv_nama'],
+                                  'invNo': inv['inv_no'],
+                                  'invKondisi': inv['inv_kondisi'],
+                                  'invPicNama': inv['pic_user']?['user_nama'],
+                                  'invPicId': inv['pic_user']?['user_id'],
+                                },
+                              );
+                            },
                             style: ElevatedButton.styleFrom(
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 12, vertical: 6),
@@ -431,7 +463,8 @@ class _JadwalFormState extends State<_JadwalForm> {
   final _form = GlobalKey<FormState>();
   final _judulCtrl = TextEditingController();
   final _notesCtrl = TextEditingController();
-  String? _jenis;
+  final TextEditingController _jenisCtrl = TextEditingController();
+  int? _jenisId;
   String? _divisi;
   String _frekuensi = 'Harian';
   int? _assignedTo;
@@ -449,13 +482,15 @@ class _JadwalFormState extends State<_JadwalForm> {
     if (d != null) {
       _judulCtrl.text = d.jdwJudul;
       _notesCtrl.text = d.jdwNotes ?? '';
-      _jenis = d.jdwInvJenis;
+      _jenisId = d.jdwJenisId;
       _divisi = d.jdwDivisi;
       _frekuensi = d.jdwFrekuensi;
       _assignedTo = d.jdwAssignedTo;
       _tglMulai = DateTime.tryParse(d.jdwTglMulai);
       _tglSelesai =
           d.jdwTglSelesai != null ? DateTime.tryParse(d.jdwTglSelesai!) : null;
+      final jenis = context.read<MasterProvider>().jenisById(d.jdwJenisId);
+      _jenisCtrl.text = jenis?.jenisNama ?? 'ID ${d.jdwJenisId}';
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _refreshAssignableUsers(initialLoad: true);
@@ -466,6 +501,7 @@ class _JadwalFormState extends State<_JadwalForm> {
   void dispose() {
     _judulCtrl.dispose();
     _notesCtrl.dispose();
+    _jenisCtrl.dispose();
     super.dispose();
   }
 
@@ -494,9 +530,11 @@ class _JadwalFormState extends State<_JadwalForm> {
 
   Future<void> _refreshAssignableUsers({bool initialLoad = false}) async {
     final master = context.read<MasterProvider>();
-    final jenis = _jenis ?? widget.item?.jdwInvJenis;
-    final defaultDivisi = jenis != null ? master.kategoriByJenis(jenis) : null;
-    final effectiveDivisi = _divisi ?? widget.item?.jdwDivisi ?? defaultDivisi;
+    final jenis = _jenisId ?? widget.item?.jdwJenisId;
+    final kategori = jenis != null ? master.kategoriByJenisId(jenis) : null;
+    final defaultDivisi = kategori;
+    final currentDivisi = _divisi ?? widget.item?.jdwDivisi ?? defaultDivisi;
+    final effectiveDivisi = currentDivisi;
 
     Future<List<UserModel>> loader;
     String? info;
@@ -541,8 +579,81 @@ class _JadwalFormState extends State<_JadwalForm> {
     }
   }
 
+  Future<void> _pickJenis() async {
+    final master = context.read<MasterProvider>();
+    if (master.jenisMaster.isEmpty) {
+      await master.fetchJenis(showLoading: false);
+    }
+    if (!mounted) return;
+    final result = await showModalBottomSheet<JenisModel>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => JenisLookupSheet(
+        items: master.jenisMaster,
+        initialId: _jenisId,
+      ),
+    );
+    if (result != null) {
+      setState(() {
+        _jenisId = result.jenisId;
+        _jenisCtrl.text = result.jenisNama;
+        final kategori = master.kategoriByJenisId(result.jenisId);
+        if (_divisi == null && kategori != null) {
+          _divisi = _divisiFromKategori(kategori) ?? _validDivisi(kategori);
+        } else if (_divisi != null) {
+          _divisi = _validDivisi(_divisi);
+        }
+      });
+      _refreshAssignableUsers();
+    }
+  }
+
+  Widget _jenisPickerField() {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: TextFormField(
+        controller: _jenisCtrl,
+        readOnly: true,
+        decoration: InputDecoration(
+          labelText: 'Jenis Inventaris',
+          hintText: 'Cari di master plan_jenis',
+          prefixIcon: const Icon(Icons.label_outline),
+          suffixIcon: IconButton(
+            icon: const Icon(Icons.search),
+            onPressed: _pickJenis,
+          ),
+        ),
+        validator: (_) => _jenisId == null ? 'Jenis wajib dipilih' : null,
+        onTap: _pickJenis,
+      ),
+    );
+  }
+
+  String? _divisiFromKategori(String? kategori) {
+    if (kategori == null || kategori.isEmpty) return null;
+    final allowed = UserModel.kategoriToDivisi[kategori];
+    if (allowed != null && allowed.isNotEmpty) {
+      for (final div in allowed) {
+        final valid = _validDivisi(div);
+        if (valid != null) return valid;
+      }
+    }
+    return _validDivisi(kategori);
+  }
+
+  String? _validDivisi(String? value) {
+    if (value == null || value.isEmpty) return null;
+    return UserModel.divisiList.contains(value) ? value : null;
+  }
+
   Future<void> _submit() async {
     if (!_form.currentState!.validate()) return;
+    if (_jenisId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Jenis inventaris wajib dipilih')));
+      return;
+    }
     if (_tglMulai == null) {
       ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Tanggal mulai wajib dipilih')));
@@ -551,16 +662,16 @@ class _JadwalFormState extends State<_JadwalForm> {
     final master = context.read<MasterProvider>();
     final p = context.read<JadwalProvider>();
     final divisi = _divisi ??
-        master.kategoriByJenis(_jenis ?? '') ??
+        (_jenisId != null ? master.kategoriByJenisId(_jenisId!) : null) ??
         widget.item?.jdwDivisi;
     final body = {
       'jdw_judul': _judulCtrl.text.trim(),
-      'jdw_inv_jenis': _jenis,
+      'jdw_jenis_id': _jenisId!,
+      'jdw_inv_jenis': _jenisCtrl.text.trim().isEmpty ? null : _jenisCtrl.text,
       'jdw_divisi': divisi,
       'jdw_frekuensi': _frekuensi,
       'jdw_tgl_mulai': _fmtDate(_tglMulai),
       'jdw_tgl_selesai': _tglSelesai != null ? _fmtDate(_tglSelesai) : null,
-      'jdw_assigned_to': _assignedTo,
       'jdw_notes':
           _notesCtrl.text.trim().isEmpty ? null : _notesCtrl.text.trim(),
     };
@@ -574,10 +685,23 @@ class _JadwalFormState extends State<_JadwalForm> {
     final master = context.watch<MasterProvider>();
     final jadwalP = context.watch<JadwalProvider>();
 
-    final allJenis = master.jenisChecklist.toList()..sort();
+    final jenisMaster = master.jenisMaster;
+    final currentJenis = _jenisId != null ? master.jenisById(_jenisId!) : null;
+    if (_jenisId != null && _jenisCtrl.text.isEmpty) {
+      final jenis = master.jenisById(_jenisId!);
+      if (jenis != null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) setState(() => _jenisCtrl.text = jenis.jenisNama);
+        });
+      }
+    }
     final allDivisi = UserModel.divisiList;
+    final kategori =
+        _jenisId != null ? master.kategoriByJenisId(_jenisId!) : null;
     final defaultDivisi =
-        _jenis != null ? master.kategoriByJenis(_jenis!) : null;
+        kategori != null && UserModel.divisiList.contains(kategori)
+            ? kategori
+            : null;
     final divisiValue = _divisi ?? defaultDivisi ?? widget.item?.jdwDivisi;
 
     return DraggableScrollableSheet(
@@ -623,23 +747,7 @@ class _JadwalFormState extends State<_JadwalForm> {
               ),
               const SizedBox(height: 14),
 
-              // Jenis inventaris
-              DropdownButtonFormField<String>(
-                value: _jenis,
-                decoration: const InputDecoration(
-                  labelText: 'Jenis Inventaris',
-                  prefixIcon: Icon(Icons.label_outline),
-                ),
-                hint: const Text('Pilih jenis'),
-                items: allJenis
-                    .map((j) => DropdownMenuItem(value: j, child: Text(j)))
-                    .toList(),
-                onChanged: (v) {
-                  setState(() => _jenis = v);
-                  _refreshAssignableUsers();
-                },
-                validator: (v) => v == null ? 'Jenis wajib dipilih' : null,
-              ),
+              _jenisPickerField(),
               const SizedBox(height: 14),
 
               // Divisi target
@@ -717,44 +825,6 @@ class _JadwalFormState extends State<_JadwalForm> {
                   ),
                 ),
               ),
-              const SizedBox(height: 14),
-
-              // Assigned to
-              DropdownButtonFormField<int?>(
-                value: _assignedTo,
-                decoration: const InputDecoration(
-                  labelText: 'Assigned To (opsional)',
-                  prefixIcon: Icon(Icons.person_outline),
-                ),
-                hint: const Text('Pilih teknisi'),
-                items: [
-                  const DropdownMenuItem(
-                      value: null, child: Text('Tidak di-assign')),
-                  ..._assignableUsers.map((u) => DropdownMenuItem(
-                      value: u.userId,
-                      child: Text('${u.userNama} (${u.jabatanLabel})'))),
-                ],
-                onChanged: (v) => setState(() => _assignedTo = v),
-              ),
-              if (_assignInfo != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 6),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Icon(Icons.info_outline,
-                          size: 14, color: AppColors.textSecondary),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          _assignInfo!,
-                          style: const TextStyle(
-                              fontSize: 12, color: AppColors.textSecondary),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
               const SizedBox(height: 14),
 
               // Catatan

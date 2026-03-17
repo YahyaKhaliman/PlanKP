@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../models/checklist_template_model.dart';
+import '../models/jenis_model.dart';
 import '../providers/master_provider.dart';
 
 // ═══════════════════════════════════════════════════════════════
@@ -16,7 +17,7 @@ class ChecklistTemplateScreen extends StatefulWidget {
 
 class _ChecklistTemplateScreenState extends State<ChecklistTemplateScreen> {
   String? _filterJenis;
-  bool _previewMode = true; // grid mode only
+  int _tabIndex = 0; // 0 = Checklist, 1 = Master Jenis
 
   @override
   void initState() {
@@ -29,8 +30,8 @@ class _ChecklistTemplateScreenState extends State<ChecklistTemplateScreen> {
   }
 
   // daftar jenis unik dari data checklist yang sudah ada
-  List<String> _jenisDariChecklist(List<ChecklistTemplateModel> list) =>
-      list.map((e) => e.ctInvJenis).toSet().toList()..sort();
+  List<int> _jenisDariChecklist(List<ChecklistTemplateModel> list) =>
+      list.map((e) => e.ctJenisId).toSet().toList()..sort();
 
   // ── buka form single item ──────────────────────────────────
   void _openSingleForm([ChecklistTemplateModel? item]) {
@@ -83,123 +84,72 @@ class _ChecklistTemplateScreenState extends State<ChecklistTemplateScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Template Checklist'),
-      ),
-
-      // ── FAB: bulk input saja ───────────────────────────────
-      floatingActionButton: FloatingActionButton.extended(
-        heroTag: 'fab_bulk',
-        onPressed: _openBulkForm,
-        icon: const Icon(Icons.playlist_add),
-        label: const Text('Bulk Input'),
-      ),
-
-      body: Consumer<MasterProvider>(
-        builder: (_, p, __) {
-          if (p.loading) {
-            return const Center(child: CircularProgressIndicator());
+    return DefaultTabController(
+      length: 2,
+      initialIndex: _tabIndex,
+      child: Builder(builder: (context) {
+        final tabController = DefaultTabController.of(context);
+        tabController?.addListener(() {
+          if (tabController.indexIsChanging) {
+            setState(() => _tabIndex = tabController.index);
           }
-
-          final jenisDariData = _jenisDariChecklist(p.checklistList);
-          final filtered = _filterJenis == null
-              ? p.checklistList
-              : p.checklistList
-                  .where((e) => e.ctInvJenis == _filterJenis)
-                  .toList();
-
-          return Column(children: [
-            // ── Filter chip ──────────────────────────────────
-            Container(
-              color: AppColors.white,
-              child: Column(children: [
-                SizedBox(
-                  height: 48,
-                  child: ListView(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                    children: [
-                      _Chip(
-                        label: 'Semua',
-                        selected: _filterJenis == null,
-                        onTap: () {
-                          setState(() => _filterJenis = null);
-                          p.fetchChecklist();
-                        },
-                      ),
-                      ...jenisDariData.map((j) => _Chip(
-                            label: j,
-                            selected: _filterJenis == j,
-                            onTap: () {
-                              setState(() => _filterJenis = j);
-                              p.fetchChecklist(jenis: j);
-                            },
-                          )),
-                    ],
-                  ),
-                ),
-                const Divider(height: 1),
-              ]),
+        });
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text('Template Checklist'),
+            bottom: const TabBar(
+              tabs: [
+                Tab(text: 'Checklist'),
+                Tab(text: 'Master Jenis'),
+              ],
             ),
-
-            // ── Counter ──────────────────────────────────────
-            if (filtered.isNotEmpty)
-              Container(
-                color: AppColors.bgGray,
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-                child: Row(children: [
-                  Text('${filtered.length} item',
-                      style: const TextStyle(
-                          fontSize: 12, color: AppColors.textSecondary)),
-                  if (_filterJenis != null) ...[
-                    const Text(' · ',
-                        style: TextStyle(color: AppColors.textSecondary)),
-                    Text(_filterJenis!,
-                        style: const TextStyle(
-                            fontSize: 12,
-                            color: AppColors.primary,
-                            fontWeight: FontWeight.w500)),
-                  ],
-                ]),
+          ),
+          body: TabBarView(
+            physics: const NeverScrollableScrollPhysics(),
+            children: [
+              _ChecklistTab(
+                filterJenis: _filterJenis,
+                onFilterChanged: (val) => setState(() => _filterJenis = val),
+                openBulkForm: _openBulkForm,
+                openSingleForm: _openSingleForm,
+                confirmDelete: _confirmDelete,
               ),
-
-            // ── Empty state ──────────────────────────────────
-            if (filtered.isEmpty)
-              const Expanded(
-                child: Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.checklist_outlined,
-                          size: 48, color: AppColors.textSecondary),
-                      SizedBox(height: 12),
-                      Text('Belum ada item checklist',
-                          style: TextStyle(color: AppColors.textSecondary)),
-                      SizedBox(height: 4),
-                      Text('Gunakan tombol Bulk Input untuk menambahkan',
-                          style: TextStyle(
-                              fontSize: 12, color: AppColors.textSecondary)),
-                    ],
-                  ),
+              const _JenisTab(),
+            ],
+          ),
+          floatingActionButton: _tabIndex == 0
+              ? FloatingActionButton.extended(
+                  heroTag: 'fab_bulk',
+                  onPressed: _openBulkForm,
+                  icon: const Icon(Icons.playlist_add),
+                  label: const Text('Bulk Input'),
+                )
+              : FloatingActionButton.extended(
+                  heroTag: 'fab_jenis',
+                  onPressed: _openJenisForm,
+                  icon: const Icon(Icons.add),
+                  label: const Text('Tambah Jenis'),
                 ),
-              ),
+        );
+      }),
+    );
+  }
 
-            // ── PREVIEW MODE: card per jenis ─────────────────
-            if (filtered.isNotEmpty)
-              Expanded(child: _buildPreviewMode(filtered, p)),
-          ]);
-        },
-      ),
+  void _openJenisForm([JenisModel? jenis]) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _JenisForm(jenis: jenis),
     );
   }
 
   // ── Preview Mode: dikelompokkan per jenis ─────────────────
   Widget _buildPreviewMode(
       List<ChecklistTemplateModel> items, MasterProvider p) {
-    final Map<String, List<ChecklistTemplateModel>> grouped = {};
+    final Map<int, List<ChecklistTemplateModel>> grouped = {};
     for (final item in items) {
-      grouped.putIfAbsent(item.ctInvJenis, () => []).add(item);
+      grouped.putIfAbsent(item.ctJenisId, () => []).add(item);
     }
 
     return ListView(
@@ -221,7 +171,7 @@ class _ChecklistTemplateScreenState extends State<ChecklistTemplateScreen> {
                   size: 18, color: AppColors.primary),
               const SizedBox(width: 8),
               Expanded(
-                child: Text(jenis,
+                child: Text('Jenis ID $jenis',
                     style: const TextStyle(
                         fontWeight: FontWeight.w700,
                         fontSize: 15,
@@ -241,7 +191,7 @@ class _ChecklistTemplateScreenState extends State<ChecklistTemplateScreen> {
               ),
               const SizedBox(width: 8),
               InkWell(
-                onTap: () => _openBulkForm(jenis, list),
+                onTap: () => _openBulkForm('$jenis', list),
                 child: Container(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -374,7 +324,7 @@ class _ItemCard extends StatelessWidget {
                     color: AppColors.primary.withOpacity(0.08),
                     borderRadius: BorderRadius.circular(5),
                   ),
-                  child: Text(item.ctInvJenis,
+                  child: Text('ID ${item.ctJenisId}',
                       style: const TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w500,
@@ -482,7 +432,7 @@ class _SingleItemFormState extends State<_SingleItemForm> {
     super.initState();
     final d = widget.item;
     if (d != null) {
-      _selectedJenis = d.ctInvJenis;
+      _selectedJenis = d.ctJenisId.toString();
       _itemCtrl.text = d.ctItem;
       _ketCtrl.text = d.ctKeterangan ?? '';
       _urutanCtrl.text = '${d.ctUrutan}';
@@ -517,7 +467,7 @@ class _SingleItemFormState extends State<_SingleItemForm> {
   Widget build(BuildContext context) {
     final isEdit = widget.item != null;
     final provider = context.watch<MasterProvider>();
-    final allJenis = provider.jenisChecklist;
+    final allJenis = provider.jenisMaster;
 
     return Padding(
       padding:
@@ -558,7 +508,8 @@ class _SingleItemFormState extends State<_SingleItemForm> {
                   ),
                   hint: const Text('Pilih jenis inventaris'),
                   items: allJenis
-                      .map((j) => DropdownMenuItem(value: j, child: Text(j)))
+                      .map((j) => DropdownMenuItem(
+                          value: '${j.jenisId}', child: Text(j.jenisNama)))
                       .toList(),
                   onChanged: (v) => setState(() => _selectedJenis = v),
                   validator: (v) => v == null ? 'Jenis wajib dipilih' : null,
@@ -719,7 +670,7 @@ class _BulkInputFormState extends State<_BulkInputForm> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<MasterProvider>();
-    final allJenis = provider.jenisChecklist;
+    final allJenis = provider.jenisMaster;
 
     return DraggableScrollableSheet(
       initialChildSize: 0.92,
@@ -809,7 +760,8 @@ class _BulkInputFormState extends State<_BulkInputForm> {
                   ),
                   hint: const Text('Pilih jenis inventaris'),
                   items: allJenis
-                      .map((j) => DropdownMenuItem(value: j, child: Text(j)))
+                      .map((j) => DropdownMenuItem(
+                          value: '${j.jenisId}', child: Text(j.jenisNama)))
                       .toList(),
                   onChanged: widget.jenisLocked
                       ? null
@@ -981,6 +933,413 @@ class _BulkInputFormState extends State<_BulkInputForm> {
             ]),
           ),
         ]),
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  CHECKLIST TAB
+// ═══════════════════════════════════════════════════════════════
+class _ChecklistTab extends StatelessWidget {
+  final String? filterJenis;
+  final ValueChanged<String?> onFilterChanged;
+  final void Function([String?, List<ChecklistTemplateModel>?]) openBulkForm;
+  final void Function([ChecklistTemplateModel?]) openSingleForm;
+  final void Function(ChecklistTemplateModel) confirmDelete;
+
+  const _ChecklistTab({
+    required this.filterJenis,
+    required this.onFilterChanged,
+    required this.openBulkForm,
+    required this.openSingleForm,
+    required this.confirmDelete,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<MasterProvider>(
+      builder: (_, p, __) {
+        final jenisMaster = p.jenisMaster;
+        final filtered = filterJenis == null
+            ? p.checklistList
+            : p.checklistList
+                .where((e) => e.ctJenisId.toString() == filterJenis)
+                .toList();
+
+        return Column(children: [
+          Container(
+            color: AppColors.white,
+            child: Column(children: [
+              SizedBox(
+                height: 48,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                  children: [
+                    _Chip(
+                      label: 'Semua',
+                      selected: filterJenis == null,
+                      onTap: () {
+                        onFilterChanged(null);
+                        p.fetchChecklist();
+                      },
+                    ),
+                    ...jenisMaster.map((j) => _Chip(
+                          label: j.jenisNama,
+                          selected: filterJenis == '${j.jenisId}',
+                          onTap: () {
+                            onFilterChanged('${j.jenisId}');
+                            p.fetchChecklist(jenis: '${j.jenisId}');
+                          },
+                        )),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+            ]),
+          ),
+          if (filtered.isNotEmpty)
+            Container(
+              color: AppColors.bgGray,
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+              child: Row(children: [
+                Text('${filtered.length} item',
+                    style: const TextStyle(
+                        fontSize: 12, color: AppColors.textSecondary)),
+                if (filterJenis != null) ...[
+                  const Text(' · ',
+                      style: TextStyle(color: AppColors.textSecondary)),
+                  Text(filterJenis!,
+                      style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w500)),
+                ],
+              ]),
+            ),
+          if (filtered.isEmpty)
+            const Expanded(
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.checklist_outlined,
+                        size: 48, color: AppColors.textSecondary),
+                    SizedBox(height: 12),
+                    Text('Belum ada item checklist',
+                        style: TextStyle(color: AppColors.textSecondary)),
+                    SizedBox(height: 4),
+                    Text('Gunakan tombol Bulk Input untuk menambahkan',
+                        style: TextStyle(
+                            fontSize: 12, color: AppColors.textSecondary)),
+                  ],
+                ),
+              ),
+            ),
+          if (filtered.isNotEmpty)
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 120),
+                children: _buildGroupedCards(filtered),
+              ),
+            ),
+        ]);
+      },
+    );
+  }
+
+  List<Widget> _buildGroupedCards(List<ChecklistTemplateModel> filtered) {
+    final Map<int, List<ChecklistTemplateModel>> grouped = {};
+    for (final item in filtered) {
+      grouped.putIfAbsent(item.ctJenisId, () => []).add(item);
+    }
+    return grouped.entries.map((entry) {
+      final jenisId = entry.key;
+      final list = entry.value
+        ..sort((a, b) => a.ctUrutan.compareTo(b.ctUrutan));
+      final jenisLabel = list.first.ctJenisNama ?? 'Jenis ID $jenisId';
+      return Card(
+        margin: const EdgeInsets.only(bottom: 12),
+        child: ExpansionTile(
+          key: PageStorageKey('jenis_$jenisId'),
+          initiallyExpanded: grouped.length == 1,
+          tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          maintainState: true,
+          title: Row(children: [
+            const Icon(Icons.label_outline, size: 18, color: AppColors.primary),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(jenisLabel,
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
+                      color: AppColors.primary)),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text('${list.length} item',
+                  style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.primary)),
+            ),
+            const SizedBox(width: 8),
+            InkWell(
+              onTap: () => openBulkForm('$jenisId', list),
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(mainAxisSize: MainAxisSize.min, children: const [
+                  Icon(Icons.add, size: 16, color: AppColors.primary),
+                  SizedBox(width: 4),
+                  Text('Tambah',
+                      style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.primary)),
+                ]),
+              ),
+            ),
+          ]),
+          children: list
+              .map((item) => ListTile(
+                    key: ValueKey(item.ctId),
+                    dense: true,
+                    contentPadding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                    leading: Container(
+                      width: 30,
+                      height: 30,
+                      decoration: BoxDecoration(
+                        color: AppColors.bgGray,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Center(
+                        child: Text('${item.ctUrutan}',
+                            style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 12,
+                                color: AppColors.textSecondary)),
+                      ),
+                    ),
+                    title: Text(item.ctItem,
+                        style: const TextStyle(fontWeight: FontWeight.w600)),
+                    subtitle: item.ctKeterangan != null
+                        ? Text(item.ctKeterangan!,
+                            style: const TextStyle(fontSize: 12))
+                        : null,
+                    trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                      IconButton(
+                        icon: const Icon(Icons.edit_outlined,
+                            size: 18, color: AppColors.textSecondary),
+                        onPressed: () => openSingleForm(item),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline,
+                            size: 18, color: AppColors.danger),
+                        onPressed: () => confirmDelete(item),
+                      ),
+                    ]),
+                  ))
+              .toList(),
+        ),
+      );
+    }).toList();
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  MASTER JENIS TAB
+// ═══════════════════════════════════════════════════════════════
+class _JenisTab extends StatelessWidget {
+  const _JenisTab();
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<MasterProvider>(
+      builder: (_, p, __) {
+        if (p.jenisMaster.isEmpty) {
+          return const Center(
+            child: Text('Belum ada master jenis'),
+          );
+        }
+        return ListView.builder(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
+          itemCount: p.jenisMaster.length,
+          itemBuilder: (_, i) {
+            final jenis = p.jenisMaster[i];
+            return Card(
+              margin: const EdgeInsets.only(bottom: 12),
+              child: ListTile(
+                title: Text(jenis.jenisNama,
+                    style: const TextStyle(fontWeight: FontWeight.w600)),
+                subtitle: Text(jenis.jenisKategori),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Switch(
+                      value: jenis.jenisIsActive,
+                      onChanged: (value) =>
+                          context.read<MasterProvider>().saveJenis({
+                        'jenis_is_active': value,
+                      }, id: jenis.jenisId),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.edit_outlined,
+                          color: AppColors.textSecondary),
+                      onPressed: () => showModalBottomSheet(
+                        context: context,
+                        isScrollControlled: true,
+                        backgroundColor: Colors.transparent,
+                        builder: (_) => _JenisForm(jenis: jenis),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline,
+                          color: AppColors.danger),
+                      onPressed: () => context
+                          .read<MasterProvider>()
+                          .deleteJenis(jenis.jenisId),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+class _JenisForm extends StatefulWidget {
+  final JenisModel? jenis;
+  const _JenisForm({this.jenis});
+
+  @override
+  State<_JenisForm> createState() => _JenisFormState();
+}
+
+class _JenisFormState extends State<_JenisForm> {
+  final _form = GlobalKey<FormState>();
+  final _namaCtrl = TextEditingController();
+  String _kategori = 'Mesin Jahit';
+
+  static const _kategoriList = [
+    'Mesin Jahit',
+    'Mesin Umum',
+    'Hardware',
+    'APAR'
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    final jenis = widget.jenis;
+    if (jenis != null) {
+      _namaCtrl.text = jenis.jenisNama;
+      _kategori = jenis.jenisKategori;
+    }
+  }
+
+  @override
+  void dispose() {
+    _namaCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (!_form.currentState!.validate()) return;
+    final body = {
+      'jenis_nama': _namaCtrl.text.trim(),
+      'jenis_kategori': _kategori,
+    };
+    final ok = await context
+        .read<MasterProvider>()
+        .saveJenis(body, id: widget.jenis?.jenisId);
+    if (ok && mounted) Navigator.pop(context);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isEdit = widget.jenis != null;
+    return Padding(
+      padding:
+          EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: Container(
+        decoration: const BoxDecoration(
+          color: AppColors.bgGray,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+        child: Form(
+          key: _form,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                    child: Container(
+                  margin: const EdgeInsets.only(top: 8, bottom: 16),
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(2)),
+                )),
+                Text(isEdit ? 'Edit Jenis' : 'Tambah Jenis',
+                    style: const TextStyle(
+                        fontSize: 18, fontWeight: FontWeight.w700)),
+                const SizedBox(height: 20),
+                TextFormField(
+                  controller: _namaCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Nama Jenis',
+                    prefixIcon: Icon(Icons.label_outlined),
+                  ),
+                  validator: (v) => (v == null || v.trim().isEmpty)
+                      ? 'Nama wajib diisi'
+                      : null,
+                ),
+                const SizedBox(height: 14),
+                DropdownButtonFormField<String>(
+                  value: _kategori,
+                  decoration: const InputDecoration(
+                    labelText: 'Kategori',
+                    prefixIcon: Icon(Icons.category_outlined),
+                  ),
+                  items: _kategoriList
+                      .map((k) => DropdownMenuItem(value: k, child: Text(k)))
+                      .toList(),
+                  onChanged: (v) => setState(() => _kategori = v!),
+                ),
+                const SizedBox(height: 24),
+                Consumer<MasterProvider>(
+                  builder: (_, p, __) => ElevatedButton(
+                    onPressed: p.loading ? null : _submit,
+                    child: p.loading
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                                color: Colors.white, strokeWidth: 2))
+                        : Text(isEdit ? 'Simpan Perubahan' : 'Tambah Jenis'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
