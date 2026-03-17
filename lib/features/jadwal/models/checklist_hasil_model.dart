@@ -1,8 +1,8 @@
 class ChecklistHasilModel {
-  final int     hcId;
-  final int     hcRealId;
-  final int     hcCtId;
-  final String  hcHasil;
+  final int hcId;
+  final int hcRealId;
+  final int hcCtId;
+  final String hcHasil;
   final String? hcKondisi;
   final String? hcKeterangan;
   final Map<String, dynamic>? templateItem;
@@ -18,28 +18,29 @@ class ChecklistHasilModel {
   });
 
   factory ChecklistHasilModel.fromJson(Map<String, dynamic> j) =>
-    ChecklistHasilModel(
-      hcId:          j['hc_id'],
-      hcRealId:      j['hc_real_id'],
-      hcCtId:        j['hc_ct_id'],
-      hcHasil:       j['hc_hasil']      ?? 'N/A',
-      hcKondisi:     j['hc_kondisi'],
-      hcKeterangan:  j['hc_keterangan'],
-      templateItem:  j['template_item'] != null
-          ? Map<String, dynamic>.from(j['template_item']) : null,
-    );
+      ChecklistHasilModel(
+        hcId: j['hc_id'],
+        hcRealId: j['hc_real_id'],
+        hcCtId: j['hc_ct_id'],
+        hcHasil: j['hc_hasil'] ?? 'N/A',
+        hcKondisi: j['hc_kondisi'],
+        hcKeterangan: j['hc_keterangan'],
+        templateItem: (j['template_item'] ?? j['hc_ct']) != null
+            ? Map<String, dynamic>.from(j['template_item'] ?? j['hc_ct'])
+            : null,
+      );
 
   String get itemNama => templateItem?['ct_item'] ?? '-';
-  int    get urutan   => templateItem?['ct_urutan'] ?? 0;
+  int get urutan => templateItem?['ct_urutan'] ?? 0;
 }
 
 // Model untuk state pengisian checklist (sebelum disimpan)
 class ChecklistInputModel {
-  final int    ctId;
+  final int ctId;
   final String ctItem;
   final String? ctKeterangan;
-  final int    ctUrutan;
-  String hasil    = 'N/A';
+  final int ctUrutan;
+  String hasil = 'N/A';
   String? kondisi;
   String? keterangan;
 
@@ -51,17 +52,17 @@ class ChecklistInputModel {
   });
 
   factory ChecklistInputModel.fromTemplate(Map<String, dynamic> j) =>
-    ChecklistInputModel(
-      ctId:          j['ct_id'],
-      ctItem:        j['ct_item']        ?? '',
-      ctKeterangan:  j['ct_keterangan'],
-      ctUrutan:      j['ct_urutan']      ?? 1,
-    );
+      ChecklistInputModel(
+        ctId: j['ct_id'],
+        ctItem: j['ct_item'] ?? '',
+        ctKeterangan: j['ct_keterangan'],
+        ctUrutan: j['ct_urutan'] ?? 1,
+      );
 
   Map<String, dynamic> toJson() => {
-    'hc_ct_id':      ctId,
-    'hc_hasil':      hasil,
-    'hc_kondisi':    kondisi,
-    'hc_keterangan': keterangan,
-  };
+        'hc_ct_id': ctId,
+        'hc_hasil': hasil,
+        'hc_kondisi': kondisi,
+        'hc_keterangan': keterangan,
+      };
 }

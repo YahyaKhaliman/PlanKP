@@ -54,13 +54,13 @@ class JadwalProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> fetchJadwalByDivisi({String? status, String? jenis}) async {
+  Future<void> fetchJadwalByDivisi({String? status, int? jenisId}) async {
     _setLoading(true);
     _lastFetchDivisi = true;
     try {
       final query = <String, dynamic>{
         if (status != null) 'status': status,
-        if (jenis != null) 'jenis': jenis,
+        if (jenisId != null) 'jdw_jenis_id': jenisId,
       };
       final res =
           await ApiClient.get('${ApiConfig.jadwal}/divisi', query: query);

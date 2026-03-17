@@ -35,7 +35,8 @@ class _JadwalScreenState extends State<JadwalScreen>
       if (isAdmin) {
         jadwalProvider.fetchJadwal();
       } else {
-        jadwalProvider.fetchJadwalByDivisi();
+        jadwalProvider.fetchJadwalByDivisi(
+            jenisId: context.read<JadwalProvider>().jadwalDetail?.jdwJenisId);
       }
       context.read<MasterProvider>().fetchJenis();
     });
@@ -393,19 +394,20 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
                     trailing: jdw.jdwStatus == 'Aktif'
                         ? ElevatedButton(
                             onPressed: () {
+                              final invJenisId = inv['inv_jenis_id'] ??
+                                  inv['inv_jenis'] ??
+                                  jdw.jdwJenisId;
                               final jenis = context
                                   .read<MasterProvider>()
-                                  .jenisById(
-                                      inv['inv_jenis'] ?? jdw.jdwJenisId);
+                                  .jenisById(invJenisId);
                               Navigator.pushNamed(
                                 context,
                                 AppRoutes.realisasiForm,
                                 arguments: {
                                   'jadwalId': widget.jadwalId,
-                                  'invJenisId':
-                                      inv['inv_jenis'] ?? jdw.jdwJenisId,
-                                  'invJenisNama': jenis?.jenisNama ??
-                                      'ID ${inv['inv_jenis'] ?? jdw.jdwJenisId}',
+                                  'invJenisId': invJenisId,
+                                  'invJenisNama':
+                                      jenis?.jenisNama ?? 'ID $invJenisId',
                                   'invId': inv['inv_id'],
                                   'invNama': inv['inv_nama'],
                                   'invNo': inv['inv_no'],
@@ -667,11 +669,11 @@ class _JadwalFormState extends State<_JadwalForm> {
     final body = {
       'jdw_judul': _judulCtrl.text.trim(),
       'jdw_jenis_id': _jenisId!,
-      'jdw_inv_jenis': _jenisCtrl.text.trim().isEmpty ? null : _jenisCtrl.text,
       'jdw_divisi': divisi,
       'jdw_frekuensi': _frekuensi,
       'jdw_tgl_mulai': _fmtDate(_tglMulai),
       'jdw_tgl_selesai': _tglSelesai != null ? _fmtDate(_tglSelesai) : null,
+      'jdw_assigned_to': _assignedTo,
       'jdw_notes':
           _notesCtrl.text.trim().isEmpty ? null : _notesCtrl.text.trim(),
     };
@@ -684,9 +686,6 @@ class _JadwalFormState extends State<_JadwalForm> {
     final isEdit = widget.item != null;
     final master = context.watch<MasterProvider>();
     final jadwalP = context.watch<JadwalProvider>();
-
-    final jenisMaster = master.jenisMaster;
-    final currentJenis = _jenisId != null ? master.jenisById(_jenisId!) : null;
     if (_jenisId != null && _jenisCtrl.text.isEmpty) {
       final jenis = master.jenisById(_jenisId!);
       if (jenis != null) {
@@ -768,6 +767,38 @@ class _JadwalFormState extends State<_JadwalForm> {
                 },
                 validator: (v) => v == null ? 'Divisi wajib dipilih' : null,
               ),
+              const SizedBox(height: 14),
+
+              DropdownButtonFormField<int?>(
+                value: _assignedTo,
+                decoration: const InputDecoration(
+                  labelText: 'Assigned To',
+                  prefixIcon: Icon(Icons.person_outline),
+                ),
+                items: [
+                  const DropdownMenuItem<int?>(
+                    value: null,
+                    child: Text('Belum ditentukan'),
+                  ),
+                  ..._assignableUsers.map(
+                    (user) => DropdownMenuItem<int?>(
+                      value: user.userId,
+                      child: Text(user.userNama),
+                    ),
+                  ),
+                ],
+                onChanged: (value) => setState(() => _assignedTo = value),
+              ),
+              if (_assignInfo != null) ...[
+                const SizedBox(height: 8),
+                Text(
+                  _assignInfo!,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
               const SizedBox(height: 14),
 
               // Frekuensi

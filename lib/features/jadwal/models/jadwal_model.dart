@@ -50,11 +50,14 @@ class JadwalModel {
         jdwAssignedTo: j['jdw_assigned_to'],
         jdwStatus: j['jdw_status'] ?? 'Draft',
         jdwNotes: j['jdw_notes'],
-        assignedUser: j['assigned_user'] != null
-            ? Map<String, dynamic>.from(j['assigned_user'])
-            : null,
-        dibuatUser: j['dibuat_user'] != null
-            ? Map<String, dynamic>.from(j['dibuat_user'])
+        assignedUser:
+            (j['assigned_user'] ?? j['jdw_assigned_to_plan_user']) != null
+                ? Map<String, dynamic>.from(
+                    j['assigned_user'] ?? j['jdw_assigned_to_plan_user'])
+                : null,
+        dibuatUser: (j['dibuat_user'] ?? j['jdw_dibuat_oleh_plan_user']) != null
+            ? Map<String, dynamic>.from(
+                j['dibuat_user'] ?? j['jdw_dibuat_oleh_plan_user'])
             : null,
       );
 
