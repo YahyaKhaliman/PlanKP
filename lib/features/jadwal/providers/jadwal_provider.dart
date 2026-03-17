@@ -60,7 +60,7 @@ class JadwalProvider extends ChangeNotifier {
     try {
       final query = <String, dynamic>{
         if (status != null) 'status': status,
-        if (jenisId != null) 'jdw_jenis_id': jenisId,
+        if (jenisId != null) 'jenis': jenisId,
       };
       final res =
           await ApiClient.get('${ApiConfig.jadwal}/divisi', query: query);
