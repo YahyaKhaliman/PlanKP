@@ -67,6 +67,7 @@ class AuthProvider extends ChangeNotifier {
     required String userDivisi,
     required String userCabang,
     required String userNik,
+    required String userJabatan,
   }) async {
     _loading = true;
     _error = null;
@@ -76,7 +77,7 @@ class AuthProvider extends ChangeNotifier {
         'user_nama': userNama,
         'user_password': userPassword,
         'user_divisi': userDivisi,
-        'user_jabatan': 'user',
+        'user_jabatan': userJabatan,
         'user_cabang': userCabang,
         'user_nik': userNik,
       };

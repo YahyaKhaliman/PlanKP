@@ -14,7 +14,12 @@ class _InventarisScreenState extends State<InventarisScreen> {
   final _search = TextEditingController();
   String? _filterKategori;
 
-  static const _kategoriList = ['Mesin', 'Hardware', 'APAR', 'Lainnya'];
+  static const _kategoriList = [
+    'Mesin Jahit',
+    'Mesin Umum',
+    'Hardware',
+    'APAR'
+  ];
 
   @override
   void initState() {
@@ -29,7 +34,11 @@ class _InventarisScreenState extends State<InventarisScreen> {
     super.dispose();
   }
 
-  void _openForm([InventarisModel? item]) {
+  Future<void> _openForm([InventarisModel? item]) async {
+    await context
+        .read<MasterProvider>()
+        .fetchUsers(jabatan: 'pic', showLoading: false);
+    if (!mounted) return;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -242,12 +251,17 @@ class _InventarisFormState extends State<_InventarisForm> {
   final _lokasiCtrl = TextEditingController();
   final _merkCtrl = TextEditingController();
   final _snCtrl = TextEditingController();
-  final _picCtrl = TextEditingController();
+  int? _selectedPic;
   final _notesCtrl = TextEditingController();
-  String _kategori = 'Mesin';
+  String _kategori = 'Mesin Jahit';
   String _kondisi = 'Baik';
 
-  static const _kategoriList = ['Mesin', 'Hardware', 'APAR', 'Lainnya'];
+  static const _kategoriList = [
+    'Mesin Jahit',
+    'Mesin Umum',
+    'Hardware',
+    'APAR'
+  ];
   static const _kondisiList = ['Baik', 'Perlu Perhatian', 'Rusak'];
 
   @override
@@ -261,7 +275,7 @@ class _InventarisFormState extends State<_InventarisForm> {
       _lokasiCtrl.text = d.invLokasi ?? '';
       _merkCtrl.text = d.invMerk ?? '';
       _snCtrl.text = d.invSerialNumber ?? '';
-      _picCtrl.text = d.invPic ?? '';
+      _selectedPic = d.invPicId;
       _notesCtrl.text = d.invNotes ?? '';
       _kategori = d.invKategori;
       _kondisi = d.invKondisi;
@@ -276,7 +290,6 @@ class _InventarisFormState extends State<_InventarisForm> {
     _lokasiCtrl.dispose();
     _merkCtrl.dispose();
     _snCtrl.dispose();
-    _picCtrl.dispose();
     _notesCtrl.dispose();
     super.dispose();
   }
@@ -294,7 +307,7 @@ class _InventarisFormState extends State<_InventarisForm> {
       'inv_merk': _merkCtrl.text.trim().isEmpty ? null : _merkCtrl.text.trim(),
       'inv_serial_number':
           _snCtrl.text.trim().isEmpty ? null : _snCtrl.text.trim(),
-      'inv_pic': _picCtrl.text.trim().isEmpty ? null : _picCtrl.text.trim(),
+      'inv_pic': _selectedPic,
       'inv_kondisi': _kondisi,
       'inv_notes':
           _notesCtrl.text.trim().isEmpty ? null : _notesCtrl.text.trim(),
@@ -356,7 +369,33 @@ class _InventarisFormState extends State<_InventarisForm> {
                 _field(_lokasiCtrl, 'Lokasi', Icons.location_on_outlined),
                 _field(_merkCtrl, 'Merk', Icons.branding_watermark_outlined),
                 _field(_snCtrl, 'Serial Number', Icons.qr_code_outlined),
-                _field(_picCtrl, 'PIC', Icons.person_outline),
+                DropdownButtonFormField<int?>(
+                  value: _selectedPic,
+                  decoration: const InputDecoration(
+                    labelText: 'PIC',
+                    prefixIcon: Icon(Icons.person_outline),
+                  ),
+                  hint: const Text('Pilih PIC'),
+                  items: [
+                    const DropdownMenuItem(
+                      value: null,
+                      child: Text('Tidak ada PIC'),
+                    ),
+                    ...context
+                        .watch<MasterProvider>()
+                        .userList
+                        .where((u) => u.userJabatan == 'pic')
+                        .map(
+                          (u) => DropdownMenuItem(
+                            value: u.userId,
+                            child: Text(u.userNama),
+                          ),
+                        ),
+                  ],
+                  onChanged: (value) {
+                    setState(() => _selectedPic = value);
+                  },
+                ),
 
                 // Kondisi
                 DropdownButtonFormField<String>(

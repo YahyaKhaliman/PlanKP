@@ -12,6 +12,7 @@ class MasterProvider extends ChangeNotifier {
   List<UserModel> userList = [];
   List<DivisiModel> divisiList = [];
   List<String> jenisChecklist = [];
+  final Map<String, String> _jenisKategoriMap = {};
 
   bool _loading = false;
   String? _error;
@@ -29,9 +30,15 @@ class MasterProvider extends ChangeNotifier {
   }
 
   // ── INVENTARIS ─────────────────────────────────────────────────
+  String? kategoriByJenis(String jenis) => _jenisKategoriMap[jenis];
+
   Future<void> fetchInventaris(
-      {String? kategori, String? jenis, String? q}) async {
-    _setLoading(true);
+      {String? kategori,
+      String? jenis,
+      String? q,
+      bool showLoading = true,
+      bool updateKategoriMap = true}) async {
+    if (showLoading) _setLoading(true);
     try {
       final query = {
         if (kategori != null) 'kategori': kategori,
@@ -42,11 +49,17 @@ class MasterProvider extends ChangeNotifier {
       inventarisList = (res['data'] as List)
           .map((e) => InventarisModel.fromJson(e))
           .toList();
+      if (updateKategoriMap) {
+        _jenisKategoriMap
+          ..clear()
+          ..addEntries(inventarisList
+              .map((inv) => MapEntry(inv.invJenis, inv.invKategori)));
+      }
       _setError(null);
     } on ApiException catch (e) {
       _setError(e.message);
     } finally {
-      _setLoading(false);
+      if (showLoading) _setLoading(false);
     }
   }
 
@@ -76,8 +89,8 @@ class MasterProvider extends ChangeNotifier {
   }
 
   // ── DIVISI ──────────────────────────────────────────────────
-  Future<void> fetchDivisi() async {
-    _setLoading(true);
+  Future<void> fetchDivisi({bool showLoading = true}) async {
+    if (showLoading) _setLoading(true);
     try {
       final res = await ApiClient.get(ApiConfig.divisi);
       divisiList =
@@ -86,7 +99,7 @@ class MasterProvider extends ChangeNotifier {
     } on ApiException catch (e) {
       _setError(e.message);
     } finally {
-      _setLoading(false);
+      if (showLoading) _setLoading(false);
     }
   }
 
@@ -124,9 +137,17 @@ class MasterProvider extends ChangeNotifier {
         ApiConfig.checklistTemplate,
         query: jenis != null ? {'jenis': jenis} : null,
       );
+      if (kDebugMode) {
+        debugPrint('[Checklist] fetched ${res['data']?.length ?? 0} rows'
+            '${jenis != null ? ' for jenis=$jenis' : ''}');
+      }
       checklistList = (res['data'] as List)
           .map((e) => ChecklistTemplateModel.fromJson(e))
           .toList();
+      if (kDebugMode) {
+        debugPrint(
+            '[Checklist] provider list length = ${checklistList.length}');
+      }
       _setError(null);
     } on ApiException catch (e) {
       _setError(e.message);
@@ -151,19 +172,6 @@ class MasterProvider extends ChangeNotifier {
       await ApiClient.post('${ApiConfig.checklistTemplate}/bulk', {
         'ct_inv_jenis': jenis,
         'items': items,
-      });
-      await fetchChecklist();
-      return true;
-    } on ApiException catch (e) {
-      _setError(e.message);
-      return false;
-    }
-  }
-
-  Future<bool> reorderChecklist(List<Map<String, dynamic>> orders) async {
-    try {
-      await ApiClient.patch('${ApiConfig.checklistTemplate}/reorder', {
-        'orders': orders,
       });
       await fetchChecklist();
       return true;
@@ -199,22 +207,37 @@ class MasterProvider extends ChangeNotifier {
   }
 
   // ── USERS ──────────────────────────────────────────────────────
-  Future<void> fetchUsers({String? jabatan, String? divisi}) async {
-    _setLoading(true);
+  Future<List<UserModel>> fetchUsers(
+      {String? jabatan,
+      String? divisi,
+      String? kategori,
+      bool showLoading = true,
+      bool replaceState = true}) async {
+    final toggleLoading = showLoading && replaceState;
+    if (toggleLoading) _setLoading(true);
     try {
       final query = {
         if (jabatan != null) 'jabatan': jabatan,
         if (divisi != null) 'divisi': divisi,
+        if (kategori != null) 'kategori': kategori,
       };
       final res = await ApiClient.get(ApiConfig.users,
           query: query.isEmpty ? null : query);
-      userList =
+      final list =
           (res['data'] as List).map((e) => UserModel.fromJson(e)).toList();
-      _setError(null);
+      if (replaceState) {
+        userList = list;
+        _setError(null);
+      }
+      return list;
     } on ApiException catch (e) {
-      _setError(e.message);
+      if (replaceState) {
+        _setError(e.message);
+        return const [];
+      }
+      rethrow;
     } finally {
-      _setLoading(false);
+      if (toggleLoading) _setLoading(false);
     }
   }
 

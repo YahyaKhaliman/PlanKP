@@ -7,7 +7,7 @@ class InventarisModel {
   final String? invLokasi;
   final String? invMerk;
   final String? invSerialNumber;
-  final String? invPic;
+  final int? invPicId;
   final String? invTglBeli;
   final String invKondisi;
   final bool invIsActive;
@@ -22,7 +22,7 @@ class InventarisModel {
     this.invLokasi,
     this.invMerk,
     this.invSerialNumber,
-    this.invPic,
+    this.invPicId,
     this.invTglBeli,
     required this.invKondisi,
     required this.invIsActive,
@@ -38,7 +38,7 @@ class InventarisModel {
         invLokasi: j['inv_lokasi'],
         invMerk: j['inv_merk'],
         invSerialNumber: j['inv_serial_number'],
-        invPic: j['inv_pic'],
+        invPicId: j['inv_pic'],
         invTglBeli: j['inv_tgl_beli'],
         invKondisi: j['inv_kondisi'] ?? 'Baik',
         invIsActive: j['inv_is_active'] == true || j['inv_is_active'] == 1,

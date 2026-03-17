@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/constants/app_constants.dart';
+import '../../../features/master/models/user_model.dart';
 import '../../../features/master/providers/master_provider.dart';
 import '../models/jadwal_model.dart';
 import '../providers/jadwal_provider.dart';
@@ -431,8 +432,11 @@ class _JadwalFormState extends State<_JadwalForm> {
   final _judulCtrl = TextEditingController();
   final _notesCtrl = TextEditingController();
   String? _jenis;
+  String? _divisi;
   String _frekuensi = 'Harian';
   int? _assignedTo;
+  List<UserModel> _assignableUsers = [];
+  String? _assignInfo;
   DateTime? _tglMulai;
   DateTime? _tglSelesai;
 
@@ -446,12 +450,16 @@ class _JadwalFormState extends State<_JadwalForm> {
       _judulCtrl.text = d.jdwJudul;
       _notesCtrl.text = d.jdwNotes ?? '';
       _jenis = d.jdwInvJenis;
+      _divisi = d.jdwDivisi;
       _frekuensi = d.jdwFrekuensi;
       _assignedTo = d.jdwAssignedTo;
       _tglMulai = DateTime.tryParse(d.jdwTglMulai);
       _tglSelesai =
           d.jdwTglSelesai != null ? DateTime.tryParse(d.jdwTglSelesai!) : null;
     }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _refreshAssignableUsers(initialLoad: true);
+    });
   }
 
   @override
@@ -484,6 +492,55 @@ class _JadwalFormState extends State<_JadwalForm> {
     }
   }
 
+  Future<void> _refreshAssignableUsers({bool initialLoad = false}) async {
+    final master = context.read<MasterProvider>();
+    final jenis = _jenis ?? widget.item?.jdwInvJenis;
+    final defaultDivisi = jenis != null ? master.kategoriByJenis(jenis) : null;
+    final effectiveDivisi = _divisi ?? widget.item?.jdwDivisi ?? defaultDivisi;
+
+    Future<List<UserModel>> loader;
+    String? info;
+
+    if (effectiveDivisi == null) {
+      if (master.userList.isEmpty) {
+        loader = master.fetchUsers(showLoading: false, replaceState: false);
+      } else {
+        loader = Future.value(master.userList);
+      }
+      info = null;
+    } else {
+      loader = master.fetchUsers(
+        divisi: effectiveDivisi,
+        jabatan: 'teknisi',
+        showLoading: false,
+        replaceState: false,
+      );
+      info =
+          'Assigned To dibatasi ke divisi $effectiveDivisi karena penjadwalan ini hanya untuk divisi tersebut';
+    }
+
+    try {
+      final list = await loader;
+      if (!mounted) return;
+      setState(() {
+        _assignInfo = info;
+        _assignableUsers = list
+            .where((u) =>
+                u.userJabatan == 'teknisi' || u.userJabatan == 'it_support')
+            .toList();
+        if (_assignedTo != null &&
+            !_assignableUsers.any((u) => u.userId == _assignedTo)) {
+          _assignedTo = null;
+        }
+      });
+    } catch (_) {
+      if (!initialLoad && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Gagal memuat daftar teknisi untuk kategori ini')));
+      }
+    }
+  }
+
   Future<void> _submit() async {
     if (!_form.currentState!.validate()) return;
     if (_tglMulai == null) {
@@ -491,10 +548,15 @@ class _JadwalFormState extends State<_JadwalForm> {
           const SnackBar(content: Text('Tanggal mulai wajib dipilih')));
       return;
     }
+    final master = context.read<MasterProvider>();
     final p = context.read<JadwalProvider>();
+    final divisi = _divisi ??
+        master.kategoriByJenis(_jenis ?? '') ??
+        widget.item?.jdwDivisi;
     final body = {
       'jdw_judul': _judulCtrl.text.trim(),
       'jdw_inv_jenis': _jenis,
+      'jdw_divisi': divisi,
       'jdw_frekuensi': _frekuensi,
       'jdw_tgl_mulai': _fmtDate(_tglMulai),
       'jdw_tgl_selesai': _tglSelesai != null ? _fmtDate(_tglSelesai) : null,
@@ -512,13 +574,11 @@ class _JadwalFormState extends State<_JadwalForm> {
     final master = context.watch<MasterProvider>();
     final jadwalP = context.watch<JadwalProvider>();
 
-    // daftar teknisi untuk dropdown assigned
-    final teknisiList = master.userList
-        .where(
-            (u) => u.userJabatan == 'teknisi' || u.userJabatan == 'it_support')
-        .toList();
-
     final allJenis = master.jenisChecklist.toList()..sort();
+    final allDivisi = UserModel.divisiList;
+    final defaultDivisi =
+        _jenis != null ? master.kategoriByJenis(_jenis!) : null;
+    final divisiValue = _divisi ?? defaultDivisi ?? widget.item?.jdwDivisi;
 
     return DraggableScrollableSheet(
       initialChildSize: 0.92,
@@ -574,8 +634,31 @@ class _JadwalFormState extends State<_JadwalForm> {
                 items: allJenis
                     .map((j) => DropdownMenuItem(value: j, child: Text(j)))
                     .toList(),
-                onChanged: (v) => setState(() => _jenis = v),
+                onChanged: (v) {
+                  setState(() => _jenis = v);
+                  _refreshAssignableUsers();
+                },
                 validator: (v) => v == null ? 'Jenis wajib dipilih' : null,
+              ),
+              const SizedBox(height: 14),
+
+              // Divisi target
+              DropdownButtonFormField<String>(
+                value: divisiValue,
+                decoration: const InputDecoration(
+                  labelText: 'Divisi Pelaksana',
+                  prefixIcon: Icon(Icons.account_tree_outlined),
+                ),
+                hint: const Text('Pilih divisi teknisi'),
+                items: allDivisi
+                    .map(
+                        (div) => DropdownMenuItem(value: div, child: Text(div)))
+                    .toList(),
+                onChanged: (v) {
+                  setState(() => _divisi = v);
+                  _refreshAssignableUsers();
+                },
+                validator: (v) => v == null ? 'Divisi wajib dipilih' : null,
               ),
               const SizedBox(height: 14),
 
@@ -647,12 +730,31 @@ class _JadwalFormState extends State<_JadwalForm> {
                 items: [
                   const DropdownMenuItem(
                       value: null, child: Text('Tidak di-assign')),
-                  ...teknisiList.map((u) => DropdownMenuItem(
+                  ..._assignableUsers.map((u) => DropdownMenuItem(
                       value: u.userId,
                       child: Text('${u.userNama} (${u.jabatanLabel})'))),
                 ],
                 onChanged: (v) => setState(() => _assignedTo = v),
               ),
+              if (_assignInfo != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(Icons.info_outline,
+                          size: 14, color: AppColors.textSecondary),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          _assignInfo!,
+                          style: const TextStyle(
+                              fontSize: 12, color: AppColors.textSecondary),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               const SizedBox(height: 14),
 
               // Catatan

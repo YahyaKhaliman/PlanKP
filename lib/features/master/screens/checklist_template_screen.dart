@@ -16,7 +16,7 @@ class ChecklistTemplateScreen extends StatefulWidget {
 
 class _ChecklistTemplateScreenState extends State<ChecklistTemplateScreen> {
   String? _filterJenis;
-  bool _previewMode = false; // false = list biasa, true = preview per jenis
+  bool _previewMode = true; // grid mode only
 
   @override
   void initState() {
@@ -43,12 +43,17 @@ class _ChecklistTemplateScreenState extends State<ChecklistTemplateScreen> {
   }
 
   // ── buka form bulk input ───────────────────────────────────
-  void _openBulkForm() {
+  void _openBulkForm(
+      [String? jenisLocked, List<ChecklistTemplateModel>? existing]) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => const _BulkInputForm(),
+      builder: (_) => _BulkInputForm(
+        initialJenis: jenisLocked,
+        jenisLocked: jenisLocked != null,
+        existingItems: existing,
+      ),
     );
   }
 
@@ -76,53 +81,11 @@ class _ChecklistTemplateScreenState extends State<ChecklistTemplateScreen> {
     );
   }
 
-  // ── reorder: geser item ke atas ───────────────────────────
-  Future<void> _moveUp(List<ChecklistTemplateModel> items, int index) async {
-    if (index == 0) return;
-    final orders = items
-        .asMap()
-        .entries
-        .map((e) => {'ct_id': e.value.ctId, 'ct_urutan': e.key + 1})
-        .toList();
-    final int tmp = orders[index]['ct_urutan'] ?? 0;
-    orders[index]['ct_urutan'] = orders[index - 1]['ct_urutan'] ?? 0;
-    orders[index - 1]['ct_urutan'] = tmp;
-    await context
-        .read<MasterProvider>()
-        .reorderChecklist(orders.cast<Map<String, dynamic>>());
-  }
-
-  // ── reorder: geser item ke bawah ──────────────────────────
-  Future<void> _moveDown(List<ChecklistTemplateModel> items, int index) async {
-    if (index == items.length - 1) return;
-    final orders = items
-        .asMap()
-        .entries
-        .map((e) => {'ct_id': e.value.ctId, 'ct_urutan': e.key + 1})
-        .toList();
-    final int tmp = orders[index]['ct_urutan'] ?? 0;
-    orders[index]['ct_urutan'] = orders[index + 1]['ct_urutan'] ?? 0;
-    orders[index + 1]['ct_urutan'] = tmp;
-    await context
-        .read<MasterProvider>()
-        .reorderChecklist(orders.cast<Map<String, dynamic>>());
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Template Checklist'),
-        actions: [
-          // Toggle preview/list mode
-          IconButton(
-            icon: Icon(_previewMode
-                ? Icons.view_list_outlined
-                : Icons.grid_view_outlined),
-            tooltip: _previewMode ? 'Mode List' : 'Mode Preview',
-            onPressed: () => setState(() => _previewMode = !_previewMode),
-          ),
-        ],
       ),
 
       // ── FAB: bulk input saja ───────────────────────────────
@@ -223,29 +186,8 @@ class _ChecklistTemplateScreenState extends State<ChecklistTemplateScreen> {
               ),
 
             // ── PREVIEW MODE: card per jenis ─────────────────
-            if (filtered.isNotEmpty && _previewMode)
-              Expanded(
-                child: _buildPreviewMode(filtered, p),
-              ),
-
-            // ── LIST MODE: list dengan reorder ───────────────
-            if (filtered.isNotEmpty && !_previewMode)
-              Expanded(
-                child: ListView.separated(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
-                  itemCount: filtered.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 6),
-                  itemBuilder: (_, i) => _ItemCard(
-                    item: filtered[i],
-                    index: i,
-                    total: filtered.length,
-                    onEdit: () => _openSingleForm(filtered[i]),
-                    onDelete: () => _confirmDelete(filtered[i]),
-                    onMoveUp: () => _moveUp(filtered, i),
-                    onMoveDown: () => _moveDown(filtered, i),
-                  ),
-                ),
-              ),
+            if (filtered.isNotEmpty)
+              Expanded(child: _buildPreviewMode(filtered, p)),
           ]);
         },
       ),
@@ -255,122 +197,114 @@ class _ChecklistTemplateScreenState extends State<ChecklistTemplateScreen> {
   // ── Preview Mode: dikelompokkan per jenis ─────────────────
   Widget _buildPreviewMode(
       List<ChecklistTemplateModel> items, MasterProvider p) {
-    // kelompokkan per jenis
     final Map<String, List<ChecklistTemplateModel>> grouped = {};
     for (final item in items) {
       grouped.putIfAbsent(item.ctInvJenis, () => []).add(item);
     }
 
-    return ListView.separated(
+    return ListView(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 120),
-      itemCount: grouped.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 12),
-      itemBuilder: (_, i) {
-        final jenis = grouped.keys.elementAt(i);
-        final list = grouped[jenis]!
+      children: grouped.entries.map((entry) {
+        final jenis = entry.key;
+        final list = entry.value
           ..sort((a, b) => a.ctUrutan.compareTo(b.ctUrutan));
-
         return Card(
-          margin: EdgeInsets.zero,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // header jenis
-              Container(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.06),
-                  borderRadius:
-                      const BorderRadius.vertical(top: Radius.circular(12)),
-                ),
-                child: Row(children: [
-                  const Icon(Icons.label_outline,
-                      size: 16, color: AppColors.primary),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(jenis,
-                        style: const TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 14,
-                            color: AppColors.primary)),
-                  ),
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Text('${list.length} item',
-                        style: const TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w500,
-                            color: AppColors.primary)),
-                  ),
-                ]),
+          margin: const EdgeInsets.only(bottom: 12),
+          child: ExpansionTile(
+            key: PageStorageKey('jenis_$jenis'),
+            initiallyExpanded: grouped.length == 1,
+            tilePadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            maintainState: true,
+            title: Row(children: [
+              const Icon(Icons.label_outline,
+                  size: 18, color: AppColors.primary),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(jenis,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
+                        color: AppColors.primary)),
               ),
-              // daftar item
-              ...list.asMap().entries.map((e) {
-                final idx = e.key;
-                final item = e.value;
-                return Container(
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text('${list.length} item',
+                    style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.primary)),
+              ),
+              const SizedBox(width: 8),
+              InkWell(
+                onTap: () => _openBulkForm(jenis, list),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   decoration: BoxDecoration(
-                    border: idx < list.length - 1
-                        ? const Border(
-                            bottom:
-                                BorderSide(color: AppColors.border, width: 0.5))
-                        : null,
+                    color: AppColors.primary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(20),
                   ),
-                  child: ListTile(
-                    dense: true,
-                    contentPadding:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
-                    leading: Container(
-                      width: 26,
-                      height: 26,
-                      decoration: BoxDecoration(
-                        color: AppColors.bgGray,
-                        borderRadius: BorderRadius.circular(6),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: const [
+                    Icon(Icons.add, size: 16, color: AppColors.primary),
+                    SizedBox(width: 4),
+                    Text('Tambah',
+                        style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.primary)),
+                  ]),
+                ),
+              ),
+            ]),
+            children: list
+                .map((item) => ListTile(
+                      key: ValueKey(item.ctId),
+                      dense: true,
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 4),
+                      leading: Container(
+                        width: 30,
+                        height: 30,
+                        decoration: BoxDecoration(
+                          color: AppColors.bgGray,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Center(
+                          child: Text('${item.ctUrutan}',
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 12,
+                                  color: AppColors.textSecondary)),
+                        ),
                       ),
-                      child: Center(
-                        child: Text('${item.ctUrutan}',
-                            style: const TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.textSecondary)),
-                      ),
-                    ),
-                    title:
-                        Text(item.ctItem, style: const TextStyle(fontSize: 13)),
-                    subtitle: item.ctKeterangan != null
-                        ? Text(item.ctKeterangan!,
-                            style: const TextStyle(fontSize: 11))
-                        : null,
-                    trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-                      IconButton(
-                        icon: const Icon(Icons.edit_outlined,
-                            size: 16, color: AppColors.textSecondary),
-                        onPressed: () => _openSingleForm(item),
-                        padding: EdgeInsets.zero,
-                        constraints:
-                            const BoxConstraints(minWidth: 32, minHeight: 32),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.delete_outline,
-                            size: 16, color: AppColors.danger),
-                        onPressed: () => _confirmDelete(item),
-                        padding: EdgeInsets.zero,
-                        constraints:
-                            const BoxConstraints(minWidth: 32, minHeight: 32),
-                      ),
-                    ]),
-                  ),
-                );
-              }),
-            ],
+                      title: Text(item.ctItem,
+                          style: const TextStyle(fontWeight: FontWeight.w600)),
+                      subtitle: item.ctKeterangan != null
+                          ? Text(item.ctKeterangan!,
+                              style: const TextStyle(fontSize: 12))
+                          : null,
+                      trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                        IconButton(
+                          icon: const Icon(Icons.edit_outlined,
+                              size: 18, color: AppColors.textSecondary),
+                          onPressed: () => _openSingleForm(item),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.delete_outline,
+                              size: 18, color: AppColors.danger),
+                          onPressed: () => _confirmDelete(item),
+                        ),
+                      ]),
+                    ))
+                .toList(),
           ),
         );
-      },
+      }).toList(),
     );
   }
 }
@@ -386,6 +320,7 @@ class _ItemCard extends StatelessWidget {
   final VoidCallback onDelete;
   final VoidCallback onMoveUp;
   final VoidCallback onMoveDown;
+  final VoidCallback onQuickAdd;
 
   const _ItemCard({
     required this.item,
@@ -395,6 +330,7 @@ class _ItemCard extends StatelessWidget {
     required this.onDelete,
     required this.onMoveUp,
     required this.onMoveDown,
+    required this.onQuickAdd,
   });
 
   @override
@@ -505,6 +441,16 @@ class _ItemCard extends StatelessWidget {
                 icon: const Icon(Icons.delete_outline,
                     size: 16, color: AppColors.danger),
                 onPressed: onDelete,
+              ),
+            ),
+            SizedBox(
+              width: 32,
+              height: 28,
+              child: IconButton(
+                padding: EdgeInsets.zero,
+                icon: const Icon(Icons.add_circle_outline,
+                    size: 16, color: AppColors.primary),
+                onPressed: onQuickAdd,
               ),
             ),
           ]),
@@ -680,7 +626,14 @@ class _SingleItemFormState extends State<_SingleItemForm> {
 //  BULK INPUT FORM
 // ═══════════════════════════════════════════════════════════════
 class _BulkInputForm extends StatefulWidget {
-  const _BulkInputForm();
+  final String? initialJenis;
+  final bool jenisLocked;
+  final List<ChecklistTemplateModel>? existingItems;
+  const _BulkInputForm({
+    this.initialJenis,
+    this.jenisLocked = false,
+    this.existingItems,
+  });
   @override
   State<_BulkInputForm> createState() => _BulkInputFormState();
 }
@@ -690,6 +643,18 @@ class _BulkInputFormState extends State<_BulkInputForm> {
   // list controller per baris
   final List<TextEditingController> _itemCtrls = [TextEditingController()];
   final List<TextEditingController> _ketCtrls = [TextEditingController()];
+  final List<ChecklistTemplateModel> _existing = [];
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialJenis != null) {
+      _selectedJenis = widget.initialJenis;
+    }
+    if (widget.existingItems != null && widget.existingItems!.isNotEmpty) {
+      _existing.addAll(widget.existingItems!);
+    }
+  }
 
   @override
   void dispose() {
@@ -717,9 +682,13 @@ class _BulkInputFormState extends State<_BulkInputForm> {
 
   Future<void> _submit() async {
     if (_selectedJenis == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Pilih jenis inventaris dahulu')));
-      return;
+      if (widget.jenisLocked && widget.initialJenis != null) {
+        _selectedJenis = widget.initialJenis;
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Pilih jenis inventaris dahulu')));
+        return;
+      }
     }
     final items = <Map<String, dynamic>>[];
     for (int i = 0; i < _itemCtrls.length; i++) {
@@ -784,11 +753,54 @@ class _BulkInputFormState extends State<_BulkInputForm> {
                 const Text('Tambahkan banyak item sekaligus untuk 1 jenis',
                     style: TextStyle(
                         fontSize: 13, color: AppColors.textSecondary)),
+                if (_existing.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Checklist tersimpan (${_existing.length} item)',
+                            style: const TextStyle(
+                                fontWeight: FontWeight.w600, fontSize: 13)),
+                        const SizedBox(height: 8),
+                        ..._existing.map((item) => Padding(
+                              padding: const EdgeInsets.only(bottom: 6),
+                              child: Row(children: [
+                                Container(
+                                  width: 24,
+                                  height: 24,
+                                  decoration: BoxDecoration(
+                                    color: AppColors.bgGray,
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Center(
+                                      child: Text('${item.ctUrutan}',
+                                          style: const TextStyle(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w600))),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                    child: Text(item.ctItem,
+                                        style: const TextStyle(fontSize: 12))),
+                              ]),
+                            )),
+                      ],
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 16),
 
                 // dropdown jenis
                 DropdownButtonFormField<String>(
-                  value: _selectedJenis,
+                  value: widget.jenisLocked
+                      ? (widget.initialJenis ?? _selectedJenis)
+                      : _selectedJenis,
                   decoration: const InputDecoration(
                     labelText: 'Jenis Inventaris',
                     prefixIcon: Icon(Icons.label_outline),
@@ -799,7 +811,9 @@ class _BulkInputFormState extends State<_BulkInputForm> {
                   items: allJenis
                       .map((j) => DropdownMenuItem(value: j, child: Text(j)))
                       .toList(),
-                  onChanged: (v) => setState(() => _selectedJenis = v),
+                  onChanged: widget.jenisLocked
+                      ? null
+                      : (v) => setState(() => _selectedJenis = v),
                 ),
                 const SizedBox(height: 12),
 
