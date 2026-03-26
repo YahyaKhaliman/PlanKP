@@ -16,13 +16,13 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _nikCtrl = TextEditingController();
+  final _usernameCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
   bool _obscure = true;
 
   @override
   void dispose() {
-    _nikCtrl.dispose();
+    _usernameCtrl.dispose();
     _passCtrl.dispose();
     super.dispose();
   }
@@ -31,7 +31,7 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!_formKey.currentState!.validate()) return;
     final auth = context.read<AuthProvider>();
     if (auth.loading) return;
-    final ok = await auth.login(_nikCtrl.text.trim(), _passCtrl.text);
+    final ok = await auth.login(_usernameCtrl.text.trim(), _passCtrl.text);
     if (ok && mounted) {
       Navigator.pushReplacementNamed(context, AppRoutes.dashboard);
     } else if (mounted) {
@@ -107,12 +107,13 @@ class _LoginScreenState extends State<LoginScreen> {
 
                       // username
                       TextFormField(
-                        controller: _nikCtrl,
+                        controller: _usernameCtrl,
+                        keyboardType: TextInputType.text,
+                        textInputAction: TextInputAction.next,
                         decoration: const InputDecoration(
                           labelText: 'username',
                           prefixIcon: Icon(Icons.badge_outlined),
                         ),
-                        keyboardType: TextInputType.number,
                         validator: (v) => (v == null || v.isEmpty)
                             ? 'username wajib diisi'
                             : null,

@@ -1,9 +1,7 @@
 class ApiConfig {
   static const String baseUrl = 'http://localhost:3003/api';
-  // Ganti IP sesuai environment:
-  // Android emulator : 10.0.2.2
-  // iOS simulator    : 127.0.0.1
-  // Device fisik     : IP mesin dev, misal 192.168.1.x
+  // static const String baseUrl = 'http://10.0.2.2:3003/api'; // Android emulator
+  // static const String baseUrl = 'http://127.0.0.1:3003/api';  // iOS simulator
 
   static const String login = '/auth/login';
   static const String register = '/auth/register';
