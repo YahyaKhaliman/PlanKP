@@ -50,6 +50,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
       userJabatan: _defaultJabatan,
     );
     if (ok && mounted) {
+      await AppNotifier.showSuccess(context, 'Registrasi berhasil');
+      if (!mounted) return;
       Navigator.pop(context);
     } else if (mounted) {
       final error = auth.error ?? 'Tidak dapat mendaftar saat ini';

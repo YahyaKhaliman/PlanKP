@@ -84,7 +84,6 @@ class _RealisasiFormScreenState extends State<RealisasiFormScreen> {
     await _loadTemplate();
   }
 
-  // Simpan realisasi + checklist terlebih dahulu, lalu buka TTD popup
   Future<void> _proceedToTtd() async {
     if (_checklistItems.isEmpty) {
       await AppNotifier.showError(context, 'Template checklist kosong');
