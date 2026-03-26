@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
@@ -11,6 +13,7 @@ import '../../../features/master/providers/master_provider.dart';
 import '../../../features/master/widgets/jenis_lookup_sheet.dart';
 import '../../../features/master/models/jenis_model.dart';
 import '../models/jadwal_model.dart';
+import '../models/realisasi_model.dart';
 import '../providers/jadwal_provider.dart';
 
 // ═══════════════════════════════════════════════════════════════
@@ -25,23 +28,29 @@ class JadwalScreen extends StatefulWidget {
 class _JadwalScreenState extends State<JadwalScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tab;
-  static const _statuses = ['Semua', 'Draft', 'Aktif', 'Selesai', 'Dibatalkan'];
+  static const _tabs = ['Jadwal', 'History Realisasi'];
 
   @override
   void initState() {
     super.initState();
-    _tab = TabController(length: _statuses.length, vsync: this);
+    _tab = TabController(length: _tabs.length, vsync: this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final auth = context.read<AuthProvider>();
-      final isAdmin = auth.user?['user_jabatan'] == 'admin';
-      final jadwalProvider = context.read<JadwalProvider>();
-      if (isAdmin) {
-        jadwalProvider.fetchJadwal();
-      } else {
-        jadwalProvider.fetchJadwalByDivisi();
-      }
-      context.read<MasterProvider>().fetchJenis();
+      _loadData();
     });
+  }
+
+  Future<void> _loadData() async {
+    final auth = context.read<AuthProvider>();
+    final isAdmin = auth.user?['user_jabatan'] == 'admin';
+    final jadwalProvider = context.read<JadwalProvider>();
+    if (isAdmin) {
+      await jadwalProvider.fetchJadwal();
+    } else {
+      await jadwalProvider.fetchJadwalByDivisi();
+    }
+    await jadwalProvider.fetchRealisasi(status: 'Selesai', byDivisi: true);
+    if (!mounted) return;
+    await context.read<MasterProvider>().fetchJenis();
   }
 
   @override
@@ -84,23 +93,40 @@ class _JadwalScreenState extends State<JadwalScreen>
         .map((e) => Map<String, dynamic>.from(e as Map))
         .toList();
 
+    await p.fetchRealisasi(jadwalId: jadwal.jdwId, status: 'Selesai');
+    final selesaiInvIds = p.realisasiList.map((r) => r.realInvId).toSet();
+    final belumSelesaiList = inventarisList.where((inv) {
+      final invIdRaw = inv['inv_id'];
+      final invId = invIdRaw is int ? invIdRaw : int.tryParse('$invIdRaw');
+      return invId == null || !selesaiInvIds.contains(invId);
+    }).toList();
+
     if (inventarisList.isEmpty) {
       await AppNotifier.showError(
           context, 'Inventaris untuk jadwal ini belum ada');
       return;
     }
 
-    if (inventarisList.length == 1) {
-      _openRealisasiFromInventaris(jadwal, inventarisList.first);
+    if (inventarisList.length == 1 && belumSelesaiList.isNotEmpty) {
+      _openRealisasiFromInventaris(jadwal, belumSelesaiList.first);
       return;
     }
 
-    _showInventarisPicker(jadwal, inventarisList);
+    if (belumSelesaiList.isEmpty) {
+      await AppNotifier.showWarning(
+        context,
+        'Semua unit pada jadwal ini sudah direalisasi dalam rentang saat ini',
+      );
+      return;
+    }
+
+    _showInventarisPicker(jadwal, inventarisList, selesaiInvIds);
   }
 
   void _showInventarisPicker(
     JadwalModel jadwal,
     List<Map<String, dynamic>> inventarisList,
+    Set<int> selesaiInvIds,
   ) {
     showModalBottomSheet(
       context: context,
@@ -142,6 +168,12 @@ class _JadwalScreenState extends State<JadwalScreen>
                     separatorBuilder: (_, __) => const SizedBox(height: 8),
                     itemBuilder: (_, i) {
                       final inv = inventarisList[i];
+                      final invIdRaw = inv['inv_id'];
+                      final invId = invIdRaw is int
+                          ? invIdRaw
+                          : int.tryParse('$invIdRaw');
+                      final sudahDirealisasi =
+                          invId != null && selesaiInvIds.contains(invId);
                       return Card(
                         margin: EdgeInsets.zero,
                         child: ListTile(
@@ -149,12 +181,18 @@ class _JadwalScreenState extends State<JadwalScreen>
                               color: AppColors.primary),
                           title: Text(inv['inv_nama'] ?? '-'),
                           subtitle: Text(
-                              '${inv['inv_no'] ?? '-'} · ${inv['inv_lokasi'] ?? '-'}'),
-                          trailing: const Icon(Icons.chevron_right),
-                          onTap: () {
-                            Navigator.pop(context);
-                            _openRealisasiFromInventaris(jadwal, inv);
-                          },
+                              '${inv['inv_no'] ?? '-'} · ${inv['inv_lokasi'] ?? '-'}${sudahDirealisasi ? '\nSudah direalisasi' : '\nBelum direalisasi'}'),
+                          trailing: sudahDirealisasi
+                              ? const Icon(Icons.check_circle,
+                                  color: AppColors.success)
+                              : const Icon(Icons.chevron_right),
+                          isThreeLine: true,
+                          onTap: sudahDirealisasi
+                              ? null
+                              : () {
+                                  Navigator.pop(context);
+                                  _openRealisasiFromInventaris(jadwal, inv);
+                                },
                         ),
                       );
                     },
@@ -168,10 +206,10 @@ class _JadwalScreenState extends State<JadwalScreen>
     );
   }
 
-  void _openRealisasiFromInventaris(
+  Future<void> _openRealisasiFromInventaris(
     JadwalModel jadwal,
     Map<String, dynamic> inv,
-  ) {
+  ) async {
     final invJenisRaw =
         inv['inv_jenis_id'] ?? inv['inv_jenis'] ?? jadwal.jdwJenisId;
     final invJenisId = invJenisRaw is int
@@ -181,7 +219,7 @@ class _JadwalScreenState extends State<JadwalScreen>
     final invId = invIdRaw is int ? invIdRaw : int.tryParse('$invIdRaw');
 
     final jenis = context.read<MasterProvider>().jenisById(invJenisId);
-    Navigator.pushNamed(
+    await Navigator.pushNamed(
       context,
       AppRoutes.realisasiForm,
       arguments: {
@@ -196,6 +234,15 @@ class _JadwalScreenState extends State<JadwalScreen>
         'invPicId': inv['pic_user']?['user_id'],
       },
     );
+    if (!mounted) return;
+    await _loadData();
+  }
+
+  bool _hasRemainingUnitToRealisasi(JadwalModel j) {
+    final total = j.jdwTotalUnit;
+    final selesai = j.jdwSelesaiUnit ?? 0;
+    if (total == null || total <= 0) return true;
+    return selesai < total;
   }
 
   @override
@@ -212,7 +259,7 @@ class _JadwalScreenState extends State<JadwalScreen>
           labelColor: AppColors.white,
           unselectedLabelColor: AppColors.white.withOpacity(0.65),
           indicatorColor: AppColors.white,
-          tabs: _statuses.map((s) => Tab(text: s)).toList(),
+          tabs: _tabs.map((s) => Tab(text: s)).toList(),
         ),
       ),
       floatingActionButton: isAdmin
@@ -227,42 +274,196 @@ class _JadwalScreenState extends State<JadwalScreen>
           if (p.loading)
             return const Center(child: CircularProgressIndicator());
 
+          final jadwalAktif = p.jadwalList
+              .where((j) =>
+                  j.jdwStatus == 'Aktif' &&
+                  (isAdmin || _hasRemainingUnitToRealisasi(j)))
+              .toList();
+
           return TabBarView(
             controller: _tab,
-            children: _statuses.map((s) {
-              final list = s == 'Semua'
-                  ? p.jadwalList
-                  : p.jadwalList.where((j) => j.jdwStatus == s).toList();
-
-              if (list.isEmpty) return _emptyState(s);
-
-              return ListView.separated(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
-                itemCount: list.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 8),
-                itemBuilder: (_, i) => _JadwalCard(
-                  jadwal: list[i],
-                  onTap: () => _handleJadwalTap(
-                    list[i],
-                    isAdmin: isAdmin,
-                    isUser: isUser,
-                  ),
-                  onEdit: () => _openForm(list[i]),
-                  onStatusChange: (st) => context
-                      .read<JadwalProvider>()
-                      .updateStatusJadwal(list[i].jdwId, st),
-                ),
-              );
-            }).toList(),
+            children: [
+              _buildJadwalTab(jadwalAktif, isAdmin: isAdmin, isUser: isUser),
+              _buildHistoryTab(p.realisasiList),
+            ],
           );
         },
       ),
     );
   }
 
-  Widget _emptyState(String status) => EmptyState(
-        message:
-            status == 'Semua' ? 'Belum ada jadwal' : 'Tidak ada jadwal $status',
+  Widget _buildJadwalTab(
+    List<JadwalModel> list, {
+    required bool isAdmin,
+    required bool isUser,
+  }) {
+    if (list.isEmpty) {
+      return const EmptyState(
+        message: 'Belum ada jadwal yang perlu direalisasi',
+      );
+    }
+
+    return ListView.separated(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
+      itemCount: list.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 8),
+      itemBuilder: (_, i) => _JadwalCard(
+        jadwal: list[i],
+        onTap: () => _handleJadwalTap(
+          list[i],
+          isAdmin: isAdmin,
+          isUser: isUser,
+        ),
+        onEdit: () => _openForm(list[i]),
+        onStatusChange: (st) => context
+            .read<JadwalProvider>()
+            .updateStatusJadwal(list[i].jdwId, st),
+      ),
+    );
+  }
+
+  Widget _buildHistoryTab(List<RealisasiModel> list) {
+    if (list.isEmpty) {
+      return const EmptyState(
+        message: 'Belum ada history realisasi',
+      );
+    }
+
+    return ListView.separated(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
+      itemCount: list.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 8),
+      itemBuilder: (_, i) => _HistoryRealisasiCard(
+        item: list[i],
+        onDetail: () => _openHistoryDetail(list[i]),
+      ),
+    );
+  }
+
+  Future<void> _openHistoryDetail(RealisasiModel item) async {
+    final p = context.read<JadwalProvider>();
+    await p.fetchRealisasiDetail(item.realId);
+    if (!mounted) return;
+
+    final detail = p.realisasiDetail;
+    if (detail == null) {
+      await AppNotifier.showError(context, 'Detail realisasi tidak ditemukan');
+      return;
+    }
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => DraggableScrollableSheet(
+        initialChildSize: 0.8,
+        maxChildSize: 0.95,
+        minChildSize: 0.5,
+        builder: (_, ctrl) => Container(
+          decoration: const BoxDecoration(
+            color: AppColors.bgGray,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: ListView(
+            controller: ctrl,
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+            children: [
+              Center(
+                child: Container(
+                  width: 42,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const Text(
+                'Detail History Realisasi',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 12),
+              _detailRow('Jadwal', detail.jadwal?['jdw_judul'] ?? '-'),
+              _detailRow('Unit', '${detail.invNo} · ${detail.invNama}'),
+              _detailRow('Tanggal', DateFormatter.toDisplay(detail.realTgl)),
+              _detailRow('Status', detail.realStatus),
+              if ((detail.realJamMulai ?? '').isNotEmpty)
+                _detailRow('Jam Mulai', detail.realJamMulai!),
+              if ((detail.realJamSelesai ?? '').isNotEmpty)
+                _detailRow('Jam Selesai', detail.realJamSelesai!),
+              if ((detail.realKondisiAkhir ?? '').isNotEmpty)
+                _detailRow('Kondisi Akhir', detail.realKondisiAkhir!),
+              if ((detail.realKeterangan ?? '').isNotEmpty)
+                _detailRow('Keterangan', detail.realKeterangan!),
+              const SizedBox(height: 12),
+              const Text(
+                'Checklist',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 8),
+              if (detail.hasilChecklist.isEmpty)
+                const Text(
+                  '-',
+                  style: TextStyle(color: AppColors.textSecondary),
+                )
+              else
+                ...([...detail.hasilChecklist]
+                      ..sort((a, b) => a.urutan.compareTo(b.urutan)))
+                    .map(
+                  (h) => Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '• ${h.itemNama} (${h.hcHasil})${(h.hcKondisi ?? '').isNotEmpty ? ' - ${h.hcKondisi}' : ''}',
+                          style: const TextStyle(fontSize: 13),
+                        ),
+                        if ((h.hcKeterangan ?? '').trim().isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(left: 12, top: 2),
+                            child: Text(
+                              'Keterangan: ${h.hcKeterangan!.trim()}',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _detailRow(String label, String value) => Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              width: 110,
+              child: Text(
+                label,
+                style: const TextStyle(
+                    fontSize: 12, color: AppColors.textSecondary),
+              ),
+            ),
+            Expanded(
+              child: Text(
+                value,
+                style:
+                    const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+              ),
+            ),
+          ],
+        ),
       );
 }
 
@@ -280,16 +481,12 @@ class _JadwalCard extends StatelessWidget {
   });
 
   static const _statusColor = {
-    'Draft': Color(0xFF64748B),
     'Aktif': Color(0xFF16A34A),
-    'Selesai': Color(0xFF1E40AF),
-    'Dibatalkan': Color(0xFFDC2626),
+    'Nonaktif': Color(0xFFDC2626),
   };
   static const _statusBg = {
-    'Draft': Color(0xFFF1F5F9),
     'Aktif': Color(0xFFDCFCE7),
-    'Selesai': Color(0xFFDBEAFE),
-    'Dibatalkan': Color(0xFFFEE2E2),
+    'Nonaktif': Color(0xFFFEE2E2),
   };
   static const _frekuensiIcon = {
     'Harian': Icons.today_outlined,
@@ -356,16 +553,13 @@ class _JadwalCard extends StatelessWidget {
                   Icons.edit_outlined, 'Edit', AppColors.textSecondary, onEdit),
               const SizedBox(width: 8),
               // Status transitions
-              if (jadwal.jdwStatus == 'Draft') ...[
+              if (jadwal.jdwStatus == 'Nonaktif') ...[
                 _actionBtn(Icons.play_arrow_outlined, 'Aktifkan',
                     AppColors.success, () => onStatusChange('Aktif')),
-                const SizedBox(width: 8),
-                _actionBtn(Icons.cancel_outlined, 'Batalkan', AppColors.danger,
-                    () => onStatusChange('Dibatalkan')),
               ],
               if (jadwal.jdwStatus == 'Aktif')
-                _actionBtn(Icons.check_circle_outline, 'Selesaikan',
-                    AppColors.primary, () => onStatusChange('Selesai')),
+                _actionBtn(Icons.pause_circle_outline, 'Nonaktifkan',
+                    AppColors.danger, () => onStatusChange('Nonaktif')),
             ]),
           ]),
         ),
@@ -417,6 +611,69 @@ class _JadwalCard extends StatelessWidget {
   }
 }
 
+class _HistoryRealisasiCard extends StatelessWidget {
+  final RealisasiModel item;
+  final VoidCallback onDetail;
+  const _HistoryRealisasiCard({required this.item, required this.onDetail});
+
+  @override
+  Widget build(BuildContext context) {
+    final judul = item.jadwal?['jdw_judul'] ?? 'Jadwal #${item.realJadwalId}';
+    final invNama = item.inventaris?['inv_nama'] ?? item.invNama;
+    final invNo = item.inventaris?['inv_no'] ?? item.invNo;
+
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              judul,
+              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              '$invNo · $invNama',
+              style:
+                  const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                const Icon(
+                  Icons.check_circle_outline,
+                  size: 14,
+                  color: AppColors.success,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  'Selesai ${DateFormatter.toDisplay(item.realTgl)}',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.success,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Align(
+              alignment: Alignment.centerRight,
+              child: OutlinedButton.icon(
+                onPressed: onDetail,
+                icon: const Icon(Icons.visibility_outlined, size: 16),
+                label: const Text('Lihat Detail'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 // ═══════════════════════════════════════════════════════════════
 //  JADWAL DETAIL SCREEN
 // ═══════════════════════════════════════════════════════════════
@@ -432,8 +689,120 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<JadwalProvider>().fetchJadwalDetail(widget.jadwalId);
+      _loadDetailData();
     });
+  }
+
+  Future<void> _loadDetailData() async {
+    final p = context.read<JadwalProvider>();
+    await p.fetchJadwalDetail(widget.jadwalId);
+    await p.fetchRealisasi(jadwalId: widget.jadwalId, status: 'Selesai');
+  }
+
+  Future<void> _openRealisasiDetail(RealisasiModel item) async {
+    final p = context.read<JadwalProvider>();
+    await p.fetchRealisasiDetail(item.realId);
+    if (!mounted) return;
+
+    final detail = p.realisasiDetail;
+    if (detail == null) {
+      await AppNotifier.showError(context, 'Detail realisasi tidak ditemukan');
+      return;
+    }
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => DraggableScrollableSheet(
+        initialChildSize: 0.8,
+        maxChildSize: 0.95,
+        minChildSize: 0.5,
+        builder: (_, ctrl) => Container(
+          decoration: const BoxDecoration(
+            color: AppColors.bgGray,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: ListView(
+            controller: ctrl,
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+            children: [
+              Center(
+                child: Container(
+                  width: 42,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const Text(
+                'Detail Realisasi Unit',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 12),
+              _row('Jadwal', detail.jadwal?['jdw_judul'] ?? '-'),
+              _row('Unit', '${detail.invNo} · ${detail.invNama}'),
+              _row('Tanggal', DateFormatter.toDisplay(detail.realTgl)),
+              _row('Status', detail.realStatus),
+              if ((detail.realJamMulai ?? '').isNotEmpty)
+                _row('Jam Mulai', detail.realJamMulai!),
+              if ((detail.realJamSelesai ?? '').isNotEmpty)
+                _row('Jam Selesai', detail.realJamSelesai!),
+              if ((detail.realKondisiAkhir ?? '').isNotEmpty)
+                _row('Kondisi Akhir', detail.realKondisiAkhir!),
+              if ((detail.realKeterangan ?? '').isNotEmpty)
+                _row('Keterangan', detail.realKeterangan!),
+              _row(
+                  'PIC',
+                  (detail.realTtdPicNama ?? '').trim().isEmpty
+                      ? '-'
+                      : detail.realTtdPicNama!.trim()),
+              _ttdRow(detail.realTtdData),
+              const SizedBox(height: 12),
+              const Text(
+                'Checklist',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 8),
+              if (detail.hasilChecklist.isEmpty)
+                const Text('-',
+                    style: TextStyle(color: AppColors.textSecondary))
+              else
+                ...([...detail.hasilChecklist]
+                      ..sort((a, b) => a.urutan.compareTo(b.urutan)))
+                    .map(
+                  (h) => Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '• ${h.itemNama} (${h.hcHasil})${(h.hcKondisi ?? '').isNotEmpty ? ' - ${h.hcKondisi}' : ''}',
+                          style: const TextStyle(fontSize: 13),
+                        ),
+                        if ((h.hcKeterangan ?? '').trim().isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(left: 12, top: 2),
+                            child: Text(
+                              'Keterangan: ${h.hcKeterangan!.trim()}',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -447,6 +816,10 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
           if (p.jadwalDetail == null) return const SizedBox.shrink();
 
           final jdw = p.jadwalDetail!;
+          final selesaiInvIds = p.realisasiList
+              .where((r) => r.realStatus == 'Selesai')
+              .map((r) => r.realInvId)
+              .toSet();
           return ListView(padding: const EdgeInsets.all(16), children: [
             // info jadwal
             Card(
@@ -480,68 +853,54 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
             const SizedBox(height: 8),
             ...p.inventarisByJenis.map((inv) => Card(
                   margin: const EdgeInsets.only(bottom: 8),
-                  child: ListTile(
-                    contentPadding:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                    leading: Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                          color: AppColors.primary.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(10)),
-                      child: const Icon(Icons.inventory_2_outlined,
-                          color: AppColors.primary, size: 20),
-                    ),
-                    title: Text(inv['inv_nama'] ?? '',
-                        style: const TextStyle(fontWeight: FontWeight.w600)),
-                    subtitle: Text(
-                        '${inv['inv_no']} · ${inv['inv_lokasi'] ?? '-'}',
-                        style: const TextStyle(fontSize: 12)),
-                    trailing: jdw.jdwStatus == 'Aktif'
-                        ? ElevatedButton(
-                            onPressed: () {
-                              final invJenisRaw = inv['inv_jenis_id'] ??
-                                  inv['inv_jenis'] ??
-                                  jdw.jdwJenisId;
-                              final invJenisId = invJenisRaw is int
-                                  ? invJenisRaw
-                                  : int.tryParse('$invJenisRaw') ??
-                                      jdw.jdwJenisId;
-                              final invIdRaw = inv['inv_id'];
-                              final invId = invIdRaw is int
-                                  ? invIdRaw
-                                  : int.tryParse('$invIdRaw');
-                              final jenis = context
-                                  .read<MasterProvider>()
-                                  .jenisById(invJenisId);
-                              Navigator.pushNamed(
-                                context,
-                                AppRoutes.realisasiForm,
-                                arguments: {
-                                  'jadwalId': widget.jadwalId,
-                                  'invJenisId': invJenisId,
-                                  'invJenisNama':
-                                      jenis?.jenisNama ?? 'ID $invJenisId',
-                                  'invId': invId,
-                                  'invNama': inv['inv_nama'],
-                                  'invNo': inv['inv_no'],
-                                  'invKondisi': inv['inv_kondisi'],
-                                  'invPicNama': inv['pic_user']?['user_nama'],
-                                  'invPicId': inv['pic_user']?['user_id'],
-                                },
-                              );
-                            },
-                            style: ElevatedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 6),
-                              minimumSize: Size.zero,
-                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                              textStyle: const TextStyle(fontSize: 12),
+                  child: Builder(builder: (_) {
+                    final invIdRaw = inv['inv_id'];
+                    final invId =
+                        invIdRaw is int ? invIdRaw : int.tryParse('$invIdRaw');
+                    final sudahTerealisasi =
+                        invId != null && selesaiInvIds.contains(invId);
+                    RealisasiModel? realisasiItem;
+                    if (invId != null) {
+                      for (final r in p.realisasiList) {
+                        if (r.realInvId == invId && r.realStatus == 'Selesai') {
+                          realisasiItem = r;
+                          break;
+                        }
+                      }
+                    }
+                    return ListTile(
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 6),
+                      leading: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                            color: AppColors.primary.withOpacity(0.08),
+                            borderRadius: BorderRadius.circular(10)),
+                        child: const Icon(Icons.inventory_2_outlined,
+                            color: AppColors.primary, size: 20),
+                      ),
+                      title: Text(inv['inv_nama'] ?? '',
+                          style: const TextStyle(fontWeight: FontWeight.w600)),
+                      subtitle: Text(
+                        '${inv['inv_no']} · ${inv['inv_lokasi'] ?? '-'}\n${sudahTerealisasi ? 'Sudah terealisasi' : 'Belum terealisasi'}',
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                      isThreeLine: true,
+                      trailing: sudahTerealisasi && realisasiItem != null
+                          ? OutlinedButton.icon(
+                              onPressed: () =>
+                                  _openRealisasiDetail(realisasiItem!),
+                              icon: const Icon(Icons.visibility_outlined,
+                                  size: 16),
+                              label: const Text('Detail'),
+                            )
+                          : Icon(
+                              Icons.radio_button_unchecked,
+                              color: AppColors.textSecondary,
                             ),
-                            child: const Text('Realisasi'),
-                          )
-                        : null,
-                  ),
+                    );
+                  }),
                 )),
           ]);
         },
@@ -563,6 +922,43 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
                       fontSize: 13, fontWeight: FontWeight.w500))),
         ]),
       );
+
+  Widget _ttdRow(String? ttdData) {
+    final raw = (ttdData ?? '').trim();
+    if (raw.isEmpty) return _row('TTD', 'Belum ada');
+
+    final normalized = raw.contains(',') ? raw.split(',').last : raw;
+    try {
+      final bytes = base64Decode(normalized);
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(
+              width: 120,
+              child: Text('TTD',
+                  style:
+                      TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+            ),
+            Expanded(
+              child: Container(
+                height: 100,
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  border: Border.all(color: AppColors.border),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Image.memory(bytes, fit: BoxFit.contain),
+              ),
+            ),
+          ],
+        ),
+      );
+    } catch (_) {
+      return _row('TTD', 'Data TTD tidak valid');
+    }
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════

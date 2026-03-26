@@ -255,21 +255,16 @@ class _InventarisFormState extends State<_InventarisForm> {
   final _noCtrl = TextEditingController();
   final _namaCtrl = TextEditingController();
   final _jenisCtrl = TextEditingController();
+  final _kategoriCtrl = TextEditingController();
   int? _jenisId;
   final _lokasiCtrl = TextEditingController();
   final _merkCtrl = TextEditingController();
   final _snCtrl = TextEditingController();
   final _picCtrl = TextEditingController();
   final _notesCtrl = TextEditingController();
-  String _kategori = 'Mesin Jahit';
+  String _kategori = '';
   String _kondisi = 'Baik';
 
-  static const _kategoriList = [
-    'Mesin Jahit',
-    'Mesin Umum',
-    'Hardware',
-    'APAR'
-  ];
   static const _kondisiList = ['Baik', 'Perlu Perhatian', 'Rusak'];
 
   @override
@@ -287,8 +282,13 @@ class _InventarisFormState extends State<_InventarisForm> {
       _snCtrl.text = d.invSerialNumber ?? '';
       _picCtrl.text = d.invPic ?? '';
       _notesCtrl.text = d.invNotes ?? '';
-      _kategori = d.invKategori;
+      final mappedKategori =
+          context.read<MasterProvider>().kategoriByJenisId(d.invJenisId);
+      _kategori = (mappedKategori ?? d.invKategori).trim();
+      _kategoriCtrl.text = _kategori.isEmpty ? '-' : _kategori;
       _kondisi = d.invKondisi;
+    } else {
+      _kategoriCtrl.text = '-';
     }
   }
 
@@ -297,6 +297,7 @@ class _InventarisFormState extends State<_InventarisForm> {
     _noCtrl.dispose();
     _namaCtrl.dispose();
     _jenisCtrl.dispose();
+    _kategoriCtrl.dispose();
     _lokasiCtrl.dispose();
     _merkCtrl.dispose();
     _snCtrl.dispose();
@@ -308,6 +309,11 @@ class _InventarisFormState extends State<_InventarisForm> {
   Future<void> _submit() async {
     if (!_form.currentState!.validate()) {
       await AppNotifier.showWarning(context, 'Lengkapi data inventaris dahulu');
+      return;
+    }
+    if (_kategori.trim().isEmpty) {
+      await AppNotifier.showWarning(
+          context, 'Kategori otomatis belum terdeteksi dari jenis inventaris');
       return;
     }
     final p = context.read<MasterProvider>();
@@ -377,16 +383,14 @@ class _InventarisFormState extends State<_InventarisForm> {
                 _field(_namaCtrl, 'Nama', Icons.inventory_2_outlined,
                     required: true),
 
-                // Kategori
-                DropdownButtonFormField<String>(
-                  value: _kategori,
+                // Kategori (otomatis dari jenis)
+                TextFormField(
+                  readOnly: true,
+                  controller: _kategoriCtrl,
                   decoration: const InputDecoration(
-                      labelText: 'Kategori',
-                      prefixIcon: Icon(Icons.category_outlined)),
-                  items: _kategoriList
-                      .map((k) => DropdownMenuItem(value: k, child: Text(k)))
-                      .toList(),
-                  onChanged: (v) => setState(() => _kategori = v!),
+                    labelText: 'Kategori (otomatis)',
+                    prefixIcon: Icon(Icons.category_outlined),
+                  ),
                 ),
                 const SizedBox(height: 14),
 
@@ -454,7 +458,7 @@ class _InventarisFormState extends State<_InventarisForm> {
         readOnly: true,
         decoration: InputDecoration(
           labelText: 'Jenis',
-          hintText: 'Cari di master plan_jenis',
+          hintText: 'Cari...',
           prefixIcon: const Icon(Icons.label_outline),
           suffixIcon: IconButton(
             icon: const Icon(Icons.search),
@@ -486,6 +490,8 @@ class _InventarisFormState extends State<_InventarisForm> {
       setState(() {
         _jenisId = result.jenisId;
         _jenisCtrl.text = result.jenisNama;
+        _kategori = result.jenisKategori.trim();
+        _kategoriCtrl.text = _kategori.isEmpty ? '-' : _kategori;
       });
     }
   }

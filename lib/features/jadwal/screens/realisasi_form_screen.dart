@@ -299,7 +299,7 @@ class _RealisasiFormScreenState extends State<RealisasiFormScreen> {
         const SizedBox(height: 16),
 
         // ── Keterangan ────────────────────────────────────────
-        const Text('Keterangan Umum',
+        const Text('Keterangan',
             style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
         const SizedBox(height: 8),
         TextField(

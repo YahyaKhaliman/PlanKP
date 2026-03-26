@@ -137,12 +137,17 @@ class JadwalProvider extends ChangeNotifier {
   }
 
   // ── REALISASI ──────────────────────────────────────────────
-  Future<void> fetchRealisasi({int? jadwalId, String? status}) async {
+  Future<void> fetchRealisasi({
+    int? jadwalId,
+    String? status,
+    bool byDivisi = false,
+  }) async {
     _setLoading(true);
     try {
       final query = <String, dynamic>{
         if (jadwalId != null) 'jadwal_id': jadwalId,
         if (status != null) 'status': status,
+        if (byDivisi) 'by_divisi': true,
       };
       final res = await ApiClient.get(ApiConfig.realisasi, query: query);
       realisasiList =
