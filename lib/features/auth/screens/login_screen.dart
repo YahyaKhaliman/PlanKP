@@ -28,11 +28,17 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (!_formKey.currentState!.validate()) {
+      await AppNotifier.showWarning(
+          context, 'Lengkapi username dan password terlebih dahulu');
+      return;
+    }
     final auth = context.read<AuthProvider>();
     if (auth.loading) return;
     final ok = await auth.login(_usernameCtrl.text.trim(), _passCtrl.text);
     if (ok && mounted) {
+      await AppNotifier.showSuccess(context, 'Login berhasil');
+      if (!mounted) return;
       Navigator.pushReplacementNamed(context, AppRoutes.dashboard);
     } else if (mounted) {
       final error = auth.error ?? 'Tidak dapat login saat ini';

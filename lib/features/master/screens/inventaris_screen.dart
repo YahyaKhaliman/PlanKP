@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/app_notifier.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../models/inventaris_model.dart';
 import '../models/jenis_model.dart';
@@ -305,8 +306,12 @@ class _InventarisFormState extends State<_InventarisForm> {
   }
 
   Future<void> _submit() async {
-    if (!_form.currentState!.validate()) return;
+    if (!_form.currentState!.validate()) {
+      await AppNotifier.showWarning(context, 'Lengkapi data inventaris dahulu');
+      return;
+    }
     final p = context.read<MasterProvider>();
+    final isEdit = widget.item != null;
     final body = {
       'inv_no': _noCtrl.text.trim(),
       'inv_nama': _namaCtrl.text.trim(),
@@ -323,7 +328,18 @@ class _InventarisFormState extends State<_InventarisForm> {
           _notesCtrl.text.trim().isEmpty ? null : _notesCtrl.text.trim(),
     };
     final ok = await p.saveInventaris(body, id: widget.item?.invId);
-    if (ok && mounted) Navigator.pop(context);
+    if (ok && mounted) {
+      await AppNotifier.showSuccess(
+          context,
+          isEdit
+              ? 'Inventaris berhasil diperbarui'
+              : 'Inventaris berhasil ditambahkan');
+      if (!mounted) return;
+      Navigator.pop(context);
+    } else if (mounted) {
+      await AppNotifier.showError(
+          context, p.error ?? 'Gagal menyimpan data inventaris');
+    }
   }
 
   @override

@@ -11,7 +11,12 @@ import '../providers/master_provider.dart';
 //  CHECKLIST TEMPLATE SCREEN
 // ═══════════════════════════════════════════════════════════════
 class ChecklistTemplateScreen extends StatefulWidget {
-  const ChecklistTemplateScreen({super.key});
+  final int initialTabIndex;
+
+  const ChecklistTemplateScreen({
+    super.key,
+    this.initialTabIndex = 0,
+  });
   @override
   State<ChecklistTemplateScreen> createState() =>
       _ChecklistTemplateScreenState();
@@ -24,6 +29,7 @@ class _ChecklistTemplateScreenState extends State<ChecklistTemplateScreen> {
   @override
   void initState() {
     super.initState();
+    _tabIndex = widget.initialTabIndex.clamp(0, 1);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final p = context.read<MasterProvider>();
       p.fetchChecklist();
@@ -100,7 +106,7 @@ class _ChecklistTemplateScreenState extends State<ChecklistTemplateScreen> {
                 openSingleForm: _openSingleForm,
                 confirmDelete: _confirmDelete,
               ),
-              _JenisTab(openJenisForm: _openJenisForm),
+              const _JenisTab(),
             ],
           ),
           floatingActionButton: _tabIndex == 0
@@ -171,8 +177,13 @@ class _SingleItemFormState extends State<_SingleItemForm> {
   }
 
   Future<void> _submit() async {
-    if (!_form.currentState!.validate()) return;
+    if (!_form.currentState!.validate()) {
+      await AppNotifier.showWarning(
+          context, 'Lengkapi data item checklist dahulu');
+      return;
+    }
     final p = context.read<MasterProvider>();
+    final isEdit = widget.item != null;
     final body = {
       'ct_inv_jenis': _selectedJenis!,
       'ct_item': _itemCtrl.text.trim(),
@@ -181,7 +192,18 @@ class _SingleItemFormState extends State<_SingleItemForm> {
       'ct_urutan': int.tryParse(_urutanCtrl.text) ?? 1,
     };
     final ok = await p.saveChecklist(body, id: widget.item?.ctId);
-    if (ok && mounted) Navigator.pop(context);
+    if (ok && mounted) {
+      await AppNotifier.showSuccess(
+          context,
+          isEdit
+              ? 'Item checklist berhasil diperbarui'
+              : 'Item checklist berhasil ditambahkan');
+      if (!mounted) return;
+      Navigator.pop(context);
+    } else if (mounted) {
+      await AppNotifier.showError(
+          context, p.error ?? 'Gagal menyimpan item checklist');
+    }
   }
 
   @override
@@ -357,7 +379,7 @@ class _BulkInputFormState extends State<_BulkInputForm> {
       if (widget.jenisLocked && widget.initialJenis != null) {
         _selectedJenis = widget.initialJenis;
       } else {
-        await AppNotifier.showError(context, 'Pilih jenis inventaris dahulu');
+        await AppNotifier.showWarning(context, 'Pilih jenis inventaris dahulu');
         return;
       }
     }
@@ -372,7 +394,7 @@ class _BulkInputFormState extends State<_BulkInputForm> {
       });
     }
     if (items.isEmpty) {
-      await AppNotifier.showError(context, 'Isi minimal 1 item');
+      await AppNotifier.showWarning(context, 'Isi minimal 1 item');
       return;
     }
     final p = context.read<MasterProvider>();
@@ -383,6 +405,9 @@ class _BulkInputFormState extends State<_BulkInputForm> {
         context,
         '${items.length} item berhasil ditambahkan',
       );
+    } else if (mounted) {
+      await AppNotifier.showError(
+          context, p.error ?? 'Gagal menambahkan item checklist');
     }
   }
 
@@ -869,46 +894,20 @@ class _ChecklistTab extends StatelessWidget {
 //  MASTER JENIS TAB
 // ═══════════════════════════════════════════════════════════════
 class _JenisTab extends StatelessWidget {
-  final void Function([JenisModel?]) openJenisForm;
-
-  const _JenisTab({required this.openJenisForm});
+  const _JenisTab();
 
   @override
   Widget build(BuildContext context) {
     return Consumer<MasterProvider>(
       builder: (_, p, __) {
         if (p.jenisMaster.isEmpty) {
-          return EmptyState(
-            message: 'Belum ada master jenis',
-            actionLabel: 'Tambah Jenis',
-            onAction: () => openJenisForm(),
-          );
+          return const EmptyState(message: 'Belum ada master jenis');
         }
         return ListView.builder(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
-          itemCount: p.jenisMaster.length + 1,
+          itemCount: p.jenisMaster.length,
           itemBuilder: (_, i) {
-            if (i == 0) {
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: Card(
-                  child: ListTile(
-                    leading: const Icon(Icons.add_circle_outline,
-                        color: AppColors.primary),
-                    title: const Text('Input Master Jenis Baru',
-                        style: TextStyle(fontWeight: FontWeight.w600)),
-                    subtitle: const Text('Tambahkan jenis inventaris baru'),
-                    trailing: TextButton(
-                      onPressed: () => openJenisForm(),
-                      child: const Text('Tambah'),
-                    ),
-                    onTap: () => openJenisForm(),
-                  ),
-                ),
-              );
-            }
-
-            final jenis = p.jenisMaster[i - 1];
+            final jenis = p.jenisMaster[i];
             return Card(
               margin: const EdgeInsets.only(bottom: 12),
               child: ListTile(
@@ -928,7 +927,12 @@ class _JenisTab extends StatelessWidget {
                     IconButton(
                       icon: const Icon(Icons.edit_outlined,
                           color: AppColors.textSecondary),
-                      onPressed: () => openJenisForm(jenis),
+                      onPressed: () => showModalBottomSheet(
+                        context: context,
+                        isScrollControlled: true,
+                        backgroundColor: Colors.transparent,
+                        builder: (_) => _JenisForm(jenis: jenis),
+                      ),
                     ),
                     IconButton(
                       icon: const Icon(Icons.delete_outline,
@@ -985,15 +989,27 @@ class _JenisFormState extends State<_JenisForm> {
   }
 
   Future<void> _submit() async {
-    if (!_form.currentState!.validate()) return;
+    if (!_form.currentState!.validate()) {
+      await AppNotifier.showWarning(
+          context, 'Lengkapi data jenis terlebih dahulu');
+      return;
+    }
+    final isEdit = widget.jenis != null;
     final body = {
       'jenis_nama': _namaCtrl.text.trim(),
       'jenis_kategori': _kategori,
     };
-    final ok = await context
-        .read<MasterProvider>()
-        .saveJenis(body, id: widget.jenis?.jenisId);
-    if (ok && mounted) Navigator.pop(context);
+    final provider = context.read<MasterProvider>();
+    final ok = await provider.saveJenis(body, id: widget.jenis?.jenisId);
+    if (ok && mounted) {
+      await AppNotifier.showSuccess(context,
+          isEdit ? 'Jenis berhasil diperbarui' : 'Jenis berhasil ditambahkan');
+      if (!mounted) return;
+      Navigator.pop(context);
+    } else if (mounted) {
+      await AppNotifier.showError(
+          context, provider.error ?? 'Gagal menyimpan master jenis');
+    }
   }
 
   @override

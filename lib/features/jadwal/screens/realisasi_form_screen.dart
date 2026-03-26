@@ -87,13 +87,14 @@ class _RealisasiFormScreenState extends State<RealisasiFormScreen> {
 
   Future<void> _proceedToTtd() async {
     if (_checklistItems.isEmpty) {
-      await AppNotifier.showError(context, 'Template checklist kosong');
+      await AppNotifier.showWarning(context, 'Template checklist kosong');
       return;
     }
 
     final unfinished = _checklistItems.where((item) => item.hasil == 'N/A');
     if (unfinished.isNotEmpty) {
-      await AppNotifier.showError(context, 'Semua item checklist wajib diisi');
+      await AppNotifier.showWarning(
+          context, 'Semua item checklist wajib diisi');
       return;
     }
 
@@ -118,12 +119,16 @@ class _RealisasiFormScreenState extends State<RealisasiFormScreen> {
     final real = await p.createRealisasi(body);
     if (real == null || !mounted) {
       setState(() => _submitting = false);
+      await AppNotifier.showError(
+          context, p.error ?? 'Gagal membuat data realisasi');
       return;
     }
 
     final okChecklist = await p.saveChecklist(real.realId, _checklistItems);
     if (!okChecklist || !mounted) {
       setState(() => _submitting = false);
+      await AppNotifier.showError(
+          context, p.error ?? 'Gagal menyimpan checklist realisasi');
       return;
     }
 
@@ -629,11 +634,11 @@ class _TtdDialogState extends State<_TtdDialog> {
 
   Future<void> _submit() async {
     if (_picCtrl.text.trim().isEmpty) {
-      await AppNotifier.showError(context, 'Nama PIC wajib diisi');
+      await AppNotifier.showWarning(context, 'Nama PIC wajib diisi');
       return;
     }
     if (!_hasSignature) {
-      await AppNotifier.showError(context, 'Tanda tangan belum dibuat');
+      await AppNotifier.showWarning(context, 'Tanda tangan belum dibuat');
       return;
     }
 
@@ -647,7 +652,15 @@ class _TtdDialogState extends State<_TtdDialog> {
     if (mounted) {
       widget.onSubmitEnd();
       setState(() => _submitting = false);
-      if (ok) widget.onSelesai();
+      if (ok) {
+        await AppNotifier.showSuccess(
+            context, 'Realisasi berhasil diselesaikan');
+        if (!mounted) return;
+        widget.onSelesai();
+      } else {
+        await AppNotifier.showError(
+            context, p.error ?? 'Gagal menyimpan tanda tangan');
+      }
     }
   }
 

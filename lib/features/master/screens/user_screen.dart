@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/app_notifier.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../models/user_model.dart';
 import '../providers/master_provider.dart';
@@ -225,8 +226,13 @@ class _UserFormState extends State<_UserForm> {
   }
 
   Future<void> _submit() async {
-    if (!_form.currentState!.validate()) return;
+    if (!_form.currentState!.validate()) {
+      await AppNotifier.showWarning(
+          context, 'Lengkapi data user terlebih dahulu');
+      return;
+    }
     final p = context.read<MasterProvider>();
+    final isEdit = widget.user != null;
     final body = <String, dynamic>{
       'user_nama': _namaCtrl.text.trim(),
       'user_nik': _nikCtrl.text.trim(),
@@ -237,7 +243,15 @@ class _UserFormState extends State<_UserForm> {
     };
     if (_passCtrl.text.isNotEmpty) body['user_password'] = _passCtrl.text;
     final ok = await p.saveUser(body, id: widget.user?.userId);
-    if (ok && mounted) Navigator.pop(context);
+    if (ok && mounted) {
+      await AppNotifier.showSuccess(context,
+          isEdit ? 'User berhasil diperbarui' : 'User berhasil ditambahkan');
+      if (!mounted) return;
+      Navigator.pop(context);
+    } else if (mounted) {
+      await AppNotifier.showError(
+          context, p.error ?? 'Gagal menyimpan data user');
+    }
   }
 
   @override

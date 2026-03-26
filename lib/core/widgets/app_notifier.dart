@@ -9,6 +9,20 @@ typedef AppConfirmCallback = FutureOr<void> Function();
 class AppNotifier {
   AppNotifier._();
 
+  static Future<void> showWarning(BuildContext context, String message) async {
+    if (!context.mounted) return;
+    await AwesomeDialog(
+      context: context,
+      dialogType: DialogType.warning,
+      animType: AnimType.scale,
+      title: 'Perhatian',
+      desc: message,
+      btnOkColor: AppColors.warning,
+      btnOkOnPress: () {},
+      headerAnimationLoop: true,
+    ).show();
+  }
+
   static Future<void> showError(BuildContext context, String message) async {
     if (!context.mounted) return;
     await AwesomeDialog(

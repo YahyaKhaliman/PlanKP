@@ -38,7 +38,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (!_formKey.currentState!.validate()) {
+      await AppNotifier.showWarning(
+          context, 'Lengkapi data registrasi terlebih dahulu');
+      return;
+    }
     final auth = context.read<AuthProvider>();
     if (auth.loading) return;
     final ok = await auth.register(

@@ -25,6 +25,12 @@ class DashboardScreen extends StatelessWidget {
         builder: (_) => const InventarisScreen(),
       ),
       _DashboardMenu(
+        title: 'Master Jenis',
+        icon: Icons.category_outlined,
+        color: Colors.deepOrange,
+        builder: (_) => const ChecklistTemplateScreen(initialTabIndex: 1),
+      ),
+      _DashboardMenu(
         title: 'Checklist Template',
         icon: Icons.assignment_outlined,
         color: AppColors.accent,
@@ -112,9 +118,6 @@ class DashboardScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 24),
-              const Text('Master Data',
-                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
-              const SizedBox(height: 12),
               GridView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),

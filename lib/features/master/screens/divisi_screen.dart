@@ -63,7 +63,12 @@ class _DivisiScreenState extends State<DivisiScreen> {
                   onPressed: prov.loading
                       ? null
                       : () async {
-                          if (!formKey.currentState!.validate()) return;
+                          if (!formKey.currentState!.validate()) {
+                            await AppNotifier.showWarning(context,
+                                'Lengkapi data divisi terlebih dahulu');
+                            return;
+                          }
+                          final isEdit = item != null;
                           final ok = await prov.saveDivisi(
                             {
                               'divisi_kode': kodeCtrl.text.toUpperCase(),
@@ -71,7 +76,19 @@ class _DivisiScreenState extends State<DivisiScreen> {
                             },
                             id: item?.divisiId,
                           );
-                          if (ok && ctx.mounted) Navigator.pop(ctx);
+                          if (ok && ctx.mounted) {
+                            await AppNotifier.showSuccess(
+                              context,
+                              isEdit
+                                  ? 'Divisi berhasil diperbarui'
+                                  : 'Divisi berhasil ditambahkan',
+                            );
+                            if (!ctx.mounted) return;
+                            Navigator.pop(ctx);
+                          } else if (ctx.mounted) {
+                            await AppNotifier.showError(context,
+                                prov.error ?? 'Gagal menyimpan divisi');
+                          }
                         },
                   child: prov.loading
                       ? const SizedBox(

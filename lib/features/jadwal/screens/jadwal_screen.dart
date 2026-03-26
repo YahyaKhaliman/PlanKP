@@ -706,13 +706,17 @@ class _JadwalFormState extends State<_JadwalForm> {
   }
 
   Future<void> _submit() async {
-    if (!_form.currentState!.validate()) return;
+    if (!_form.currentState!.validate()) {
+      await AppNotifier.showWarning(
+          context, 'Lengkapi data jadwal terlebih dahulu');
+      return;
+    }
     if (_jenisId == null) {
-      await AppNotifier.showError(context, 'Jenis inventaris wajib dipilih');
+      await AppNotifier.showWarning(context, 'Jenis inventaris wajib dipilih');
       return;
     }
     if (_tglMulai == null) {
-      await AppNotifier.showError(context, 'Tanggal mulai wajib dipilih');
+      await AppNotifier.showWarning(context, 'Tanggal mulai wajib dipilih');
       return;
     }
     final master = context.read<MasterProvider>();
@@ -730,8 +734,16 @@ class _JadwalFormState extends State<_JadwalForm> {
       'jdw_notes':
           _notesCtrl.text.trim().isEmpty ? null : _notesCtrl.text.trim(),
     };
+    final isEdit = widget.item != null;
     final ok = await p.saveJadwal(body, id: widget.item?.jdwId);
-    if (ok && mounted) Navigator.pop(context);
+    if (ok && mounted) {
+      await AppNotifier.showSuccess(context,
+          isEdit ? 'Jadwal berhasil diperbarui' : 'Jadwal berhasil dibuat');
+      if (!mounted) return;
+      Navigator.pop(context);
+    } else if (mounted) {
+      await AppNotifier.showError(context, p.error ?? 'Gagal menyimpan jadwal');
+    }
   }
 
   @override
