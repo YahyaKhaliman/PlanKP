@@ -372,11 +372,11 @@ class _JadwalCard extends StatelessWidget {
 
   static const _statusColor = {
     'Aktif': Color(0xFF16A34A),
-    'Nonaktif': Color(0xFFDC2626),
+    // 'Nonaktif': Color(0xFFDC2626),
   };
   static const _statusBg = {
     'Aktif': Color(0xFFDCFCE7),
-    'Nonaktif': Color(0xFFFEE2E2),
+    // 'Nonaktif': Color(0xFFFEE2E2),
   };
   static const _frekuensiIcon = {
     'Harian': Icons.today_outlined,
@@ -442,14 +442,6 @@ class _JadwalCard extends StatelessWidget {
               _actionBtn(
                   Icons.edit_outlined, 'Edit', AppColors.textSecondary, onEdit),
               const SizedBox(width: 8),
-              // Status transitions
-              if (jadwal.jdwStatus == 'Nonaktif') ...[
-                _actionBtn(Icons.play_arrow_outlined, 'Aktifkan',
-                    AppColors.success, () => onStatusChange('Aktif')),
-              ],
-              if (jadwal.jdwStatus == 'Aktif')
-                _actionBtn(Icons.pause_circle_outline, 'Nonaktifkan',
-                    AppColors.danger, () => onStatusChange('Nonaktif')),
             ]),
           ]),
         ),
