@@ -35,8 +35,7 @@ class _JadwalScreenState extends State<JadwalScreen>
       if (isAdmin) {
         jadwalProvider.fetchJadwal();
       } else {
-        jadwalProvider.fetchJadwalByDivisi(
-            jenisId: context.read<JadwalProvider>().jadwalDetail?.jdwJenisId);
+        jadwalProvider.fetchJadwalByDivisi();
       }
       context.read<MasterProvider>().fetchJenis();
     });

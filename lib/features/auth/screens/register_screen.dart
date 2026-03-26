@@ -23,9 +23,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
     'Satpam',
     'Kebersihan',
   ];
-  final _jabatanOptions = const ['user', 'pic'];
   final _cabangCtrl = TextEditingController();
-  String _selectedJabatan = 'user';
+  static const _defaultJabatan = 'user';
   bool _obscure = true;
 
   @override
@@ -48,7 +47,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       userDivisi: _divisiCtrl.text.trim(),
       userCabang: _cabangCtrl.text.trim(),
       userNik: _nikCtrl.text.trim(),
-      userJabatan: _selectedJabatan,
+      userJabatan: _defaultJabatan,
     );
     if (ok && mounted) {
       Navigator.pop(context);
@@ -96,22 +95,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 },
                 validator: (v) =>
                     v == null || v.isEmpty ? 'Divisi wajib diisi' : null,
-              ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                value: _selectedJabatan,
-                decoration: const InputDecoration(labelText: 'Posisi'),
-                items: _jabatanOptions
-                    .map((opt) => DropdownMenuItem(
-                          value: opt,
-                          child: Text(opt.toUpperCase()),
-                        ))
-                    .toList(),
-                onChanged: (val) {
-                  if (val != null) setState(() => _selectedJabatan = val);
-                },
-                validator: (v) =>
-                    v == null || v.isEmpty ? 'Posisi wajib dipilih' : null,
               ),
               const SizedBox(height: 12),
               TextFormField(
