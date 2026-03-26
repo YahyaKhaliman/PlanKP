@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/constants/app_constants.dart';
+import '../../../core/widgets/app_notifier.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../master/screens/inventaris_screen.dart';
 import '../../master/screens/checklist_template_screen.dart';
@@ -56,10 +57,17 @@ class DashboardScreen extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.logout),
             onPressed: () async {
-              await auth.logout();
-              if (context.mounted) {
-                Navigator.pushReplacementNamed(context, AppRoutes.login);
-              }
+              await AppNotifier.showConfirm(
+                context,
+                title: 'Konfirmasi Logout',
+                message: 'Apakah Anda yakin ingin keluar?',
+                onConfirm: () async {
+                  await auth.logout();
+                  if (context.mounted) {
+                    Navigator.pushReplacementNamed(context, AppRoutes.login);
+                  }
+                },
+              );
             },
           ),
         ],

@@ -100,7 +100,7 @@ class _ChecklistTemplateScreenState extends State<ChecklistTemplateScreen> {
                 openSingleForm: _openSingleForm,
                 confirmDelete: _confirmDelete,
               ),
-              const _JenisTab(),
+              _JenisTab(openJenisForm: _openJenisForm),
             ],
           ),
           floatingActionButton: _tabIndex == 0
@@ -869,20 +869,46 @@ class _ChecklistTab extends StatelessWidget {
 //  MASTER JENIS TAB
 // ═══════════════════════════════════════════════════════════════
 class _JenisTab extends StatelessWidget {
-  const _JenisTab();
+  final void Function([JenisModel?]) openJenisForm;
+
+  const _JenisTab({required this.openJenisForm});
 
   @override
   Widget build(BuildContext context) {
     return Consumer<MasterProvider>(
       builder: (_, p, __) {
         if (p.jenisMaster.isEmpty) {
-          return const EmptyState(message: 'Belum ada master jenis');
+          return EmptyState(
+            message: 'Belum ada master jenis',
+            actionLabel: 'Tambah Jenis',
+            onAction: () => openJenisForm(),
+          );
         }
         return ListView.builder(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
-          itemCount: p.jenisMaster.length,
+          itemCount: p.jenisMaster.length + 1,
           itemBuilder: (_, i) {
-            final jenis = p.jenisMaster[i];
+            if (i == 0) {
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Card(
+                  child: ListTile(
+                    leading: const Icon(Icons.add_circle_outline,
+                        color: AppColors.primary),
+                    title: const Text('Input Master Jenis Baru',
+                        style: TextStyle(fontWeight: FontWeight.w600)),
+                    subtitle: const Text('Tambahkan jenis inventaris baru'),
+                    trailing: TextButton(
+                      onPressed: () => openJenisForm(),
+                      child: const Text('Tambah'),
+                    ),
+                    onTap: () => openJenisForm(),
+                  ),
+                ),
+              );
+            }
+
+            final jenis = p.jenisMaster[i - 1];
             return Card(
               margin: const EdgeInsets.only(bottom: 12),
               child: ListTile(
@@ -902,12 +928,7 @@ class _JenisTab extends StatelessWidget {
                     IconButton(
                       icon: const Icon(Icons.edit_outlined,
                           color: AppColors.textSecondary),
-                      onPressed: () => showModalBottomSheet(
-                        context: context,
-                        isScrollControlled: true,
-                        backgroundColor: Colors.transparent,
-                        builder: (_) => _JenisForm(jenis: jenis),
-                      ),
+                      onPressed: () => openJenisForm(jenis),
                     ),
                     IconButton(
                       icon: const Icon(Icons.delete_outline,

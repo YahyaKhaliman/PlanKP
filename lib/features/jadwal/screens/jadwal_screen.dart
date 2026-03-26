@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/constants/app_constants.dart';
+import '../../../core/utils/date_formatter.dart';
 import '../../../core/widgets/app_notifier.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../auth/providers/auth_provider.dart';
@@ -409,9 +410,9 @@ class _JadwalCard extends StatelessWidget {
       );
 
   String _formatTgl(String mulai, String? selesai) {
-    final m = mulai.length >= 10 ? mulai.substring(0, 10) : mulai;
-    if (selesai == null) return m;
-    final s = selesai.length >= 10 ? selesai.substring(0, 10) : selesai;
+    final m = DateFormatter.toDisplay(mulai);
+    if (selesai == null || selesai.trim().isEmpty) return m;
+    final s = DateFormatter.toDisplay(selesai);
     return '$m s/d $s';
   }
 }
@@ -461,9 +462,11 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
                       const SizedBox(height: 12),
                       _row('Jenis Inventaris', 'ID ${jdw.jdwJenisId}'),
                       _row('Frekuensi', jdw.jdwFrekuensi),
-                      _row('Tanggal Mulai', jdw.jdwTglMulai),
+                      _row('Tanggal Mulai',
+                          DateFormatter.toDisplay(jdw.jdwTglMulai)),
                       if (jdw.jdwTglSelesai != null)
-                        _row('Tanggal Selesai', jdw.jdwTglSelesai!),
+                        _row('Tanggal Selesai',
+                            DateFormatter.toDisplay(jdw.jdwTglSelesai!)),
                       _row('Status', jdw.jdwStatus),
                       if (jdw.jdwNotes != null) _row('Catatan', jdw.jdwNotes!),
                     ]),
@@ -611,9 +614,10 @@ class _JadwalFormState extends State<_JadwalForm> {
     super.dispose();
   }
 
-  String _fmtDate(DateTime? d) => d == null
-      ? ''
-      : '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+  String _fmtDateApi(DateTime? d) => DateFormatter.toApi(d);
+
+  String _fmtDateDisplay(DateTime? d) =>
+      DateFormatter.toDisplayFromDate(d, fallback: '');
 
   Future<void> _pickDate(bool isMulai) async {
     final picked = await showDatePicker(
@@ -721,8 +725,8 @@ class _JadwalFormState extends State<_JadwalForm> {
       'jdw_jenis_id': _jenisId!,
       'jdw_divisi': divisi,
       'jdw_frekuensi': _frekuensi,
-      'jdw_tgl_mulai': _fmtDate(_tglMulai),
-      'jdw_tgl_selesai': _tglSelesai != null ? _fmtDate(_tglSelesai) : null,
+      'jdw_tgl_mulai': _fmtDateApi(_tglMulai),
+      'jdw_tgl_selesai': _tglSelesai != null ? _fmtDateApi(_tglSelesai) : null,
       'jdw_notes':
           _notesCtrl.text.trim().isEmpty ? null : _notesCtrl.text.trim(),
     };
@@ -840,7 +844,9 @@ class _JadwalFormState extends State<_JadwalForm> {
                     prefixIcon: Icon(Icons.calendar_today_outlined),
                   ),
                   child: Text(
-                    _tglMulai != null ? _fmtDate(_tglMulai) : 'Pilih tanggal',
+                    _tglMulai != null
+                        ? _fmtDateDisplay(_tglMulai)
+                        : 'Pilih tanggal',
                     style: TextStyle(
                       color: _tglMulai != null
                           ? AppColors.textPrimary
@@ -866,7 +872,7 @@ class _JadwalFormState extends State<_JadwalForm> {
                   ),
                   child: Text(
                     _tglSelesai != null
-                        ? _fmtDate(_tglSelesai)
+                        ? _fmtDateDisplay(_tglSelesai)
                         : 'Tidak ada batas',
                     style: const TextStyle(color: AppColors.textSecondary),
                   ),

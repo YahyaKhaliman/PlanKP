@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/date_formatter.dart';
 import '../../../core/widgets/app_notifier.dart';
 import '../models/checklist_hasil_model.dart';
 import '../providers/jadwal_provider.dart';
@@ -98,8 +99,7 @@ class _RealisasiFormScreenState extends State<RealisasiFormScreen> {
 
     final p = context.read<JadwalProvider>();
     final now = DateTime.now();
-    final tgl =
-        '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+    final tgl = DateFormatter.toApi(now);
     final jamMulai =
         '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:00';
 
@@ -196,7 +196,8 @@ class _RealisasiFormScreenState extends State<RealisasiFormScreen> {
               if ((_invNo ?? '').isNotEmpty) _infoRow('No Inventaris', _invNo!),
               if (_invKondisiAwal != null)
                 _infoRow('Kondisi Awal', _invKondisiAwal ?? '-'),
-              _infoRow('Tanggal', _fmtToday()),
+              _infoRow(
+                  'Tanggal', DateFormatter.toDisplayFromDate(DateTime.now())),
             ]),
           ),
         ),
@@ -354,12 +355,6 @@ class _RealisasiFormScreenState extends State<RealisasiFormScreen> {
                       fontSize: 12, fontWeight: FontWeight.w500))),
         ]),
       );
-
-  String _fmtToday() {
-    final now = DateTime.now();
-    return '${now.day.toString().padLeft(2, '0')}/'
-        '${now.month.toString().padLeft(2, '0')}/${now.year}';
-  }
 }
 
 // ═══════════════════════════════════════════════════════════════
