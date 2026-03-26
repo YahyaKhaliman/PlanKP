@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
@@ -15,6 +13,7 @@ import '../../../features/master/models/jenis_model.dart';
 import '../models/jadwal_model.dart';
 import '../models/realisasi_model.dart';
 import '../providers/jadwal_provider.dart';
+import '../widgets/realisasi_detail_sheet.dart';
 
 // ═══════════════════════════════════════════════════════════════
 //  JADWAL SCREEN
@@ -350,121 +349,12 @@ class _JadwalScreenState extends State<JadwalScreen>
       await AppNotifier.showError(context, 'Detail realisasi tidak ditemukan');
       return;
     }
-
-    await showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => DraggableScrollableSheet(
-        initialChildSize: 0.8,
-        maxChildSize: 0.95,
-        minChildSize: 0.5,
-        builder: (_, ctrl) => Container(
-          decoration: const BoxDecoration(
-            color: AppColors.bgGray,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-          ),
-          child: ListView(
-            controller: ctrl,
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-            children: [
-              Center(
-                child: Container(
-                  width: 42,
-                  height: 4,
-                  margin: const EdgeInsets.only(bottom: 12),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[300],
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const Text(
-                'Detail History Realisasi',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: 12),
-              _detailRow('Jadwal', detail.jadwal?['jdw_judul'] ?? '-'),
-              _detailRow('Unit', '${detail.invNo} · ${detail.invNama}'),
-              _detailRow('Tanggal', DateFormatter.toDisplay(detail.realTgl)),
-              _detailRow('Status', detail.realStatus),
-              if ((detail.realJamMulai ?? '').isNotEmpty)
-                _detailRow('Jam Mulai', detail.realJamMulai!),
-              if ((detail.realJamSelesai ?? '').isNotEmpty)
-                _detailRow('Jam Selesai', detail.realJamSelesai!),
-              if ((detail.realKondisiAkhir ?? '').isNotEmpty)
-                _detailRow('Kondisi Akhir', detail.realKondisiAkhir!),
-              if ((detail.realKeterangan ?? '').isNotEmpty)
-                _detailRow('Keterangan', detail.realKeterangan!),
-              const SizedBox(height: 12),
-              const Text(
-                'Checklist',
-                style: TextStyle(fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: 8),
-              if (detail.hasilChecklist.isEmpty)
-                const Text(
-                  '-',
-                  style: TextStyle(color: AppColors.textSecondary),
-                )
-              else
-                ...([...detail.hasilChecklist]
-                      ..sort((a, b) => a.urutan.compareTo(b.urutan)))
-                    .map(
-                  (h) => Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '• ${h.itemNama} (${h.hcHasil})${(h.hcKondisi ?? '').isNotEmpty ? ' - ${h.hcKondisi}' : ''}',
-                          style: const TextStyle(fontSize: 13),
-                        ),
-                        if ((h.hcKeterangan ?? '').trim().isNotEmpty)
-                          Padding(
-                            padding: const EdgeInsets.only(left: 12, top: 2),
-                            child: Text(
-                              'Keterangan: ${h.hcKeterangan!.trim()}',
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: AppColors.textSecondary,
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ),
+    await RealisasiDetailSheet.show(
+      context,
+      detail: detail,
+      title: 'Detail History Realisasi',
     );
   }
-
-  Widget _detailRow(String label, String value) => Padding(
-        padding: const EdgeInsets.only(bottom: 8),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SizedBox(
-              width: 110,
-              child: Text(
-                label,
-                style: const TextStyle(
-                    fontSize: 12, color: AppColors.textSecondary),
-              ),
-            ),
-            Expanded(
-              child: Text(
-                value,
-                style:
-                    const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
-              ),
-            ),
-          ],
-        ),
-      );
 }
 
 // ── Card ────────────────────────────────────────────────────
@@ -710,98 +600,10 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
       return;
     }
 
-    await showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => DraggableScrollableSheet(
-        initialChildSize: 0.8,
-        maxChildSize: 0.95,
-        minChildSize: 0.5,
-        builder: (_, ctrl) => Container(
-          decoration: const BoxDecoration(
-            color: AppColors.bgGray,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-          ),
-          child: ListView(
-            controller: ctrl,
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-            children: [
-              Center(
-                child: Container(
-                  width: 42,
-                  height: 4,
-                  margin: const EdgeInsets.only(bottom: 12),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[300],
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const Text(
-                'Detail Realisasi Unit',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: 12),
-              _row('Jadwal', detail.jadwal?['jdw_judul'] ?? '-'),
-              _row('Unit', '${detail.invNo} · ${detail.invNama}'),
-              _row('Tanggal', DateFormatter.toDisplay(detail.realTgl)),
-              _row('Status', detail.realStatus),
-              if ((detail.realJamMulai ?? '').isNotEmpty)
-                _row('Jam Mulai', detail.realJamMulai!),
-              if ((detail.realJamSelesai ?? '').isNotEmpty)
-                _row('Jam Selesai', detail.realJamSelesai!),
-              if ((detail.realKondisiAkhir ?? '').isNotEmpty)
-                _row('Kondisi Akhir', detail.realKondisiAkhir!),
-              if ((detail.realKeterangan ?? '').isNotEmpty)
-                _row('Keterangan', detail.realKeterangan!),
-              _row(
-                  'PIC',
-                  (detail.realTtdPicNama ?? '').trim().isEmpty
-                      ? '-'
-                      : detail.realTtdPicNama!.trim()),
-              _ttdRow(detail.realTtdData),
-              const SizedBox(height: 12),
-              const Text(
-                'Checklist',
-                style: TextStyle(fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: 8),
-              if (detail.hasilChecklist.isEmpty)
-                const Text('-',
-                    style: TextStyle(color: AppColors.textSecondary))
-              else
-                ...([...detail.hasilChecklist]
-                      ..sort((a, b) => a.urutan.compareTo(b.urutan)))
-                    .map(
-                  (h) => Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '• ${h.itemNama} (${h.hcHasil})${(h.hcKondisi ?? '').isNotEmpty ? ' - ${h.hcKondisi}' : ''}',
-                          style: const TextStyle(fontSize: 13),
-                        ),
-                        if ((h.hcKeterangan ?? '').trim().isNotEmpty)
-                          Padding(
-                            padding: const EdgeInsets.only(left: 12, top: 2),
-                            child: Text(
-                              'Keterangan: ${h.hcKeterangan!.trim()}',
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: AppColors.textSecondary,
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ),
+    await RealisasiDetailSheet.show(
+      context,
+      detail: detail,
+      title: 'Detail Realisasi Unit',
     );
   }
 
@@ -922,43 +724,6 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
                       fontSize: 13, fontWeight: FontWeight.w500))),
         ]),
       );
-
-  Widget _ttdRow(String? ttdData) {
-    final raw = (ttdData ?? '').trim();
-    if (raw.isEmpty) return _row('TTD', 'Belum ada');
-
-    final normalized = raw.contains(',') ? raw.split(',').last : raw;
-    try {
-      final bytes = base64Decode(normalized);
-      return Padding(
-        padding: const EdgeInsets.only(bottom: 8),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(
-              width: 120,
-              child: Text('TTD',
-                  style:
-                      TextStyle(fontSize: 13, color: AppColors.textSecondary)),
-            ),
-            Expanded(
-              child: Container(
-                height: 100,
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  border: Border.all(color: AppColors.border),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Image.memory(bytes, fit: BoxFit.contain),
-              ),
-            ),
-          ],
-        ),
-      );
-    } catch (_) {
-      return _row('TTD', 'Data TTD tidak valid');
-    }
-  }
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1192,8 +957,6 @@ class _JadwalFormState extends State<_JadwalForm> {
                   style: const TextStyle(
                       fontSize: 18, fontWeight: FontWeight.w700)),
               const SizedBox(height: 20),
-
-              // Judul
               TextFormField(
                 controller: _judulCtrl,
                 decoration: const InputDecoration(
@@ -1206,11 +969,8 @@ class _JadwalFormState extends State<_JadwalForm> {
                     : null,
               ),
               const SizedBox(height: 14),
-
               _jenisPickerField(),
               const SizedBox(height: 14),
-
-              // Divisi target
               DropdownButtonFormField<String>(
                 value: divisiValue,
                 decoration: const InputDecoration(
@@ -1228,8 +988,6 @@ class _JadwalFormState extends State<_JadwalForm> {
                 validator: (v) => v == null ? 'Divisi wajib dipilih' : null,
               ),
               const SizedBox(height: 14),
-
-              // Frekuensi
               DropdownButtonFormField<String>(
                 value: _frekuensi,
                 decoration: const InputDecoration(
@@ -1242,8 +1000,6 @@ class _JadwalFormState extends State<_JadwalForm> {
                 onChanged: (v) => setState(() => _frekuensi = v!),
               ),
               const SizedBox(height: 14),
-
-              // Tanggal mulai
               InkWell(
                 onTap: () => _pickDate(true),
                 child: InputDecorator(
@@ -1264,8 +1020,6 @@ class _JadwalFormState extends State<_JadwalForm> {
                 ),
               ),
               const SizedBox(height: 14),
-
-              // Tanggal selesai (opsional)
               InkWell(
                 onTap: () => _pickDate(false),
                 child: InputDecorator(
@@ -1287,8 +1041,6 @@ class _JadwalFormState extends State<_JadwalForm> {
                 ),
               ),
               const SizedBox(height: 14),
-
-              // Catatan
               TextFormField(
                 controller: _notesCtrl,
                 maxLines: 3,
@@ -1299,7 +1051,6 @@ class _JadwalFormState extends State<_JadwalForm> {
                 ),
               ),
               const SizedBox(height: 24),
-
               if (jadwalP.error != null)
                 Container(
                   margin: const EdgeInsets.only(bottom: 12),
@@ -1317,7 +1068,6 @@ class _JadwalFormState extends State<_JadwalForm> {
                                 color: AppColors.danger, fontSize: 13))),
                   ]),
                 ),
-
               Consumer<JadwalProvider>(
                 builder: (_, p, __) => ElevatedButton(
                   onPressed: p.loading ? null : _submit,
