@@ -4,9 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../auth/providers/auth_provider.dart';
-import '../../master/models/user_model.dart';
-import '../../master/providers/master_provider.dart';
 import '../models/checklist_hasil_model.dart';
 import '../providers/jadwal_provider.dart';
 
@@ -31,8 +28,6 @@ class _RealisasiFormScreenState extends State<RealisasiFormScreen> {
   String? _invNo;
   String? _invKondisiAwal;
   String? _invPicNama;
-  int? _invPicId;
-  List<UserModel> _picList = [];
 
   static const _kondisiList = ['Baik', 'Perlu Perhatian', 'Rusak'];
 
@@ -48,7 +43,6 @@ class _RealisasiFormScreenState extends State<RealisasiFormScreen> {
     _invNo = widget.args['invNo'];
     _invKondisiAwal = widget.args['invKondisi'];
     _invPicNama = widget.args['invPicNama'];
-    _invPicId = widget.args['invPicId'];
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadTemplate());
   }
 
@@ -60,20 +54,13 @@ class _RealisasiFormScreenState extends State<RealisasiFormScreen> {
 
   Future<void> _loadTemplate() async {
     final p = context.read<JadwalProvider>();
-    final master = context.read<MasterProvider>();
     try {
       final items = await p.fetchTemplate(_invJenisId);
-      final pics = await master.fetchUsers(
-        jabatan: 'pic',
-        showLoading: false,
-        replaceState: false,
-      );
 
       if (!mounted) return;
       setState(() {
         _checklistItems = items;
         _loadingTemplate = false;
-        _picList = pics;
       });
 
       final templateError = p.error;
@@ -118,7 +105,6 @@ class _RealisasiFormScreenState extends State<RealisasiFormScreen> {
     }
 
     final p = context.read<JadwalProvider>();
-    final auth = context.read<AuthProvider>();
     final now = DateTime.now();
     final tgl =
         '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
@@ -150,17 +136,15 @@ class _RealisasiFormScreenState extends State<RealisasiFormScreen> {
       return;
     }
 
-    _openTtdPopup(real.realId, auth.user?['user_id']);
+    _openTtdPopup(real.realId);
   }
 
-  void _openTtdPopup(int realId, int? teknisiId) {
+  void _openTtdPopup(int realId) {
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (_) => _TtdDialog(
         realId: realId,
-        picList: _picList,
-        defaultPicId: _invPicId,
         defaultPicNama: _invPicNama,
         onSelesai: () {
           Navigator.pop(context); // tutup dialog
@@ -267,8 +251,14 @@ class _RealisasiFormScreenState extends State<RealisasiFormScreen> {
                 const SizedBox(height: 12),
                 OutlinedButton.icon(
                   onPressed: _loadingTemplate ? null : _retryLoadTemplate,
-                  icon: const Icon(Icons.refresh_outlined, size: 16),
-                  label: const Text('Muat Ulang'),
+                  icon: _loadingTemplate
+                      ? const SizedBox(
+                          height: 14,
+                          width: 14,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.refresh_outlined, size: 16),
+                  label: Text(_loadingTemplate ? 'Memuat...' : 'Muat Ulang'),
                 ),
               ]),
             ),
@@ -557,19 +547,15 @@ class _ChecklistItemCardState extends State<_ChecklistItemCard> {
 // ═══════════════════════════════════════════════════════════════
 class _TtdDialog extends StatefulWidget {
   final int realId;
-  final List<UserModel> picList;
-  final int? defaultPicId;
   final String? defaultPicNama;
   final VoidCallback onSelesai;
   final VoidCallback onSubmitStart;
   final VoidCallback onSubmitEnd;
   const _TtdDialog({
     required this.realId,
-    required this.picList,
     required this.onSelesai,
     required this.onSubmitStart,
     required this.onSubmitEnd,
-    this.defaultPicId,
     this.defaultPicNama,
   });
   @override
@@ -578,7 +564,6 @@ class _TtdDialog extends StatefulWidget {
 
 class _TtdDialogState extends State<_TtdDialog> {
   final _picCtrl = TextEditingController();
-  UserModel? _selectedPic;
   final _canvasKey = GlobalKey();
   final List<List<Offset?>> _strokes = [];
   List<Offset?> _currentStroke = [];
@@ -588,22 +573,13 @@ class _TtdDialogState extends State<_TtdDialog> {
   @override
   void initState() {
     super.initState();
-    _selectedPic = _findPicById(widget.defaultPicId);
-    _picCtrl.text = widget.defaultPicNama ?? _selectedPic?.userNama ?? '';
+    _picCtrl.text = '';
   }
 
   @override
   void dispose() {
     _picCtrl.dispose();
     super.dispose();
-  }
-
-  UserModel? _findPicById(int? id) {
-    if (id == null) return null;
-    for (final pic in widget.picList) {
-      if (pic.userId == id) return pic;
-    }
-    return null;
   }
 
   void _onPanStart(DragStartDetails d) {
@@ -673,7 +649,7 @@ class _TtdDialogState extends State<_TtdDialog> {
   }
 
   Future<void> _submit() async {
-    if (_selectedPic == null && _picCtrl.text.trim().isEmpty) {
+    if (_picCtrl.text.trim().isEmpty) {
       ScaffoldMessenger.of(context)
           .showSnackBar(const SnackBar(content: Text('Nama PIC wajib diisi')));
       return;
@@ -688,9 +664,7 @@ class _TtdDialogState extends State<_TtdDialog> {
     setState(() => _submitting = true);
     final base64 = await _captureBase64();
     final p = context.read<JadwalProvider>();
-    final namaPic = _picCtrl.text.trim().isNotEmpty
-        ? _picCtrl.text.trim()
-        : _selectedPic?.userNama ?? '';
+    final namaPic = _picCtrl.text.trim();
     final ok = await p.saveTtd(
         widget.realId, namaPic, 'data:image/png;base64,$base64');
     if (mounted) {
@@ -728,32 +702,12 @@ class _TtdDialogState extends State<_TtdDialog> {
                 style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
             const SizedBox(height: 16),
 
-            DropdownButtonFormField<int>(
-              value: _selectedPic?.userId,
-              items: widget.picList
-                  .map((pic) => DropdownMenuItem<int>(
-                        value: pic.userId,
-                        child: Text(pic.userNama),
-                      ))
-                  .toList(),
-              decoration: const InputDecoration(
-                labelText: 'Pilih PIC',
-                prefixIcon: Icon(Icons.badge_outlined),
-              ),
-              isExpanded: true,
-              onChanged: (value) {
-                setState(() {
-                  _selectedPic = _findPicById(value);
-                  _picCtrl.text = _selectedPic?.userNama ?? '';
-                });
-              },
-            ),
-            const SizedBox(height: 8),
             TextField(
               controller: _picCtrl,
               textCapitalization: TextCapitalization.words,
               decoration: const InputDecoration(
-                hintText: 'Nama PIC manual',
+                labelText: 'Nama PIC',
+                hintText: 'Masukkan nama PIC',
                 prefixIcon: Icon(Icons.person_outline),
               ),
             ),

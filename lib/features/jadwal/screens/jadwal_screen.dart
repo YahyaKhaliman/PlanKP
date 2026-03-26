@@ -56,10 +56,152 @@ class _JadwalScreenState extends State<JadwalScreen>
     );
   }
 
+  Future<void> _handleJadwalTap(
+    JadwalModel jadwal, {
+    required bool isAdmin,
+    required bool isUser,
+  }) async {
+    if (isAdmin || !isUser) {
+      Navigator.pushNamed(context, AppRoutes.jadwalDetail,
+          arguments: jadwal.jdwId);
+      return;
+    }
+
+    if (jadwal.jdwStatus != 'Aktif') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Jadwal belum aktif untuk direalisasi')),
+      );
+      return;
+    }
+
+    final p = context.read<JadwalProvider>();
+    await p.fetchJadwalDetail(jadwal.jdwId);
+    if (!mounted) return;
+
+    final inventarisList = p.inventarisByJenis
+        .map((e) => Map<String, dynamic>.from(e as Map))
+        .toList();
+
+    if (inventarisList.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Inventaris untuk jadwal ini belum ada')),
+      );
+      return;
+    }
+
+    if (inventarisList.length == 1) {
+      _openRealisasiFromInventaris(jadwal, inventarisList.first);
+      return;
+    }
+
+    _showInventarisPicker(jadwal, inventarisList);
+  }
+
+  void _showInventarisPicker(
+    JadwalModel jadwal,
+    List<Map<String, dynamic>> inventarisList,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => Container(
+        decoration: const BoxDecoration(
+          color: AppColors.bgGray,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 42,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Pilih Unit untuk Realisasi',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Flexible(
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    itemCount: inventarisList.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 8),
+                    itemBuilder: (_, i) {
+                      final inv = inventarisList[i];
+                      return Card(
+                        margin: EdgeInsets.zero,
+                        child: ListTile(
+                          leading: const Icon(Icons.inventory_2_outlined,
+                              color: AppColors.primary),
+                          title: Text(inv['inv_nama'] ?? '-'),
+                          subtitle: Text(
+                              '${inv['inv_no'] ?? '-'} · ${inv['inv_lokasi'] ?? '-'}'),
+                          trailing: const Icon(Icons.chevron_right),
+                          onTap: () {
+                            Navigator.pop(context);
+                            _openRealisasiFromInventaris(jadwal, inv);
+                          },
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _openRealisasiFromInventaris(
+    JadwalModel jadwal,
+    Map<String, dynamic> inv,
+  ) {
+    final invJenisRaw =
+        inv['inv_jenis_id'] ?? inv['inv_jenis'] ?? jadwal.jdwJenisId;
+    final invJenisId = invJenisRaw is int
+        ? invJenisRaw
+        : int.tryParse('$invJenisRaw') ?? jadwal.jdwJenisId;
+    final invIdRaw = inv['inv_id'];
+    final invId = invIdRaw is int ? invIdRaw : int.tryParse('$invIdRaw');
+
+    final jenis = context.read<MasterProvider>().jenisById(invJenisId);
+    Navigator.pushNamed(
+      context,
+      AppRoutes.realisasiForm,
+      arguments: {
+        'jadwalId': jadwal.jdwId,
+        'invJenisId': invJenisId,
+        'invJenisNama': jenis?.jenisNama ?? 'ID $invJenisId',
+        'invId': invId,
+        'invNama': inv['inv_nama'],
+        'invNo': inv['inv_no'],
+        'invKondisi': inv['inv_kondisi'],
+        'invPicNama': inv['pic_user']?['user_nama'],
+        'invPicId': inv['pic_user']?['user_id'],
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
     final isAdmin = auth.user?['user_jabatan'] == 'admin';
+    final isUser = auth.user?['user_jabatan'] == 'user';
     return Scaffold(
       appBar: AppBar(
         title: const Text('Penjadwalan'),
@@ -99,9 +241,11 @@ class _JadwalScreenState extends State<JadwalScreen>
                 separatorBuilder: (_, __) => const SizedBox(height: 8),
                 itemBuilder: (_, i) => _JadwalCard(
                   jadwal: list[i],
-                  onTap: () => Navigator.pushNamed(
-                      context, AppRoutes.jadwalDetail,
-                      arguments: list[i].jdwId),
+                  onTap: () => _handleJadwalTap(
+                    list[i],
+                    isAdmin: isAdmin,
+                    isUser: isUser,
+                  ),
                   onEdit: () => _openForm(list[i]),
                   onStatusChange: (st) => context
                       .read<JadwalProvider>()
@@ -452,9 +596,6 @@ class _JadwalFormState extends State<_JadwalForm> {
   int? _jenisId;
   String? _divisi;
   String _frekuensi = 'Harian';
-  int? _assignedTo;
-  List<UserModel> _assignableUsers = [];
-  String? _assignInfo;
   DateTime? _tglMulai;
   DateTime? _tglSelesai;
 
@@ -470,16 +611,12 @@ class _JadwalFormState extends State<_JadwalForm> {
       _jenisId = d.jdwJenisId;
       _divisi = d.jdwDivisi;
       _frekuensi = d.jdwFrekuensi;
-      _assignedTo = d.jdwAssignedTo;
       _tglMulai = DateTime.tryParse(d.jdwTglMulai);
       _tglSelesai =
           d.jdwTglSelesai != null ? DateTime.tryParse(d.jdwTglSelesai!) : null;
       final jenis = context.read<MasterProvider>().jenisById(d.jdwJenisId);
       _jenisCtrl.text = jenis?.jenisNama ?? 'ID ${d.jdwJenisId}';
     }
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _refreshAssignableUsers(initialLoad: true);
-    });
   }
 
   @override
@@ -513,57 +650,6 @@ class _JadwalFormState extends State<_JadwalForm> {
     }
   }
 
-  Future<void> _refreshAssignableUsers({bool initialLoad = false}) async {
-    final master = context.read<MasterProvider>();
-    final jenis = _jenisId ?? widget.item?.jdwJenisId;
-    final kategori = jenis != null ? master.kategoriByJenisId(jenis) : null;
-    final defaultDivisi = kategori;
-    final currentDivisi = _divisi ?? widget.item?.jdwDivisi ?? defaultDivisi;
-    final effectiveDivisi = currentDivisi;
-
-    Future<List<UserModel>> loader;
-    String? info;
-
-    if (effectiveDivisi == null) {
-      if (master.userList.isEmpty) {
-        loader = master.fetchUsers(showLoading: false, replaceState: false);
-      } else {
-        loader = Future.value(master.userList);
-      }
-      info = null;
-    } else {
-      loader = master.fetchUsers(
-        divisi: effectiveDivisi,
-        jabatan: 'teknisi',
-        showLoading: false,
-        replaceState: false,
-      );
-      info =
-          'Assigned To dibatasi ke divisi $effectiveDivisi karena penjadwalan ini hanya untuk divisi tersebut';
-    }
-
-    try {
-      final list = await loader;
-      if (!mounted) return;
-      setState(() {
-        _assignInfo = info;
-        _assignableUsers = list
-            .where((u) =>
-                u.userJabatan == 'teknisi' || u.userJabatan == 'it_support')
-            .toList();
-        if (_assignedTo != null &&
-            !_assignableUsers.any((u) => u.userId == _assignedTo)) {
-          _assignedTo = null;
-        }
-      });
-    } catch (_) {
-      if (!initialLoad && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text('Gagal memuat daftar teknisi untuk kategori ini')));
-      }
-    }
-  }
-
   Future<void> _pickJenis() async {
     final master = context.read<MasterProvider>();
     if (master.jenisMaster.isEmpty) {
@@ -590,7 +676,6 @@ class _JadwalFormState extends State<_JadwalForm> {
           _divisi = _validDivisi(_divisi);
         }
       });
-      _refreshAssignableUsers();
     }
   }
 
@@ -656,7 +741,6 @@ class _JadwalFormState extends State<_JadwalForm> {
       'jdw_frekuensi': _frekuensi,
       'jdw_tgl_mulai': _fmtDate(_tglMulai),
       'jdw_tgl_selesai': _tglSelesai != null ? _fmtDate(_tglSelesai) : null,
-      'jdw_assigned_to': _assignedTo,
       'jdw_notes':
           _notesCtrl.text.trim().isEmpty ? null : _notesCtrl.text.trim(),
     };
@@ -746,42 +830,9 @@ class _JadwalFormState extends State<_JadwalForm> {
                     .toList(),
                 onChanged: (v) {
                   setState(() => _divisi = v);
-                  _refreshAssignableUsers();
                 },
                 validator: (v) => v == null ? 'Divisi wajib dipilih' : null,
               ),
-              const SizedBox(height: 14),
-
-              DropdownButtonFormField<int?>(
-                value: _assignedTo,
-                decoration: const InputDecoration(
-                  labelText: 'Assigned To',
-                  prefixIcon: Icon(Icons.person_outline),
-                ),
-                items: [
-                  const DropdownMenuItem<int?>(
-                    value: null,
-                    child: Text('Belum ditentukan'),
-                  ),
-                  ..._assignableUsers.map(
-                    (user) => DropdownMenuItem<int?>(
-                      value: user.userId,
-                      child: Text(user.userNama),
-                    ),
-                  ),
-                ],
-                onChanged: (value) => setState(() => _assignedTo = value),
-              ),
-              if (_assignInfo != null) ...[
-                const SizedBox(height: 8),
-                Text(
-                  _assignInfo!,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ],
               const SizedBox(height: 14),
 
               // Frekuensi

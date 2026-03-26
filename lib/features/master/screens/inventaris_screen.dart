@@ -40,7 +40,7 @@ class _InventarisScreenState extends State<InventarisScreen> {
     await context.read<MasterProvider>().fetchJenis(showLoading: false);
     await context
         .read<MasterProvider>()
-        .fetchUsers(jabatan: 'pic', showLoading: false);
+        .fetchUsers(jabatan: 'user', showLoading: false);
     if (!mounted) return;
     showModalBottomSheet(
       context: context,
