@@ -24,7 +24,6 @@ class _RealisasiFormScreenState extends State<RealisasiFormScreen> {
   String _kondisi = 'Baik';
   List<ChecklistInputModel> _checklistItems = [];
   bool _loadingTemplate = true;
-  int? _realId; // ID realisasi setelah berhasil dibuat
   bool _submitting = false;
   String? _invNo;
   String? _invKondisiAwal;
@@ -122,7 +121,6 @@ class _RealisasiFormScreenState extends State<RealisasiFormScreen> {
       setState(() => _submitting = false);
       return;
     }
-    _realId = real.realId;
 
     final okChecklist = await p.saveChecklist(real.realId, _checklistItems);
     if (!okChecklist || !mounted) {
