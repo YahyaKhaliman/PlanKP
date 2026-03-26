@@ -53,7 +53,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       Navigator.pop(context);
     } else if (mounted) {
       final error = auth.error ?? 'Tidak dapat mendaftar saat ini';
-      AppNotifier.showError(context, error);
+      await AppNotifier.showError(context, error);
     }
   }
 

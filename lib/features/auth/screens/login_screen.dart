@@ -36,7 +36,7 @@ class _LoginScreenState extends State<LoginScreen> {
       Navigator.pushReplacementNamed(context, AppRoutes.dashboard);
     } else if (mounted) {
       final error = auth.error ?? 'Tidak dapat login saat ini';
-      AppNotifier.showError(context, error);
+      await AppNotifier.showError(context, error);
     }
   }
 

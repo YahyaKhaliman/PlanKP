@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/constants/app_constants.dart';
+import '../../../core/widgets/app_notifier.dart';
+import '../../../core/widgets/empty_state.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../../features/master/models/user_model.dart';
 import '../../../features/master/providers/master_provider.dart';
@@ -68,9 +70,8 @@ class _JadwalScreenState extends State<JadwalScreen>
     }
 
     if (jadwal.jdwStatus != 'Aktif') {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Jadwal belum aktif untuk direalisasi')),
-      );
+      await AppNotifier.showError(
+          context, 'Jadwal belum aktif untuk direalisasi');
       return;
     }
 
@@ -83,9 +84,8 @@ class _JadwalScreenState extends State<JadwalScreen>
         .toList();
 
     if (inventarisList.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Inventaris untuk jadwal ini belum ada')),
-      );
+      await AppNotifier.showError(
+          context, 'Inventaris untuk jadwal ini belum ada');
       return;
     }
 
@@ -259,17 +259,9 @@ class _JadwalScreenState extends State<JadwalScreen>
     );
   }
 
-  Widget _emptyState(String status) => Center(
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          const Icon(Icons.event_note_outlined,
-              size: 48, color: AppColors.textSecondary),
-          const SizedBox(height: 12),
-          Text(
-              status == 'Semua'
-                  ? 'Belum ada jadwal'
-                  : 'Tidak ada jadwal $status',
-              style: const TextStyle(color: AppColors.textSecondary)),
-        ]),
+  Widget _emptyState(String status) => EmptyState(
+        message:
+            status == 'Semua' ? 'Belum ada jadwal' : 'Tidak ada jadwal $status',
       );
 }
 
@@ -345,19 +337,12 @@ class _JadwalCard extends StatelessWidget {
             ]),
             const SizedBox(height: 6),
 
-            // baris 3: tanggal + assigned
+            // baris 3: tanggal
             Row(children: [
               const Icon(Icons.calendar_today_outlined,
                   size: 12, color: AppColors.textSecondary),
               const SizedBox(width: 4),
               Text(_formatTgl(jadwal.jdwTglMulai, jadwal.jdwTglSelesai),
-                  style: const TextStyle(
-                      fontSize: 12, color: AppColors.textSecondary)),
-              const Spacer(),
-              const Icon(Icons.person_outline,
-                  size: 12, color: AppColors.textSecondary),
-              const SizedBox(width: 4),
-              Text(jadwal.assignedNama,
                   style: const TextStyle(
                       fontSize: 12, color: AppColors.textSecondary)),
             ]),
@@ -479,7 +464,6 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
                       _row('Tanggal Mulai', jdw.jdwTglMulai),
                       if (jdw.jdwTglSelesai != null)
                         _row('Tanggal Selesai', jdw.jdwTglSelesai!),
-                      _row('Assigned To', jdw.assignedNama),
                       _row('Status', jdw.jdwStatus),
                       if (jdw.jdwNotes != null) _row('Catatan', jdw.jdwNotes!),
                     ]),
@@ -687,7 +671,7 @@ class _JadwalFormState extends State<_JadwalForm> {
         readOnly: true,
         decoration: InputDecoration(
           labelText: 'Jenis Inventaris',
-          hintText: 'Cari di master plan_jenis',
+          hintText: 'Cari...',
           prefixIcon: const Icon(Icons.label_outline),
           suffixIcon: IconButton(
             icon: const Icon(Icons.search),
@@ -720,13 +704,11 @@ class _JadwalFormState extends State<_JadwalForm> {
   Future<void> _submit() async {
     if (!_form.currentState!.validate()) return;
     if (_jenisId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Jenis inventaris wajib dipilih')));
+      await AppNotifier.showError(context, 'Jenis inventaris wajib dipilih');
       return;
     }
     if (_tglMulai == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Tanggal mulai wajib dipilih')));
+      await AppNotifier.showError(context, 'Tanggal mulai wajib dipilih');
       return;
     }
     final master = context.read<MasterProvider>();
@@ -823,7 +805,7 @@ class _JadwalFormState extends State<_JadwalForm> {
                   labelText: 'Divisi Pelaksana',
                   prefixIcon: Icon(Icons.account_tree_outlined),
                 ),
-                hint: const Text('Pilih divisi teknisi'),
+                hint: const Text('Pilih divisi pelaksanan'),
                 items: allDivisi
                     .map(
                         (div) => DropdownMenuItem(value: div, child: Text(div)))

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/empty_state.dart';
 import '../models/user_model.dart';
 import '../providers/master_provider.dart';
 
@@ -67,9 +68,11 @@ class _UserScreenState extends State<UserScreen> {
               if (p.loading)
                 return const Center(child: CircularProgressIndicator());
               if (p.userList.isEmpty)
-                return const Center(
-                    child: Text('Belum ada user',
-                        style: TextStyle(color: AppColors.textSecondary)));
+                return EmptyState(
+                  message: 'Belum ada user',
+                  actionLabel: 'Tambah',
+                  onAction: () => _openForm(),
+                );
               return ListView.separated(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 80),
                 itemCount: p.userList.length,

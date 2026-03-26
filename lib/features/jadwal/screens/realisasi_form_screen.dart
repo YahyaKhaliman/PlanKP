@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/app_notifier.dart';
 import '../models/checklist_hasil_model.dart';
 import '../providers/jadwal_provider.dart';
 
@@ -65,10 +66,8 @@ class _RealisasiFormScreenState extends State<RealisasiFormScreen> {
 
       final templateError = p.error;
       if (items.isEmpty && templateError != null && templateError.isNotEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text('Gagal memuat template checklist: $templateError')),
-        );
+        await AppNotifier.showError(
+            context, 'Gagal memuat template checklist: $templateError');
       }
     } catch (_) {
       if (!mounted) return;
@@ -76,9 +75,7 @@ class _RealisasiFormScreenState extends State<RealisasiFormScreen> {
         _loadingTemplate = false;
         _checklistItems = [];
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Gagal memuat data realisasi')),
-      );
+      await AppNotifier.showError(context, 'Gagal memuat data realisasi');
     }
   }
 
@@ -91,16 +88,13 @@ class _RealisasiFormScreenState extends State<RealisasiFormScreen> {
   // Simpan realisasi + checklist terlebih dahulu, lalu buka TTD popup
   Future<void> _proceedToTtd() async {
     if (_checklistItems.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Template checklist kosong')));
+      await AppNotifier.showError(context, 'Template checklist kosong');
       return;
     }
 
     final unfinished = _checklistItems.where((item) => item.hasil == 'N/A');
     if (unfinished.isNotEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Semua item checklist wajib diisi')),
-      );
+      await AppNotifier.showError(context, 'Semua item checklist wajib diisi');
       return;
     }
 
@@ -149,12 +143,6 @@ class _RealisasiFormScreenState extends State<RealisasiFormScreen> {
         onSelesai: () {
           Navigator.pop(context); // tutup dialog
           Navigator.pop(context); // kembali ke sebelumnya
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Realisasi selesai dan TTD tersimpan'),
-              backgroundColor: AppColors.success,
-            ),
-          );
         },
         onSubmitStart: () => setState(() => _submitting = true),
         onSubmitEnd: () => setState(() => _submitting = false),
@@ -209,7 +197,6 @@ class _RealisasiFormScreenState extends State<RealisasiFormScreen> {
                   _invJenisNama.isNotEmpty ? _invJenisNama : '${_invJenisId}'),
               if (_invNama.isNotEmpty) _infoRow('Unit', _invNama),
               if ((_invNo ?? '').isNotEmpty) _infoRow('No Inventaris', _invNo!),
-              if (_invPicNama != null) _infoRow('PIC', _invPicNama ?? '-'),
               if (_invKondisiAwal != null)
                 _infoRow('Kondisi Awal', _invKondisiAwal ?? '-'),
               _infoRow('Tanggal', _fmtToday()),
@@ -650,13 +637,11 @@ class _TtdDialogState extends State<_TtdDialog> {
 
   Future<void> _submit() async {
     if (_picCtrl.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Nama PIC wajib diisi')));
+      await AppNotifier.showError(context, 'Nama PIC wajib diisi');
       return;
     }
     if (!_hasSignature) {
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Tanda tangan belum dibuat')));
+      await AppNotifier.showError(context, 'Tanda tangan belum dibuat');
       return;
     }
 

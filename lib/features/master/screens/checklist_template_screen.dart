@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/app_notifier.dart';
+import '../../../core/widgets/empty_state.dart';
 import '../models/checklist_template_model.dart';
 import '../models/jenis_model.dart';
 import '../providers/master_provider.dart';
@@ -59,26 +61,14 @@ class _ChecklistTemplateScreenState extends State<ChecklistTemplateScreen> {
   }
 
   // ── konfirmasi hapus ───────────────────────────────────────
-  void _confirmDelete(ChecklistTemplateModel item) {
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Hapus Item'),
-        content: Text('Hapus "${item.ctItem}"?'),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Batal')),
-          TextButton(
-              onPressed: () {
-                context.read<MasterProvider>().deleteChecklist(item.ctId);
-                Navigator.pop(context);
-              },
-              child: const Text('Hapus',
-                  style: TextStyle(color: AppColors.danger))),
-        ],
-      ),
+  Future<void> _confirmDelete(ChecklistTemplateModel item) async {
+    await AppNotifier.showConfirm(
+      context,
+      title: 'Hapus Item',
+      message: 'Hapus "${item.ctItem}"?',
+      onConfirm: () {
+        context.read<MasterProvider>().deleteChecklist(item.ctId);
+      },
     );
   }
 
@@ -636,8 +626,7 @@ class _BulkInputFormState extends State<_BulkInputForm> {
       if (widget.jenisLocked && widget.initialJenis != null) {
         _selectedJenis = widget.initialJenis;
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Pilih jenis inventaris dahulu')));
+        await AppNotifier.showError(context, 'Pilih jenis inventaris dahulu');
         return;
       }
     }
@@ -652,18 +641,17 @@ class _BulkInputFormState extends State<_BulkInputForm> {
       });
     }
     if (items.isEmpty) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Isi minimal 1 item')));
+      await AppNotifier.showError(context, 'Isi minimal 1 item');
       return;
     }
     final p = context.read<MasterProvider>();
     final ok = await p.bulkCreateChecklist(_selectedJenis!, items);
     if (ok && mounted) {
       Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('${items.length} item berhasil ditambahkan'),
-        backgroundColor: AppColors.success,
-      ));
+      await AppNotifier.showSuccess(
+        context,
+        '${items.length} item berhasil ditambahkan',
+      );
     }
   }
 
@@ -1019,22 +1007,11 @@ class _ChecklistTab extends StatelessWidget {
               ]),
             ),
           if (filtered.isEmpty)
-            const Expanded(
-              child: Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.checklist_outlined,
-                        size: 48, color: AppColors.textSecondary),
-                    SizedBox(height: 12),
-                    Text('Belum ada item checklist',
-                        style: TextStyle(color: AppColors.textSecondary)),
-                    SizedBox(height: 4),
-                    Text('Gunakan tombol Bulk Input untuk menambahkan',
-                        style: TextStyle(
-                            fontSize: 12, color: AppColors.textSecondary)),
-                  ],
-                ),
+            Expanded(
+              child: EmptyState(
+                message: 'Belum ada item checklist',
+                actionLabel: 'Bulk Input',
+                onAction: () => openBulkForm(filterJenis),
               ),
             ),
           if (filtered.isNotEmpty)
@@ -1168,9 +1145,7 @@ class _JenisTab extends StatelessWidget {
     return Consumer<MasterProvider>(
       builder: (_, p, __) {
         if (p.jenisMaster.isEmpty) {
-          return const Center(
-            child: Text('Belum ada master jenis'),
-          );
+          return const EmptyState(message: 'Belum ada master jenis');
         }
         return ListView.builder(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/empty_state.dart';
 import '../models/inventaris_model.dart';
 import '../models/jenis_model.dart';
 import '../providers/master_provider.dart';
@@ -102,9 +103,11 @@ class _InventarisScreenState extends State<InventarisScreen> {
                 if (p.loading)
                   return const Center(child: CircularProgressIndicator());
                 if (p.inventarisList.isEmpty)
-                  return const Center(
-                      child: Text('Belum ada data inventaris',
-                          style: TextStyle(color: AppColors.textSecondary)));
+                  return EmptyState(
+                    message: 'Belum ada data inventaris',
+                    actionLabel: 'Tambah',
+                    onAction: () => _openForm(),
+                  );
 
                 return ListView.separated(
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 80),
