@@ -310,30 +310,6 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Detail Jadwal')),
-      floatingActionButton: Consumer<JadwalProvider>(
-        builder: (_, p, __) {
-          if (p.jadwalDetail == null) return const SizedBox.shrink();
-          if (p.jadwalDetail!.jdwStatus != 'Aktif')
-            return const SizedBox.shrink();
-          final jenis = context
-              .read<MasterProvider>()
-              .jenisById(p.jadwalDetail!.jdwJenisId);
-          return FloatingActionButton.extended(
-            onPressed: () => Navigator.pushNamed(
-              context,
-              AppRoutes.realisasiForm,
-              arguments: {
-                'jadwalId': widget.jadwalId,
-                'invJenisId': p.jadwalDetail!.jdwJenisId,
-                'invJenisNama':
-                    jenis?.jenisNama ?? 'ID ${p.jadwalDetail!.jdwJenisId}',
-              },
-            ),
-            icon: const Icon(Icons.assignment_turned_in_outlined),
-            label: const Text('Kerjakan'),
-          );
-        },
-      ),
       body: Consumer<JadwalProvider>(
         builder: (_, p, __) {
           if (p.loading)
@@ -393,9 +369,17 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
                     trailing: jdw.jdwStatus == 'Aktif'
                         ? ElevatedButton(
                             onPressed: () {
-                              final invJenisId = inv['inv_jenis_id'] ??
+                              final invJenisRaw = inv['inv_jenis_id'] ??
                                   inv['inv_jenis'] ??
                                   jdw.jdwJenisId;
+                              final invJenisId = invJenisRaw is int
+                                  ? invJenisRaw
+                                  : int.tryParse('$invJenisRaw') ??
+                                      jdw.jdwJenisId;
+                              final invIdRaw = inv['inv_id'];
+                              final invId = invIdRaw is int
+                                  ? invIdRaw
+                                  : int.tryParse('$invIdRaw');
                               final jenis = context
                                   .read<MasterProvider>()
                                   .jenisById(invJenisId);
@@ -407,7 +391,7 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
                                   'invJenisId': invJenisId,
                                   'invJenisNama':
                                       jenis?.jenisNama ?? 'ID $invJenisId',
-                                  'invId': inv['inv_id'],
+                                  'invId': invId,
                                   'invNama': inv['inv_nama'],
                                   'invNo': inv['inv_no'],
                                   'invKondisi': inv['inv_kondisi'],
@@ -423,7 +407,7 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
                               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                               textStyle: const TextStyle(fontSize: 12),
                             ),
-                            child: const Text('Kerjakan'),
+                            child: const Text('Realisasi'),
                           )
                         : null,
                   ),

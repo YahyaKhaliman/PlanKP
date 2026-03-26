@@ -209,10 +209,12 @@ class JadwalProvider extends ChangeNotifier {
     try {
       final res =
           await ApiClient.get('${ApiConfig.realisasi}/template/$jenisId');
+      _setError(null);
       return (res['data'] as List)
           .map((e) => ChecklistInputModel.fromTemplate(e))
           .toList();
-    } on ApiException catch (_) {
+    } on ApiException catch (e) {
+      _setError(e.message);
       return [];
     }
   }

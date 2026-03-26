@@ -61,17 +61,44 @@ class _RealisasiFormScreenState extends State<RealisasiFormScreen> {
   Future<void> _loadTemplate() async {
     final p = context.read<JadwalProvider>();
     final master = context.read<MasterProvider>();
-    final items = await p.fetchTemplate(_invJenisId);
-    final pics = await master.fetchUsers(
-      jabatan: 'pic',
-      showLoading: false,
-      replaceState: false,
-    );
-    setState(() {
-      _checklistItems = items;
-      _loadingTemplate = false;
-      _picList = pics;
-    });
+    try {
+      final items = await p.fetchTemplate(_invJenisId);
+      final pics = await master.fetchUsers(
+        jabatan: 'pic',
+        showLoading: false,
+        replaceState: false,
+      );
+
+      if (!mounted) return;
+      setState(() {
+        _checklistItems = items;
+        _loadingTemplate = false;
+        _picList = pics;
+      });
+
+      final templateError = p.error;
+      if (items.isEmpty && templateError != null && templateError.isNotEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text('Gagal memuat template checklist: $templateError')),
+        );
+      }
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _loadingTemplate = false;
+        _checklistItems = [];
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Gagal memuat data realisasi')),
+      );
+    }
+  }
+
+  Future<void> _retryLoadTemplate() async {
+    if (_loadingTemplate) return;
+    setState(() => _loadingTemplate = true);
+    await _loadTemplate();
   }
 
   // Simpan realisasi + checklist terlebih dahulu, lalu buka TTD popup
@@ -177,6 +204,7 @@ class _RealisasiFormScreenState extends State<RealisasiFormScreen> {
   }
 
   Widget _buildForm() {
+    final templateError = context.watch<JadwalProvider>().error;
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
       children: [
@@ -216,13 +244,32 @@ class _RealisasiFormScreenState extends State<RealisasiFormScreen> {
             margin: EdgeInsets.zero,
             child: Padding(
               padding: const EdgeInsets.all(20),
-              child: Column(children: const [
-                Icon(Icons.checklist_outlined,
+              child: Column(children: [
+                const Icon(Icons.checklist_outlined,
                     size: 36, color: AppColors.textSecondary),
-                SizedBox(height: 8),
-                Text('Tidak ada template checklist untuk jenis ini',
+                const SizedBox(height: 8),
+                Text(
+                  (templateError != null && templateError.isNotEmpty)
+                      ? 'Gagal memuat template checklist'
+                      : 'Tidak ada template checklist untuk jenis ini',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: AppColors.textSecondary),
+                ),
+                if (templateError != null && templateError.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    templateError,
                     textAlign: TextAlign.center,
-                    style: TextStyle(color: AppColors.textSecondary)),
+                    style: const TextStyle(
+                        fontSize: 12, color: AppColors.textSecondary),
+                  ),
+                ],
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  onPressed: _loadingTemplate ? null : _retryLoadTemplate,
+                  icon: const Icon(Icons.refresh_outlined, size: 16),
+                  label: const Text('Muat Ulang'),
+                ),
               ]),
             ),
           ),
