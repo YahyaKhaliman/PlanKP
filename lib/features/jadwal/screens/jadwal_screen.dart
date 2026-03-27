@@ -26,23 +26,10 @@ class JadwalScreen extends StatefulWidget {
   State<JadwalScreen> createState() => _JadwalScreenState();
 }
 
-class _JadwalScreenState extends State<JadwalScreen>
-    with SingleTickerProviderStateMixin {
-  late TabController _tab;
-  static const _tabs = ['Jadwal', 'History Realisasi'];
-
+class _JadwalScreenState extends State<JadwalScreen> {
   @override
   void initState() {
     super.initState();
-    final safeInitialIndex =
-        (widget.initialIndex >= 0 && widget.initialIndex < _tabs.length)
-            ? widget.initialIndex
-            : 0;
-    _tab = TabController(
-      length: _tabs.length,
-      vsync: this,
-      initialIndex: safeInitialIndex,
-    );
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadData();
     });
@@ -57,15 +44,8 @@ class _JadwalScreenState extends State<JadwalScreen>
     } else {
       await jadwalProvider.fetchJadwalByDivisi();
     }
-    await jadwalProvider.fetchRealisasi(status: 'Selesai', byDivisi: true);
     if (!mounted) return;
     await context.read<MasterProvider>().fetchJenis();
-  }
-
-  @override
-  void dispose() {
-    _tab.dispose();
-    super.dispose();
   }
 
   void _openForm([JadwalModel? item]) {
@@ -262,14 +242,6 @@ class _JadwalScreenState extends State<JadwalScreen>
     return Scaffold(
       appBar: AppBar(
         title: const Text('Penjadwalan'),
-        bottom: TabBar(
-          controller: _tab,
-          isScrollable: true,
-          labelColor: AppColors.white,
-          unselectedLabelColor: AppColors.white.withOpacity(0.65),
-          indicatorColor: AppColors.white,
-          tabs: _tabs.map((s) => Tab(text: s)).toList(),
-        ),
       ),
       floatingActionButton: isAdmin
           ? FloatingActionButton.extended(
@@ -289,13 +261,7 @@ class _JadwalScreenState extends State<JadwalScreen>
                   (isAdmin || _hasRemainingUnitToRealisasi(j)))
               .toList();
 
-          return TabBarView(
-            controller: _tab,
-            children: [
-              _buildJadwalTab(jadwalAktif, isAdmin: isAdmin, isUser: isUser),
-              _buildHistoryTab(p.realisasiList),
-            ],
-          );
+          return _buildJadwalTab(jadwalAktif, isAdmin: isAdmin, isUser: isUser);
         },
       ),
     );
@@ -338,41 +304,6 @@ class _JadwalScreenState extends State<JadwalScreen>
               context.read<JadwalProvider>().updateStatusJadwal(item.jdwId, st),
         );
       },
-    );
-  }
-
-  Widget _buildHistoryTab(List<RealisasiModel> list) {
-    if (list.isEmpty) {
-      return const EmptyState(
-        message: 'Belum ada history realisasi',
-      );
-    }
-
-    return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
-      itemCount: list.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 8),
-      itemBuilder: (_, i) => _HistoryRealisasiCard(
-        item: list[i],
-        onDetail: () => _openHistoryDetail(list[i]),
-      ),
-    );
-  }
-
-  Future<void> _openHistoryDetail(RealisasiModel item) async {
-    final p = context.read<JadwalProvider>();
-    await p.fetchRealisasiDetail(item.realId);
-    if (!mounted) return;
-
-    final detail = p.realisasiDetail;
-    if (detail == null) {
-      await AppNotifier.showError(context, 'Detail realisasi tidak ditemukan');
-      return;
-    }
-    await RealisasiDetailSheet.show(
-      context,
-      detail: detail,
-      title: 'Detail History Realisasi',
     );
   }
 }
@@ -522,69 +453,6 @@ class _JadwalCard extends StatelessWidget {
     if (selesai == null || selesai.trim().isEmpty) return m;
     final s = DateFormatter.toDisplay(selesai);
     return '$m s/d $s';
-  }
-}
-
-class _HistoryRealisasiCard extends StatelessWidget {
-  final RealisasiModel item;
-  final VoidCallback onDetail;
-  const _HistoryRealisasiCard({required this.item, required this.onDetail});
-
-  @override
-  Widget build(BuildContext context) {
-    final judul = item.jadwal?['jdw_judul'] ?? 'Jadwal #${item.realJadwalId}';
-    final invNama = item.inventaris?['inv_nama'] ?? item.invNama;
-    final invNo = item.inventaris?['inv_no'] ?? item.invNo;
-
-    return Card(
-      margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              judul,
-              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              '$invNo · $invNama',
-              style:
-                  const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-            ),
-            const SizedBox(height: 6),
-            Row(
-              children: [
-                const Icon(
-                  Icons.check_circle_outline,
-                  size: 14,
-                  color: AppColors.success,
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  'Selesai ${DateFormatter.toDisplay(item.realTgl)}',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.success,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Align(
-              alignment: Alignment.centerRight,
-              child: OutlinedButton.icon(
-                onPressed: onDetail,
-                icon: const Icon(Icons.visibility_outlined, size: 16),
-                label: const Text('Lihat Detail'),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 }
 

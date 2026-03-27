@@ -9,6 +9,7 @@ import '../../../features/master/providers/master_provider.dart';
 import '../../jadwal/models/jadwal_model.dart';
 import '../../jadwal/providers/jadwal_provider.dart';
 import '../../jadwal/screens/jadwal_screen.dart' as jadwal_screen;
+import '../../jadwal/screens/realisasi_history_screen.dart';
 import '../../master/screens/inventaris_screen.dart';
 import '../../master/screens/checklist_template_screen.dart';
 import '../../master/screens/user_screen.dart';
@@ -377,7 +378,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   void _tabToHistory(int index) {
-    _nav(jadwal_screen.JadwalScreen(initialIndex: index));
+    if (index == 1) {
+      _nav(const RealisasiHistoryScreen());
+      return;
+    }
+    _nav(jadwal_screen.JadwalScreen(initialIndex: 0));
   }
 
   void _nav(Widget screen) {
