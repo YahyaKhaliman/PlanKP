@@ -37,7 +37,8 @@ class _LoginScreenState extends State<LoginScreen> {
     if (auth.loading) return;
     final ok = await auth.login(_usernameCtrl.text.trim(), _passCtrl.text);
     if (ok && mounted) {
-      await AppNotifier.showSuccess(context, 'Login berhasil');
+      AppNotifier.showSuccessSnack(context, 'Login Berhasil, Selamat Datang');
+      await Future.delayed(const Duration(milliseconds: 700));
       if (!mounted) return;
       Navigator.pushReplacementNamed(context, AppRoutes.dashboard);
     } else if (mounted) {

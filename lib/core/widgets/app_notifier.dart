@@ -9,6 +9,8 @@ typedef AppConfirmCallback = FutureOr<void> Function();
 class AppNotifier {
   AppNotifier._();
 
+  static const Duration _successSnackDuration = Duration(milliseconds: 1200);
+
   static Future<void> showWarning(BuildContext context, String message) async {
     if (!context.mounted) return;
     await AwesomeDialog(
@@ -49,6 +51,60 @@ class AppNotifier {
       btnOkOnPress: () {},
       headerAnimationLoop: true,
     ).show();
+  }
+
+  static void showSuccessSnack(
+    BuildContext context,
+    String message, {
+    Duration duration = _successSnackDuration,
+  }) {
+    if (!context.mounted) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.hideCurrentSnackBar();
+
+    messenger.showSnackBar(
+      SnackBar(
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 18),
+        elevation: 0,
+        backgroundColor: Colors.transparent,
+        duration: duration,
+        content: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: AppColors.primary,
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primary.withValues(alpha: 0.24),
+                blurRadius: 14,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              const Icon(
+                Icons.check_circle_rounded,
+                color: Colors.white,
+                size: 20,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  message,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   static Future<void> showConfirm(
