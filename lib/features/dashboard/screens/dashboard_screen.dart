@@ -213,34 +213,34 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final steps = [
       {
         't': '1. Jenis',
-        'd': 'Kategori Aset',
+        'd': 'Input Jenis Aset',
         'i': Icons.category,
         'c': Colors.teal,
         's': const ChecklistTemplateScreen(initialTabIndex: 1)
       },
       {
-        't': '2. Aset',
-        'd': 'Daftar Inventaris',
+        't': '2. Inventaris',
+        'd': 'Input Inventaris',
         'i': Icons.inventory,
         'c': Colors.purple,
         's': const InventarisScreen()
       },
       {
-        't': '3. Template',
-        'd': 'Poin Checklist',
+        't': '3. Checklist',
+        'd': 'Template Checklist Jenis',
         'i': Icons.checklist,
         'c': Colors.redAccent,
         's': const ChecklistTemplateScreen()
       },
       {
         't': '4. Jadwal',
-        'd': 'Atur Rutinitas',
+        'd': 'Atur Jadwal',
         'i': Icons.event_note,
         'c': Colors.orange,
         's': jadwal_screen.JadwalScreen()
       },
       {
-        't': '5. Laporan',
+        't': '5. Realisasi',
         'd': 'Cek Realisasi',
         'i': Icons.analytics,
         'c': Colors.blue,
@@ -390,7 +390,47 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   String _getRemainingDays(JadwalModel j, JadwalProvider p) {
-    // Logika hari tetap sama seperti sebelumnya
-    return "Aktif";
+    DateTime? parseDateOnly(String? value) {
+      if (value == null || value.trim().isEmpty) return null;
+      final dt = DateTime.tryParse(value);
+      if (dt == null) return null;
+      return DateTime(dt.year, dt.month, dt.day);
+    }
+
+    DateTime addByFrequency(DateTime date, String frekuensi) {
+      switch (frekuensi) {
+        case 'Harian':
+          return date.add(const Duration(days: 1));
+        case 'Mingguan':
+          return date.add(const Duration(days: 7));
+        case 'Bulanan':
+          return DateTime(date.year, date.month + 1, date.day);
+        default:
+          return date;
+      }
+    }
+
+    final startDate = parseDateOnly(j.jdwTglMulai);
+    if (startDate == null) return j.jdwStatus;
+
+    final lastDone = p.realisasiList
+        .where((r) => r.realJadwalId == j.jdwId && r.selesai)
+        .map((r) => parseDateOnly(r.realTgl))
+        .whereType<DateTime>()
+        .fold<DateTime?>(null, (prev, curr) {
+      if (prev == null || curr.isAfter(prev)) return curr;
+      return prev;
+    });
+
+    final nextDue =
+        lastDone == null ? startDate : addByFrequency(lastDone, j.jdwFrekuensi);
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final diff = nextDue.difference(today).inDays;
+
+    if (diff < 0) return 'Terlewat ${-diff} hari';
+    if (diff == 0) return 'Hari ini';
+    if (diff == 1) return 'Besok';
+    return '$diff hari lagi';
   }
 }
