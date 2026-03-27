@@ -34,15 +34,24 @@ class PlanKPApp extends StatelessWidget {
         routes: {
           AppRoutes.login: (_) => const LoginScreen(),
           AppRoutes.register: (_) => const RegisterScreen(),
-          AppRoutes.dashboard: (_) => const DashboardScreen(),
+          AppRoutes.dashboard: (_) => const _ProtectedRoute(
+                child: DashboardScreen(),
+                allowedRoles: ['admin', 'user'],
+              ),
           AppRoutes.jadwalDetail: (ctx) {
             final args = ModalRoute.of(ctx)!.settings.arguments as int;
-            return JadwalDetailScreen(jadwalId: args);
+            return _ProtectedRoute(
+              child: JadwalDetailScreen(jadwalId: args),
+              allowedRoles: const ['admin'],
+            );
           },
           AppRoutes.realisasiForm: (ctx) {
             final args =
                 ModalRoute.of(ctx)!.settings.arguments as Map<String, dynamic>;
-            return RealisasiFormScreen(args: args);
+            return _ProtectedRoute(
+              child: RealisasiFormScreen(args: args),
+              allowedRoles: const ['user'],
+            );
           },
         },
         home: const _AuthGate(),
@@ -76,6 +85,46 @@ class _AuthGateState extends State<_AuthGate> {
 
   @override
   Widget build(BuildContext context) {
+    return const Scaffold(
+      body: Center(child: CircularProgressIndicator()),
+    );
+  }
+}
+
+class _ProtectedRoute extends StatelessWidget {
+  final Widget child;
+  final List<String>? allowedRoles;
+
+  const _ProtectedRoute({
+    required this.child,
+    this.allowedRoles,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final auth = context.watch<AuthProvider>();
+
+    if (auth.isLoggedIn) {
+      final role = auth.jabatan;
+      final isRoleAllowed =
+          allowedRoles == null || allowedRoles!.contains(role);
+      if (isRoleAllowed) return child;
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!context.mounted) return;
+        Navigator.pushReplacementNamed(context, AppRoutes.dashboard);
+      });
+
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!context.mounted) return;
+      Navigator.pushReplacementNamed(context, AppRoutes.login);
+    });
+
     return const Scaffold(
       body: Center(child: CircularProgressIndicator()),
     );
