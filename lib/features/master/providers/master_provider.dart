@@ -14,6 +14,7 @@ class MasterProvider extends ChangeNotifier {
   List<DivisiModel> divisiList = [];
   List<JenisModel> jenisMaster = [];
   final Map<int, String> _jenisKategoriMap = {};
+  Set<int> _jenisWithInventarisIds = {};
 
   bool _loading = false;
   String? _error;
@@ -32,6 +33,17 @@ class MasterProvider extends ChangeNotifier {
 
   // ── INVENTARIS ─────────────────────────────────────────────────
   String? kategoriByJenisId(int jenisId) => _jenisKategoriMap[jenisId];
+  bool hasInventarisForJenis(int jenisId) =>
+      _jenisWithInventarisIds.contains(jenisId);
+
+  List<JenisModel> jenisAvailableForJadwal({int? includeJenisId}) {
+    final includeId = includeJenisId;
+    return jenisMaster.where((j) {
+      if (includeId != null && j.jenisId == includeId) return true;
+      return hasInventarisForJenis(j.jenisId);
+    }).toList();
+  }
+
   JenisModel? jenisById(int jenisId) {
     try {
       return jenisMaster.firstWhere((j) => j.jenisId == jenisId);
@@ -182,6 +194,24 @@ class MasterProvider extends ChangeNotifier {
       if (showLoading) _setLoading(false);
     }
     notifyListeners();
+  }
+
+  Future<void> fetchJenisWithInventaris({bool showLoading = false}) async {
+    if (showLoading) _setLoading(true);
+    try {
+      final res = await ApiClient.get('${ApiConfig.inventaris}/jenis');
+      final rawList = res['data'] as List;
+      _jenisWithInventarisIds = rawList
+          .map((e) => e is int ? e : int.tryParse('$e'))
+          .whereType<int>()
+          .toSet();
+      _setError(null);
+      notifyListeners();
+    } on ApiException catch (e) {
+      _setError(e.message);
+    } finally {
+      if (showLoading) _setLoading(false);
+    }
   }
 
   Future<bool> saveJenis(Map<String, dynamic> body, {int? id}) async {

@@ -26,6 +26,10 @@ class _ChecklistTemplateScreenState extends State<ChecklistTemplateScreen> {
   String? _filterJenis;
   int _tabIndex = 0; // 0 = Checklist, 1 = Master Jenis
 
+  void _showSuccess(String message) {
+    AppNotifier.showSuccessSnack(context, message);
+  }
+
   @override
   void initState() {
     super.initState();
@@ -43,7 +47,10 @@ class _ChecklistTemplateScreenState extends State<ChecklistTemplateScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => _SingleItemForm(item: item),
+      builder: (_) => _SingleItemForm(
+        item: item,
+        onSuccess: _showSuccess,
+      ),
     );
   }
 
@@ -58,6 +65,7 @@ class _ChecklistTemplateScreenState extends State<ChecklistTemplateScreen> {
         initialJenis: jenisLocked,
         jenisLocked: jenisLocked != null,
         existingItems: existing,
+        onSuccess: _showSuccess,
       ),
     );
   }
@@ -142,7 +150,12 @@ class _ChecklistTemplateScreenState extends State<ChecklistTemplateScreen> {
 // ═══════════════════════════════════════════════════════════════
 class _SingleItemForm extends StatefulWidget {
   final ChecklistTemplateModel? item;
-  const _SingleItemForm({this.item});
+  final ValueChanged<String> onSuccess;
+
+  const _SingleItemForm({
+    this.item,
+    required this.onSuccess,
+  });
   @override
   State<_SingleItemForm> createState() => _SingleItemFormState();
 }
@@ -193,13 +206,11 @@ class _SingleItemFormState extends State<_SingleItemForm> {
     };
     final ok = await p.saveChecklist(body, id: widget.item?.ctId);
     if (ok && mounted) {
-      await AppNotifier.showSuccess(
-          context,
-          isEdit
-              ? 'Item checklist berhasil diperbarui'
-              : 'Item checklist berhasil ditambahkan');
-      if (!mounted) return;
+      final message = isEdit
+          ? 'Item checklist berhasil diperbarui'
+          : 'Item checklist berhasil ditambahkan';
       Navigator.pop(context);
+      widget.onSuccess(message);
     } else if (mounted) {
       await AppNotifier.showError(
           context, p.error ?? 'Gagal menyimpan item checklist');
@@ -323,10 +334,13 @@ class _BulkInputForm extends StatefulWidget {
   final String? initialJenis;
   final bool jenisLocked;
   final List<ChecklistTemplateModel>? existingItems;
+  final ValueChanged<String> onSuccess;
+
   const _BulkInputForm({
     this.initialJenis,
     this.jenisLocked = false,
     this.existingItems,
+    required this.onSuccess,
   });
   @override
   State<_BulkInputForm> createState() => _BulkInputFormState();
@@ -401,10 +415,7 @@ class _BulkInputFormState extends State<_BulkInputForm> {
     final ok = await p.bulkCreateChecklist(_selectedJenis!, items);
     if (ok && mounted) {
       Navigator.pop(context);
-      await AppNotifier.showSuccess(
-        context,
-        '${items.length} item berhasil ditambahkan',
-      );
+      widget.onSuccess('${items.length} item berhasil ditambahkan');
     } else if (mounted) {
       await AppNotifier.showError(
           context, p.error ?? 'Gagal menambahkan item checklist');

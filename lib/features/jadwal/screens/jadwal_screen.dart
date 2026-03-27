@@ -19,7 +19,9 @@ import '../widgets/realisasi_detail_sheet.dart';
 //  JADWAL SCREEN
 // ═══════════════════════════════════════════════════════════════
 class JadwalScreen extends StatefulWidget {
-  const JadwalScreen({super.key});
+  final int initialIndex;
+
+  const JadwalScreen({super.key, this.initialIndex = 0});
   @override
   State<JadwalScreen> createState() => _JadwalScreenState();
 }
@@ -32,7 +34,15 @@ class _JadwalScreenState extends State<JadwalScreen>
   @override
   void initState() {
     super.initState();
-    _tab = TabController(length: _tabs.length, vsync: this);
+    final safeInitialIndex =
+        (widget.initialIndex >= 0 && widget.initialIndex < _tabs.length)
+            ? widget.initialIndex
+            : 0;
+    _tab = TabController(
+      length: _tabs.length,
+      vsync: this,
+      initialIndex: safeInitialIndex,
+    );
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadData();
     });
@@ -823,13 +833,25 @@ class _JadwalFormState extends State<_JadwalForm> {
     if (master.jenisMaster.isEmpty) {
       await master.fetchJenis(showLoading: false);
     }
+    await master.fetchJenisWithInventaris(showLoading: false);
     if (!mounted) return;
+
+    final availableJenis =
+        master.jenisAvailableForJadwal(includeJenisId: _jenisId);
+    if (availableJenis.isEmpty) {
+      await AppNotifier.showWarning(
+        context,
+        'Belum ada inventaris aktif. Tambahkan data inventaris dulu sebelum membuat jadwal.',
+      );
+      return;
+    }
+
     final result = await showModalBottomSheet<JenisModel>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => JenisLookupSheet(
-        items: master.jenisMaster,
+        items: availableJenis,
         initialId: _jenisId,
       ),
     );
@@ -855,14 +877,21 @@ class _JadwalFormState extends State<_JadwalForm> {
         readOnly: true,
         decoration: InputDecoration(
           labelText: 'Jenis Inventaris',
-          hintText: 'Cari...',
+          hintText: 'Cari jenis yang sudah punya inventaris...',
           prefixIcon: const Icon(Icons.label_outline),
           suffixIcon: IconButton(
             icon: const Icon(Icons.search),
             onPressed: _pickJenis,
           ),
         ),
-        validator: (_) => _jenisId == null ? 'Jenis wajib dipilih' : null,
+        validator: (_) {
+          if (_jenisId == null) return 'Jenis wajib dipilih';
+          final master = context.read<MasterProvider>();
+          if (!master.hasInventarisForJenis(_jenisId!)) {
+            return 'Jenis belum punya inventaris aktif';
+          }
+          return null;
+        },
         onTap: _pickJenis,
       ),
     );
@@ -895,11 +924,18 @@ class _JadwalFormState extends State<_JadwalForm> {
       await AppNotifier.showWarning(context, 'Jenis inventaris wajib dipilih');
       return;
     }
+    final master = context.read<MasterProvider>();
+    if (!master.hasInventarisForJenis(_jenisId!)) {
+      await AppNotifier.showWarning(
+        context,
+        'Jenis yang dipilih belum punya inventaris aktif. Tambahkan inventaris dulu.',
+      );
+      return;
+    }
     if (_tglMulai == null) {
       await AppNotifier.showWarning(context, 'Tanggal mulai wajib dipilih');
       return;
     }
-    final master = context.read<MasterProvider>();
     final p = context.read<JadwalProvider>();
     final divisi = _divisi ??
         (_jenisId != null ? master.kategoriByJenisId(_jenisId!) : null) ??

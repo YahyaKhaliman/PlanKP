@@ -14,6 +14,8 @@ class ApiConfig {
   static const String jadwal = '/master/jadwal';
   static const String realisasi = '/master/realisasi';
   static const String jenis = '/master/jenis';
+  static const String metadata = '/master/metadata';
+  static const String dashboardSummary = '/master/dashboard/summary';
 }
 
 class AppRoutes {
