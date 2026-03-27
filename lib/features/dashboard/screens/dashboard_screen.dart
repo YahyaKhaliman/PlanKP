@@ -21,7 +21,6 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   static const _pageBg = Color(0xFFF8FAFC);
-  bool _showAllUpcoming = false;
 
   @override
   void initState() {
@@ -60,6 +59,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
+  void _openJadwalDetail(int jadwalId, {bool closeSheetFirst = false}) {
+    if (closeSheetFirst) {
+      Navigator.of(context).pop();
+    }
+    Navigator.pushNamed(context, AppRoutes.jadwalDetail, arguments: jadwalId);
+  }
+
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
@@ -72,7 +78,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         onRefresh: _loadData,
         child: CustomScrollView(
           slivers: [
-            // 1. Header
+            // 1. Header Section
             SliverToBoxAdapter(
               child: Container(
                 padding: const EdgeInsets.fromLTRB(20, 60, 20, 30),
@@ -120,7 +126,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             ),
 
-            // 2. Quick Actions
+            // 2. Quick Actions Section
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.all(20),
@@ -142,47 +148,81 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             ),
 
-            // 3. System Flow (Adaptive: Grid on Desktop, Scroll on Mobile)
+            // 3. System Flow Section (Alur Persiapan)
             if (isAdmin)
               SliverToBoxAdapter(
                 child: _buildAdaptiveSystemFlow(isDesktop),
               ),
 
-            // 4. Tasks Header
+            // 4. Tasks Header Section
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(20, 10, 20, 10),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text("Tugas Mendatang",
+                    const Text("Jadwal Mendatang",
                         style: TextStyle(
                             fontSize: 16, fontWeight: FontWeight.bold)),
                     TextButton(
-                      onPressed: () =>
-                          setState(() => _showAllUpcoming = !_showAllUpcoming),
-                      child: Text(_showAllUpcoming ? 'Ringkas' : 'Lihat Semua'),
+                      onPressed: () {
+                        final p = context.read<JadwalProvider>();
+                        final sorted = [...p.jadwalList]..sort((a, b) =>
+                            _getRemainingDaysDiff(a, p)
+                                .compareTo(_getRemainingDaysDiff(b, p)));
+                        _showAllPlansBottomSheet(context, sorted, p);
+                      },
+                      child: const Text('Lihat Semua'),
                     ),
                   ],
                 ),
               ),
             ),
 
-            // 5. Tasks List
+            // 5. Plan Cards Section
             Consumer<JadwalProvider>(
               builder: (_, p, __) {
-                final list = _showAllUpcoming
-                    ? p.jadwalList
-                    : p.jadwalList.take(3).toList();
-                if (p.loading)
+                final sorted = [...p.jadwalList]..sort((a, b) =>
+                    _getRemainingDaysDiff(a, p)
+                        .compareTo(_getRemainingDaysDiff(b, p)));
+                final list = sorted.take(5).toList();
+                if (p.loading) {
                   return const SliverToBoxAdapter(
                       child: Center(child: CircularProgressIndicator()));
-                return SliverPadding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  sliver: SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                        (_, i) => _buildJadwalItem(list[i], p),
-                        childCount: list.length),
+                }
+                if (list.isEmpty) {
+                  return SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: const Text(
+                          'Belum ada jadwal untuk direncanakan.',
+                          style: TextStyle(color: Colors.grey),
+                        ),
+                      ),
+                    ),
+                  );
+                }
+                return SliverToBoxAdapter(
+                  child: SizedBox(
+                    height: 122,
+                    child: ListView.separated(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      scrollDirection: Axis.horizontal,
+                      itemCount: list.length,
+                      separatorBuilder: (_, __) => const SizedBox(width: 12),
+                      itemBuilder: (_, i) => _buildJadwalItem(
+                        list[i],
+                        p,
+                        width: 285,
+                        compact: true,
+                      ),
+                    ),
                   ),
                 );
               },
@@ -209,6 +249,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  // --- UI COMPONENTS ---
+
   Widget _buildAdaptiveSystemFlow(bool isDesktop) {
     final steps = [
       {
@@ -227,14 +269,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
       },
       {
         't': '3. Checklist',
-        'd': 'Template Checklist Jenis',
+        'd': 'Template Checklist',
         'i': Icons.checklist,
         'c': Colors.redAccent,
         's': const ChecklistTemplateScreen()
       },
       {
         't': '4. Jadwal',
-        'd': 'Atur Jadwal',
+        'd': 'Buat Jadwal',
         'i': Icons.event_note,
         'c': Colors.orange,
         's': jadwal_screen.JadwalScreen()
@@ -251,12 +293,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 20),
-          child: Text("Alur Penggunaan Sistem",
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text("Alur Penggunaan Sistem",
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              if (!isDesktop)
+                TextButton(
+                  onPressed: () => _showAllStepsBottomSheet(context, steps),
+                  child: const Text("Lihat Semua",
+                      style: TextStyle(
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.bold)),
+                ),
+            ],
+          ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 8),
         if (isDesktop)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -264,22 +319,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 5, crossAxisSpacing: 12, mainAxisExtent: 100),
+                  crossAxisCount: 5, crossAxisSpacing: 12, mainAxisExtent: 110),
               itemCount: steps.length,
-              itemBuilder: (_, i) => _buildStepCard(steps[i]),
+              itemBuilder: (_, i) =>
+                  _buildStepCard(steps[i], isFullWidth: true),
             ),
           )
         else
           SizedBox(
-            height: 110,
+            height: 115,
             child: ListView.separated(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               scrollDirection: Axis.horizontal,
               itemCount: steps.length,
-              separatorBuilder: (_, __) => const Icon(
-                  Icons.arrow_forward_ios_rounded,
-                  size: 14,
-                  color: Colors.grey),
+              separatorBuilder: (_, __) => const SizedBox(width: 12),
               itemBuilder: (_, i) => _buildStepCard(steps[i]),
             ),
           ),
@@ -287,12 +340,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildStepCard(Map<String, dynamic> step) {
+  Widget _buildStepCard(Map<String, dynamic> step, {bool isFullWidth = false}) {
     return InkWell(
       onTap: () => _nav(step['s'] as Widget),
       borderRadius: BorderRadius.circular(16),
       child: Container(
-        width: 150,
+        width: isFullWidth ? null : 140,
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: Colors.white,
@@ -300,16 +353,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
           border: Border.all(color: (step['c'] as Color).withOpacity(0.1)),
           boxShadow: [
             BoxShadow(
-                color: Colors.black.withOpacity(0.02),
+                color: Colors.black.withOpacity(0.03),
                 blurRadius: 8,
                 offset: const Offset(0, 2))
           ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(step['i'] as IconData, color: step['c'] as Color, size: 24),
+            CircleAvatar(
+              radius: 16,
+              backgroundColor: (step['c'] as Color).withOpacity(0.1),
+              child: Icon(step['i'] as IconData,
+                  color: step['c'] as Color, size: 18),
+            ),
             const Spacer(),
             Text(step['t'] as String,
                 style: const TextStyle(
@@ -320,6 +377,53 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 style: const TextStyle(fontSize: 10, color: Colors.grey),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showAllStepsBottomSheet(
+      BuildContext context, List<Map<String, dynamic>> steps) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        height: MediaQuery.of(context).size.height * 0.6,
+        decoration: const BoxDecoration(
+          color: _pageBg,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(2))),
+            ),
+            const SizedBox(height: 20),
+            const Text("Semua Langkah Persiapan",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 20),
+            Expanded(
+              child: GridView.builder(
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 12,
+                  mainAxisSpacing: 12,
+                  mainAxisExtent: 110,
+                ),
+                itemCount: steps.length,
+                itemBuilder: (_, i) =>
+                    _buildStepCard(steps[i], isFullWidth: true),
+              ),
+            ),
           ],
         ),
       ),
@@ -359,71 +463,173 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildJadwalItem(JadwalModel item, JadwalProvider p) {
+  void _showAllPlansBottomSheet(
+    BuildContext context,
+    List<JadwalModel> plans,
+    JadwalProvider p,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => Container(
+        height: MediaQuery.of(context).size.height * 0.82,
+        decoration: const BoxDecoration(
+          color: _pageBg,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          children: [
+            const SizedBox(height: 10),
+            Container(
+              width: 42,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(999),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 14, 20, 12),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Semua Rencana',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  Text(
+                    '${plans.length} jadwal',
+                    style: const TextStyle(color: Colors.grey),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: plans.isEmpty
+                  ? const Center(
+                      child: Text(
+                        'Belum ada jadwal untuk direncanakan.',
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
+                      itemCount: plans.length,
+                      itemBuilder: (_, i) => _buildJadwalItem(plans[i], p,
+                          compact: false,
+                          showDivisi: true,
+                          closeSheetOnTap: true),
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildJadwalItem(
+    JadwalModel item,
+    JadwalProvider p, {
+    double? width,
+    bool compact = false,
+    bool showDivisi = false,
+    bool closeSheetOnTap = false,
+  }) {
     final rem = _getRemainingDays(item, p);
+    final divisiColor = _colorForDivisi(item.jdwDivisi);
+    final icon = _iconForDivisi(item.jdwDivisi);
+    final remColor = rem.contains('Terlewat')
+        ? Colors.red.shade700
+        : (rem == 'Hari ini' ? Colors.orange.shade700 : Colors.green.shade700);
+
     return Container(
+      width: width,
       margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(15),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-          color: Colors.white, borderRadius: BorderRadius.circular(12)),
-      child: Row(
-        children: [
-          Icon(Icons.event_note, color: AppColors.primary.withOpacity(0.3)),
-          const SizedBox(width: 12),
-          Expanded(
-              child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                Text(item.jdwJudul,
-                    style: const TextStyle(fontWeight: FontWeight.bold)),
-                Text(item.jdwFrekuensi,
-                    style: const TextStyle(fontSize: 12, color: Colors.grey))
-              ])),
-          Text(rem,
-              style: TextStyle(
-                  color: rem.contains('Terlewat') ? Colors.red : Colors.green,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12)),
-        ],
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.black.withOpacity(0.04)),
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () =>
+            _openJadwalDetail(item.jdwId, closeSheetFirst: closeSheetOnTap),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                CircleAvatar(
+                  radius: 18,
+                  backgroundColor: divisiColor.withOpacity(0.14),
+                  child: Icon(
+                    icon,
+                    size: 18,
+                    color: divisiColor,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    item.jdwJudul,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textPrimary,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: compact ? 6 : 8),
+            if (showDivisi)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Text(
+                  item.jdwDivisi,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Colors.black54,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    item.jdwFrekuensi,
+                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  rem,
+                  style: TextStyle(
+                    color: remColor,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
 
   String _getRemainingDays(JadwalModel j, JadwalProvider p) {
-    DateTime? parseDateOnly(String? value) {
-      if (value == null || value.trim().isEmpty) return null;
-      final dt = DateTime.tryParse(value);
-      if (dt == null) return null;
-      return DateTime(dt.year, dt.month, dt.day);
-    }
-
-    DateTime addByFrequency(DateTime date, String frekuensi) {
-      switch (frekuensi) {
-        case 'Harian':
-          return date.add(const Duration(days: 1));
-        case 'Mingguan':
-          return date.add(const Duration(days: 7));
-        case 'Bulanan':
-          return DateTime(date.year, date.month + 1, date.day);
-        default:
-          return date;
-      }
-    }
-
-    final startDate = parseDateOnly(j.jdwTglMulai);
-    if (startDate == null) return j.jdwStatus;
-
-    final lastDone = p.realisasiList
-        .where((r) => r.realJadwalId == j.jdwId && r.selesai)
-        .map((r) => parseDateOnly(r.realTgl))
-        .whereType<DateTime>()
-        .fold<DateTime?>(null, (prev, curr) {
-      if (prev == null || curr.isAfter(prev)) return curr;
-      return prev;
-    });
-
-    final nextDue =
-        lastDone == null ? startDate : addByFrequency(lastDone, j.jdwFrekuensi);
+    final nextDue = _getNextDueDate(j, p);
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final diff = nextDue.difference(today).inDays;
@@ -432,5 +638,90 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (diff == 0) return 'Hari ini';
     if (diff == 1) return 'Besok';
     return '$diff hari lagi';
+  }
+
+  int _getRemainingDaysDiff(JadwalModel j, JadwalProvider p) {
+    final nextDue = _getNextDueDate(j, p);
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    return nextDue.difference(today).inDays;
+  }
+
+  DateTime? _parseDateOnly(String? value) {
+    if (value == null || value.trim().isEmpty) return null;
+    final dt = DateTime.tryParse(value);
+    if (dt == null) return null;
+    return DateTime(dt.year, dt.month, dt.day);
+  }
+
+  DateTime _addByFrequency(DateTime date, String frekuensi) {
+    switch (frekuensi) {
+      case 'Harian':
+        return date.add(const Duration(days: 1));
+      case 'Mingguan':
+        return date.add(const Duration(days: 7));
+      case 'Bulanan':
+        return DateTime(date.year, date.month + 1, date.day);
+      default:
+        return date;
+    }
+  }
+
+  DateTime _getNextDueDate(JadwalModel j, JadwalProvider p) {
+    final startDate = _parseDateOnly(j.jdwTglMulai);
+    if (startDate == null) return DateTime.now();
+
+    final lastDone = p.realisasiList
+        .where((r) => r.realJadwalId == j.jdwId && r.selesai)
+        .map((r) => _parseDateOnly(r.realTgl))
+        .whereType<DateTime>()
+        .fold<DateTime?>(null, (prev, curr) {
+      if (prev == null || curr.isAfter(prev)) return curr;
+      return prev;
+    });
+
+    return lastDone == null
+        ? startDate
+        : _addByFrequency(lastDone, j.jdwFrekuensi);
+  }
+
+  IconData _iconForDivisi(String? divisiRaw) {
+    final divisi = (divisiRaw ?? '').toLowerCase();
+    if (divisi.contains('it support') || divisi == 'it') {
+      return Icons.support_agent_rounded;
+    }
+    if (divisi.contains('jahit')) {
+      return Icons.content_cut_rounded;
+    }
+    if (divisi.contains('umum')) {
+      return Icons.build_circle_outlined;
+    }
+    if (divisi.contains('satpam') || divisi.contains('security')) {
+      return Icons.shield_outlined;
+    }
+    if (divisi.contains('kebersihan') || divisi.contains('clean')) {
+      return Icons.cleaning_services_outlined;
+    }
+    return Icons.event_note;
+  }
+
+  Color _colorForDivisi(String? divisiRaw) {
+    final divisi = (divisiRaw ?? '').toLowerCase();
+    if (divisi.contains('it support') || divisi == 'it') {
+      return Colors.indigo;
+    }
+    if (divisi.contains('jahit')) {
+      return Colors.pink.shade700;
+    }
+    if (divisi.contains('umum')) {
+      return Colors.orange.shade700;
+    }
+    if (divisi.contains('satpam') || divisi.contains('security')) {
+      return Colors.blueGrey.shade700;
+    }
+    if (divisi.contains('kebersihan') || divisi.contains('clean')) {
+      return Colors.teal.shade700;
+    }
+    return AppColors.primary;
   }
 }
