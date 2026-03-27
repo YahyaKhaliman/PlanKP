@@ -306,18 +306,28 @@ class _JadwalScreenState extends State<JadwalScreen>
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
       itemCount: list.length,
       separatorBuilder: (_, __) => const SizedBox(height: 8),
-      itemBuilder: (_, i) => _JadwalCard(
-        jadwal: list[i],
-        onTap: () => _handleJadwalTap(
-          list[i],
+      itemBuilder: (_, i) {
+        final item = list[i];
+        final jenisNama = context
+                .read<MasterProvider>()
+                .jenisById(item.jdwJenisId)
+                ?.jenisNama ??
+            'ID ${item.jdwJenisId}';
+        return _JadwalCard(
+          jadwal: item,
+          jenisNama: jenisNama,
           isAdmin: isAdmin,
           isUser: isUser,
-        ),
-        onEdit: () => _openForm(list[i]),
-        onStatusChange: (st) => context
-            .read<JadwalProvider>()
-            .updateStatusJadwal(list[i].jdwId, st),
-      ),
+          onTap: () => _handleJadwalTap(
+            item,
+            isAdmin: isAdmin,
+            isUser: isUser,
+          ),
+          onEdit: () => _openForm(item),
+          onStatusChange: (st) =>
+              context.read<JadwalProvider>().updateStatusJadwal(item.jdwId, st),
+        );
+      },
     );
   }
 
@@ -360,11 +370,17 @@ class _JadwalScreenState extends State<JadwalScreen>
 // ── Card ────────────────────────────────────────────────────
 class _JadwalCard extends StatelessWidget {
   final JadwalModel jadwal;
+  final String jenisNama;
+  final bool isAdmin;
+  final bool isUser;
   final VoidCallback onTap;
   final VoidCallback onEdit;
   final void Function(String) onStatusChange;
   const _JadwalCard({
     required this.jadwal,
+    required this.jenisNama,
+    required this.isAdmin,
+    required this.isUser,
     required this.onTap,
     required this.onEdit,
     required this.onStatusChange,
@@ -420,7 +436,7 @@ class _JadwalCard extends StatelessWidget {
 
             // baris 2: jenis + frekuensi
             Wrap(spacing: 6, runSpacing: 4, children: [
-              _chip('Jenis ${jadwal.jdwJenisId}', Icons.label_outline),
+              _chip(jenisNama, Icons.label_outline),
               _chip(jadwal.jdwFrekuensi, Icons.repeat_outlined),
             ]),
             const SizedBox(height: 6),
@@ -438,10 +454,16 @@ class _JadwalCard extends StatelessWidget {
 
             // baris 4: actions
             Row(children: [
-              // Edit
-              _actionBtn(
-                  Icons.edit_outlined, 'Edit', AppColors.textSecondary, onEdit),
-              const SizedBox(width: 8),
+              if (isAdmin)
+                _actionBtn(Icons.edit_outlined, 'Edit', AppColors.textSecondary,
+                    onEdit),
+              if (isUser)
+                _actionBtn(
+                  Icons.playlist_add_check_circle_outlined,
+                  'Realisasi',
+                  AppColors.primary,
+                  onTap,
+                ),
             ]),
           ]),
         ),
@@ -610,6 +632,11 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
           if (p.jadwalDetail == null) return const SizedBox.shrink();
 
           final jdw = p.jadwalDetail!;
+          final jenisNama = context
+                  .read<MasterProvider>()
+                  .jenisById(jdw.jdwJenisId)
+                  ?.jenisNama ??
+              'ID ${jdw.jdwJenisId}';
           final selesaiInvIds = p.realisasiList
               .where((r) => r.realStatus == 'Selesai')
               .map((r) => r.realInvId)
@@ -627,7 +654,7 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
                           style: const TextStyle(
                               fontSize: 18, fontWeight: FontWeight.w700)),
                       const SizedBox(height: 12),
-                      _row('Jenis Inventaris', 'ID ${jdw.jdwJenisId}'),
+                      _row('Jenis Inventaris', jenisNama),
                       _row('Frekuensi', jdw.jdwFrekuensi),
                       _row('Tanggal Mulai',
                           DateFormatter.toDisplay(jdw.jdwTglMulai)),
