@@ -705,6 +705,16 @@ class _ChecklistTab extends StatelessWidget {
     return Consumer<MasterProvider>(
       builder: (_, p, __) {
         final jenisMaster = p.jenisMaster;
+        final jenisNameById = {
+          for (final j in jenisMaster) j.jenisId: j.jenisNama,
+        };
+        final selectedJenisNama = filterJenis == null
+            ? null
+            : jenisMaster
+                .where((j) => '${j.jenisId}' == filterJenis)
+                .map((j) => j.jenisNama)
+                .cast<String?>()
+                .firstWhere((_) => true, orElse: () => null);
         final filtered = filterJenis == null
             ? p.checklistList
             : p.checklistList
@@ -754,7 +764,7 @@ class _ChecklistTab extends StatelessWidget {
                 if (filterJenis != null) ...[
                   const Text(' · ',
                       style: TextStyle(color: AppColors.textSecondary)),
-                  Text(filterJenis!,
+                  Text(selectedJenisNama ?? 'Jenis tidak dikenal',
                       style: const TextStyle(
                           fontSize: 12,
                           color: AppColors.primary,
@@ -774,7 +784,7 @@ class _ChecklistTab extends StatelessWidget {
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 120),
-                children: _buildGroupedCards(filtered),
+                children: _buildGroupedCards(filtered, jenisNameById),
               ),
             ),
         ]);
@@ -782,7 +792,10 @@ class _ChecklistTab extends StatelessWidget {
     );
   }
 
-  List<Widget> _buildGroupedCards(List<ChecklistTemplateModel> filtered) {
+  List<Widget> _buildGroupedCards(
+    List<ChecklistTemplateModel> filtered,
+    Map<int, String> jenisNameById,
+  ) {
     final Map<int, List<ChecklistTemplateModel>> grouped = {};
     for (final item in filtered) {
       grouped.putIfAbsent(item.ctJenisId, () => []).add(item);
@@ -791,7 +804,9 @@ class _ChecklistTab extends StatelessWidget {
       final jenisId = entry.key;
       final list = entry.value
         ..sort((a, b) => a.ctUrutan.compareTo(b.ctUrutan));
-      final jenisLabel = list.first.ctJenisNama ?? 'Jenis ID $jenisId';
+      final jenisLabel = list.first.ctJenisNama ??
+          jenisNameById[jenisId] ??
+          'Jenis tidak dikenal';
       return Card(
         margin: const EdgeInsets.only(bottom: 12),
         child: ExpansionTile(
