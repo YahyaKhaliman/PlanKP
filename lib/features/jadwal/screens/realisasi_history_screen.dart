@@ -22,6 +22,7 @@ class RealisasiHistoryScreen extends StatefulWidget {
 
 class _RealisasiHistoryScreenState extends State<RealisasiHistoryScreen> {
   DateTime _selectedMonth = DateTime(DateTime.now().year, DateTime.now().month);
+  int? _selectedDay;
 
   @override
   void initState() {
@@ -46,12 +47,20 @@ class _RealisasiHistoryScreenState extends State<RealisasiHistoryScreen> {
   void _previousMonth() {
     setState(() {
       _selectedMonth = DateTime(_selectedMonth.year, _selectedMonth.month - 1);
+      _selectedDay = null;
     });
   }
 
   void _nextMonth() {
     setState(() {
       _selectedMonth = DateTime(_selectedMonth.year, _selectedMonth.month + 1);
+      _selectedDay = null;
+    });
+  }
+
+  void _toggleDayFilter(int day) {
+    setState(() {
+      _selectedDay = _selectedDay == day ? null : day;
     });
   }
 
@@ -75,6 +84,16 @@ class _RealisasiHistoryScreenState extends State<RealisasiHistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDesktop = AppBreakpoints.isDesktop(context);
+    final isTablet = AppBreakpoints.isTablet(context);
+    final horizontalPadding = isDesktop
+        ? 24.0
+        : isTablet
+            ? 20.0
+            : 16.0;
+    final maxContentWidth = isDesktop ? 1180.0 : 860.0;
+    final historyCrossAxisCount = isDesktop ? 2 : 1;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('History Realisasi'),
@@ -91,83 +110,145 @@ class _RealisasiHistoryScreenState extends State<RealisasiHistoryScreen> {
               p.realisasiList,
               _selectedMonth,
             );
+            final visibleRealisasi = _filterRealisasiBySelectedDay(
+              monthRealisasi,
+              _selectedDay,
+            );
             final metrics = _buildMonthlyMetrics(
               jadwalList: p.jadwalList,
               realisasiList: monthRealisasi,
               month: _selectedMonth,
             );
 
-            return CustomScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              slivers: [
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
-                    child: _MonthSwitcher(
-                      monthLabel: _monthLabel(_selectedMonth),
-                      onPrevious: _previousMonth,
-                      onNext: _nextMonth,
-                    ),
-                  ),
-                ),
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
-                    child: _SummaryCard(
-                      monthLabel: _monthLabel(_selectedMonth),
-                      metrics: metrics,
-                    ),
-                  ),
-                ),
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          'Realisasi Bulan Ini',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 15,
-                          ),
+            return Center(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: maxContentWidth),
+                child: CustomScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  slivers: [
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: EdgeInsets.fromLTRB(
+                            horizontalPadding, 16, horizontalPadding, 6),
+                        child: _MonthSwitcher(
+                          monthLabel: _monthLabel(_selectedMonth),
+                          onPrevious: _previousMonth,
+                          onNext: _nextMonth,
                         ),
-                        Text(
-                          '${monthRealisasi.length} item',
-                          style: const TextStyle(
-                            color: AppColors.textSecondary,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                if (monthRealisasi.isEmpty)
-                  const SliverFillRemaining(
-                    hasScrollBody: false,
-                    child: EmptyState(
-                      message: 'Belum ada realisasi selesai pada bulan ini',
-                    ),
-                  )
-                else
-                  SliverList.separated(
-                    itemCount: monthRealisasi.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 8),
-                    itemBuilder: (_, i) => Padding(
-                      padding: EdgeInsets.fromLTRB(
-                        16,
-                        i == 0 ? 4 : 0,
-                        16,
-                        i == monthRealisasi.length - 1 ? 120 : 0,
-                      ),
-                      child: _HistoryRealisasiCard(
-                        item: monthRealisasi[i],
-                        onDetail: () => _openHistoryDetail(monthRealisasi[i]),
                       ),
                     ),
-                  ),
-              ],
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: EdgeInsets.fromLTRB(
+                            horizontalPadding, 10, horizontalPadding, 10),
+                        child: _SummaryCard(
+                          monthLabel: _monthLabel(_selectedMonth),
+                          metrics: metrics,
+                        ),
+                      ),
+                    ),
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: EdgeInsets.fromLTRB(
+                            horizontalPadding, 4, horizontalPadding, 10),
+                        child: _MonthlyDatePreview(
+                          month: _selectedMonth,
+                          realisasiList: monthRealisasi,
+                          selectedDay: _selectedDay,
+                          onDayTap: _toggleDayFilter,
+                        ),
+                      ),
+                    ),
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: EdgeInsets.fromLTRB(
+                            horizontalPadding, 8, horizontalPadding, 8),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  _selectedDay == null
+                                      ? 'Realisasi Bulan Ini'
+                                      : 'Realisasi Tanggal ${_selectedDay.toString().padLeft(2, '0')}/${_selectedMonth.month.toString().padLeft(2, '0')}/${_selectedMonth.year}',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 15,
+                                  ),
+                                ),
+                                Text(
+                                  '${visibleRealisasi.length} item',
+                                  style: const TextStyle(
+                                    color: AppColors.textSecondary,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            if (_selectedDay != null) ...[
+                              const SizedBox(height: 8),
+                              OutlinedButton.icon(
+                                onPressed: () =>
+                                    setState(() => _selectedDay = null),
+                                icon: const Icon(Icons.filter_alt_off_outlined,
+                                    size: 16),
+                                label: const Text('Tampilkan Semua Tanggal'),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ),
+                    if (visibleRealisasi.isEmpty)
+                      const SliverFillRemaining(
+                        hasScrollBody: false,
+                        child: EmptyState(
+                          message: 'Belum ada realisasi tanggal ini',
+                        ),
+                      )
+                    else if (historyCrossAxisCount == 1)
+                      SliverList.separated(
+                        itemCount: visibleRealisasi.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 8),
+                        itemBuilder: (_, i) => Padding(
+                          padding: EdgeInsets.fromLTRB(
+                            horizontalPadding,
+                            i == 0 ? 4 : 0,
+                            horizontalPadding,
+                            i == visibleRealisasi.length - 1 ? 120 : 0,
+                          ),
+                          child: _HistoryRealisasiCard(
+                            item: visibleRealisasi[i],
+                            onDetail: () =>
+                                _openHistoryDetail(visibleRealisasi[i]),
+                          ),
+                        ),
+                      )
+                    else
+                      SliverPadding(
+                        padding: EdgeInsets.fromLTRB(
+                            horizontalPadding, 4, horizontalPadding, 120),
+                        sliver: SliverGrid.builder(
+                          gridDelegate:
+                              const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            mainAxisSpacing: 10,
+                            crossAxisSpacing: 10,
+                            childAspectRatio: 1.7,
+                          ),
+                          itemCount: visibleRealisasi.length,
+                          itemBuilder: (_, i) => _HistoryRealisasiCard(
+                            item: visibleRealisasi[i],
+                            onDetail: () =>
+                                _openHistoryDetail(visibleRealisasi[i]),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
             );
           },
         ),
@@ -192,6 +273,17 @@ class _RealisasiHistoryScreenState extends State<RealisasiHistoryScreen> {
     });
 
     return filtered;
+  }
+
+  List<RealisasiModel> _filterRealisasiBySelectedDay(
+    List<RealisasiModel> list,
+    int? day,
+  ) {
+    if (day == null) return list;
+    return list.where((item) {
+      final tgl = DateTime.tryParse(item.realTgl);
+      return tgl != null && tgl.day == day;
+    }).toList();
   }
 
   _MonthlyHistoryMetrics _buildMonthlyMetrics({
@@ -364,64 +456,86 @@ class _SummaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final completionRate = metrics.completionRate;
-    return Card(
-      margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Ringkasan $monthLabel',
-              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
-            ),
-            const SizedBox(height: 4),
-            const Text(
-              'Perbandingan target kemunculan jadwal vs realisasi selesai',
-              style: TextStyle(
-                fontSize: 12,
-                color: AppColors.textSecondary,
-              ),
-            ),
-            const SizedBox(height: 16),
-            Row(
+    return LayoutBuilder(
+      builder: (_, constraints) {
+        final compact = constraints.maxWidth < 640;
+        return Card(
+          margin: EdgeInsets.zero,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _DonutChart(
-                  progress: completionRate,
-                  doneColor: AppColors.success,
-                  remainingColor: const Color(0xFFE2E8F0),
-                  size: 132,
+                Text(
+                  'Ringkasan $monthLabel',
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w700, fontSize: 16),
                 ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _metricLine(
-                        label: 'Target Jadwal',
-                        value: '${metrics.targetCount}',
-                        color: AppColors.primary,
-                      ),
-                      const SizedBox(height: 8),
-                      _metricLine(
-                        label: 'Realisasi Selesai',
-                        value: '${metrics.doneCount}',
-                        color: AppColors.success,
-                      ),
-                      const SizedBox(height: 8),
-                      _metricLine(
-                        label: 'Capaian',
-                        value: '${(completionRate * 100).toStringAsFixed(1)}%',
-                        color: AppColors.warning,
-                      ),
-                    ],
+                const SizedBox(height: 4),
+                const Text(
+                  'Perbandingan target kemunculan jadwal vs realisasi selesai',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
                   ),
                 ),
+                const SizedBox(height: 16),
+                if (compact)
+                  Column(
+                    children: [
+                      _DonutChart(
+                        progress: completionRate,
+                        doneColor: AppColors.success,
+                        remainingColor: const Color(0xFFE2E8F0),
+                        size: 132,
+                      ),
+                      const SizedBox(height: 14),
+                      _metricsColumn(completionRate),
+                    ],
+                  )
+                else
+                  Row(
+                    children: [
+                      _DonutChart(
+                        progress: completionRate,
+                        doneColor: AppColors.success,
+                        remainingColor: const Color(0xFFE2E8F0),
+                        size: 132,
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(child: _metricsColumn(completionRate)),
+                    ],
+                  ),
               ],
             ),
-          ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _metricsColumn(double completionRate) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _metricLine(
+          label: 'Target Jadwal',
+          value: '${metrics.targetCount}',
+          color: AppColors.primary,
         ),
-      ),
+        const SizedBox(height: 8),
+        _metricLine(
+          label: 'Realisasi Selesai',
+          value: '${metrics.doneCount}',
+          color: AppColors.success,
+        ),
+        const SizedBox(height: 8),
+        _metricLine(
+          label: 'Capaian',
+          value: '${(completionRate * 100).toStringAsFixed(1)}%',
+          color: AppColors.warning,
+        ),
+      ],
     );
   }
 
@@ -450,6 +564,211 @@ class _SummaryCard extends StatelessWidget {
           style: const TextStyle(fontWeight: FontWeight.w700),
         ),
       ],
+    );
+  }
+}
+
+class _MonthlyDatePreview extends StatelessWidget {
+  final DateTime month;
+  final List<RealisasiModel> realisasiList;
+  final int? selectedDay;
+  final ValueChanged<int> onDayTap;
+
+  const _MonthlyDatePreview({
+    required this.month,
+    required this.realisasiList,
+    required this.selectedDay,
+    required this.onDayTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final firstDay = DateTime(month.year, month.month, 1);
+    final totalDays = DateTime(month.year, month.month + 1, 0).day;
+    final leadingEmpty = firstDay.weekday - 1; // Senin = 1
+    final realizedCountByDay = _realizedCountByDay(realisasiList);
+
+    final cells = <Widget>[];
+    for (int i = 0; i < leadingEmpty; i++) {
+      cells.add(const SizedBox.shrink());
+    }
+
+    for (int day = 1; day <= totalDays; day++) {
+      final count = realizedCountByDay[day] ?? 0;
+      final hasRealisasi = count > 0;
+      final isToday = _isToday(day, month);
+      final isSunday =
+          DateTime(month.year, month.month, day).weekday == DateTime.sunday;
+      cells.add(_dayCell(
+        day: day,
+        hasRealisasi: hasRealisasi,
+        count: count,
+        isToday: isToday,
+        isSunday: isSunday,
+        isSelected: selectedDay == day,
+        onTap: () => onDayTap(day),
+      ));
+    }
+
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 12, 12, 14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Preview Tanggal Bulan Ini',
+              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+            ),
+            const SizedBox(height: 4),
+            Row(
+              children: const [
+                Icon(Icons.circle, color: AppColors.success, size: 10),
+                SizedBox(width: 6),
+                Text(
+                  'Tanggal dengan realisasi',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            LayoutBuilder(
+              builder: (_, constraints) {
+                final ratio = constraints.maxWidth < 430
+                    ? 0.92
+                    : constraints.maxWidth > 980
+                        ? 1.25
+                        : 1.05;
+                return GridView.count(
+                  physics: const NeverScrollableScrollPhysics(),
+                  shrinkWrap: true,
+                  crossAxisCount: 7,
+                  crossAxisSpacing: 6,
+                  mainAxisSpacing: 6,
+                  childAspectRatio: ratio,
+                  children: [
+                    ..._weekdayHeaders(),
+                    ...cells,
+                  ],
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Map<int, int> _realizedCountByDay(List<RealisasiModel> list) {
+    final map = <int, int>{};
+    for (final item in list) {
+      final date = DateTime.tryParse(item.realTgl);
+      if (date == null) continue;
+      map.update(date.day, (old) => old + 1, ifAbsent: () => 1);
+    }
+    return map;
+  }
+
+  bool _isToday(int day, DateTime month) {
+    final now = DateTime.now();
+    return now.year == month.year && now.month == month.month && now.day == day;
+  }
+
+  List<Widget> _weekdayHeaders() {
+    const names = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
+    return names
+        .map(
+          (name) => Center(
+            child: Text(
+              name,
+              style: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ),
+        )
+        .toList();
+  }
+
+  Widget _dayCell({
+    required int day,
+    required bool hasRealisasi,
+    required int count,
+    required bool isToday,
+    required bool isSunday,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    final bg = isSunday
+        ? const Color(0xFFFEE2E2)
+        : hasRealisasi
+            ? AppColors.success.withOpacity(0.14)
+            : Colors.white;
+    final fg = isSunday
+        ? AppColors.danger
+        : hasRealisasi
+            ? AppColors.success
+            : AppColors.textPrimary;
+    final borderColor = isSelected
+        ? AppColors.primary
+        : isToday
+            ? AppColors.primary
+            : AppColors.border;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(10),
+        onTap: onTap,
+        child: Container(
+          decoration: BoxDecoration(
+            color: bg,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: borderColor, width: isSelected ? 1.8 : 1),
+          ),
+          child: Stack(
+            children: [
+              Center(
+                child: Text(
+                  '$day',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: fg,
+                  ),
+                ),
+              ),
+              if (count > 1)
+                Positioned(
+                  right: 3,
+                  top: 3,
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                    decoration: BoxDecoration(
+                      color: isSunday ? AppColors.danger : AppColors.success,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      '$count',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 9,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
