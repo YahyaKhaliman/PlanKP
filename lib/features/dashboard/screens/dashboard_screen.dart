@@ -11,6 +11,8 @@ import '../../jadwal/screens/jadwal_screen.dart' as jadwal_screen;
 import '../../jadwal/screens/realisasi_history_screen.dart';
 import '../../master/screens/inventaris_screen.dart';
 import '../../master/screens/checklist_template_screen.dart';
+import '../../master/screens/jenis_screen.dart';
+import '../../master/screens/user_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -258,7 +260,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         'd': 'Input Jenis Aset',
         'i': Icons.category,
         'c': Colors.teal,
-        's': const ChecklistTemplateScreen(initialTabIndex: 1)
+        's': const JenisScreen()
       },
       {
         't': '2. Inventaris',
@@ -287,6 +289,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
         'i': Icons.analytics,
         'c': Colors.blue,
         's': const RealisasiHistoryScreen()
+      },
+      {
+        't': '6. Kelola User',
+        'd': 'Atur Akun User',
+        'i': Icons.people_outline,
+        'c': Colors.green,
+        's': const UserScreen()
       },
     ];
 
@@ -342,7 +351,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 5, crossAxisSpacing: 12, mainAxisExtent: 110),
+                  crossAxisCount: 3,
+                  crossAxisSpacing: 12,
+                  mainAxisSpacing: 12,
+                  mainAxisExtent: 110),
               itemCount: steps.length,
               itemBuilder: (_, i) =>
                   _buildStepCard(steps[i], isFullWidth: true),
