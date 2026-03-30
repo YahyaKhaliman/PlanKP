@@ -298,8 +298,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text("Alur Penggunaan Sistem",
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              Row(
+                children: [
+                  const Text("Alur Penggunaan Sistem",
+                      style:
+                          TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  const SizedBox(width: 6),
+                  InkWell(
+                    onTap: () => _showSystemFlowInfoDialog(context),
+                    borderRadius: BorderRadius.circular(999),
+                    child: Container(
+                      width: 20,
+                      height: 20,
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withOpacity(0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.info_outline,
+                        size: 14,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
               if (!isDesktop)
                 TextButton(
                   onPressed: () => _showAllStepsBottomSheet(context, steps),
@@ -337,6 +360,81 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           ),
       ],
+    );
+  }
+
+  void _showSystemFlowInfoDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        titlePadding: const EdgeInsets.fromLTRB(20, 18, 20, 8),
+        contentPadding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
+        title: const Text(
+          'Panduan Cepat',
+          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Alur penggunaan sistem:',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 6,
+              runSpacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                _flowChip('Input jenis', Colors.teal),
+                const Icon(Icons.arrow_forward_rounded,
+                    size: 14, color: AppColors.textSecondary),
+                _flowChip('Input inventaris', Colors.purple),
+                const Icon(Icons.arrow_forward_rounded,
+                    size: 14, color: AppColors.textSecondary),
+                _flowChip('Input checklist', Colors.redAccent),
+                const Icon(Icons.arrow_forward_rounded,
+                    size: 14, color: AppColors.textSecondary),
+                _flowChip('Input jadwal', Colors.orange),
+                const Icon(Icons.arrow_forward_rounded,
+                    size: 14, color: AppColors.textSecondary),
+                _flowChip('Lihat realisasi', Colors.blue),
+              ],
+            ),
+          ],
+        ),
+        actionsPadding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Mengerti'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _flowChip(String text, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          color: color,
+        ),
+      ),
     );
   }
 

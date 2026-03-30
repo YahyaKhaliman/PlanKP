@@ -15,6 +15,8 @@ import '../models/realisasi_model.dart';
 import '../providers/jadwal_provider.dart';
 import '../widgets/realisasi_detail_sheet.dart';
 
+const _kPageBg = Color(0xFFF8FAFC);
+
 // ═══════════════════════════════════════════════════════════════
 //  JADWAL SCREEN
 // ═══════════════════════════════════════════════════════════════
@@ -27,6 +29,8 @@ class JadwalScreen extends StatefulWidget {
 }
 
 class _JadwalScreenState extends State<JadwalScreen> {
+  String? _selectedFrekuensi;
+
   @override
   void initState() {
     super.initState();
@@ -123,7 +127,7 @@ class _JadwalScreenState extends State<JadwalScreen> {
       backgroundColor: Colors.transparent,
       builder: (_) => Container(
         decoration: const BoxDecoration(
-          color: AppColors.bgGray,
+          color: _kPageBg,
           borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
         ),
         child: SafeArea(
@@ -234,12 +238,188 @@ class _JadwalScreenState extends State<JadwalScreen> {
     return selesai < total;
   }
 
+  Widget _buildSummaryTable(List<JadwalModel> aktifList) {
+    const freqs = ['Harian', 'Mingguan', 'Bulanan'];
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.black.withOpacity(0.06)),
+        boxShadow: [
+          BoxShadow(
+              color: Colors.black.withOpacity(0.025),
+              blurRadius: 6,
+              offset: const Offset(0, 2)),
+        ],
+      ),
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            child: Row(children: [
+              const Expanded(
+                  flex: 3,
+                  child: Text('Frekuensi',
+                      style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textSecondary))),
+              const Expanded(
+                  flex: 2,
+                  child: Text('Target',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textSecondary))),
+              const Expanded(
+                  flex: 2,
+                  child: Text('Realisasi',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textSecondary))),
+              const Expanded(
+                  flex: 2,
+                  child: Text('%',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textSecondary))),
+              const SizedBox(width: 20),
+            ]),
+          ),
+          const Divider(height: 1),
+          ...List.generate(freqs.length, (i) {
+            final f = freqs[i];
+            final items = aktifList.where((j) => j.jdwFrekuensi == f).toList();
+            final targetCount =
+                items.fold<int>(0, (sum, j) => sum + (j.jdwTotalUnit ?? 0));
+            final realisasiCount =
+                items.fold<int>(0, (sum, j) => sum + (j.jdwSelesaiUnit ?? 0));
+            final pct = targetCount > 0
+                ? (realisasiCount / targetCount * 100).round()
+                : 0;
+            final isSelected = _selectedFrekuensi == f;
+            final isLast = i == freqs.length - 1;
+            return Column(
+              children: [
+                InkWell(
+                  onTap: () => setState(() {
+                    _selectedFrekuensi = isSelected ? null : f;
+                  }),
+                  borderRadius: isLast
+                      ? const BorderRadius.vertical(bottom: Radius.circular(12))
+                      : BorderRadius.zero,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 160),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 11),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? AppColors.primary.withOpacity(0.07)
+                          : Colors.transparent,
+                      borderRadius: isLast
+                          ? const BorderRadius.vertical(
+                              bottom: Radius.circular(12))
+                          : BorderRadius.zero,
+                    ),
+                    child: Row(children: [
+                      Expanded(
+                        flex: 3,
+                        child: Row(children: [
+                          Container(
+                            width: 8,
+                            height: 8,
+                            margin: const EdgeInsets.only(right: 8),
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? AppColors.primary
+                                  : AppColors.textSecondary.withOpacity(0.35),
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          Text(f,
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: isSelected
+                                    ? FontWeight.w700
+                                    : FontWeight.w500,
+                                color: isSelected
+                                    ? AppColors.primary
+                                    : AppColors.textPrimary,
+                              )),
+                        ]),
+                      ),
+                      Expanded(
+                        flex: 2,
+                        child: Text('$targetCount',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: isSelected
+                                    ? AppColors.primary
+                                    : AppColors.textPrimary)),
+                      ),
+                      Expanded(
+                        flex: 2,
+                        child: Text('$realisasiCount',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: isSelected
+                                    ? AppColors.primary
+                                    : AppColors.textPrimary)),
+                      ),
+                      Expanded(
+                        flex: 2,
+                        child: Text('$pct%',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: pct >= 100
+                                    ? AppColors.success
+                                    : (isSelected
+                                        ? AppColors.primary
+                                        : AppColors.textPrimary))),
+                      ),
+                      SizedBox(
+                        width: 20,
+                        child: Icon(
+                          isSelected
+                              ? Icons.keyboard_arrow_up
+                              : Icons.keyboard_arrow_down,
+                          size: 16,
+                          color: isSelected
+                              ? AppColors.primary
+                              : AppColors.textSecondary,
+                        ),
+                      ),
+                    ]),
+                  ),
+                ),
+                if (!isLast) const Divider(height: 1),
+              ],
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
     final isAdmin = auth.user?['user_jabatan'] == 'admin';
     final isUser = auth.user?['user_jabatan'] == 'user';
     return Scaffold(
+      backgroundColor: _kPageBg,
       appBar: AppBar(
         title: const Text('Penjadwalan'),
       ),
@@ -261,7 +441,20 @@ class _JadwalScreenState extends State<JadwalScreen> {
                   (isAdmin || _hasRemainingUnitToRealisasi(j)))
               .toList();
 
-          return _buildJadwalTab(jadwalAktif, isAdmin: isAdmin, isUser: isUser);
+          final filtered = _selectedFrekuensi != null
+              ? jadwalAktif
+                  .where((j) => j.jdwFrekuensi == _selectedFrekuensi)
+                  .toList()
+              : jadwalAktif;
+          return Column(
+            children: [
+              _buildSummaryTable(jadwalAktif),
+              Expanded(
+                child:
+                    _buildJadwalTab(filtered, isAdmin: isAdmin, isUser: isUser),
+              ),
+            ],
+          );
         },
       ),
     );
@@ -273,8 +466,10 @@ class _JadwalScreenState extends State<JadwalScreen> {
     required bool isUser,
   }) {
     if (list.isEmpty) {
-      return const EmptyState(
-        message: 'Belum ada jadwal yang perlu direalisasi',
+      return EmptyState(
+        message: _selectedFrekuensi != null
+            ? 'Tidak ada jadwal $_selectedFrekuensi yang aktif'
+            : 'Belum ada jadwal yang perlu direalisasi',
       );
     }
 
@@ -335,31 +530,68 @@ class _JadwalCard extends StatelessWidget {
     'Aktif': Color(0xFFDCFCE7),
     // 'Nonaktif': Color(0xFFFEE2E2),
   };
-  static const _frekuensiIcon = {
-    'Harian': Icons.today_outlined,
-    'Mingguan': Icons.date_range_outlined,
-    'Bulanan': Icons.calendar_month_outlined,
-  };
+  static IconData _iconForDivisi(String? divisiRaw) {
+    final divisi = (divisiRaw ?? '').toLowerCase();
+    if (divisi.contains('it support') || divisi == 'it')
+      return Icons.support_agent_rounded;
+    if (divisi.contains('jahit')) return Icons.content_cut_rounded;
+    if (divisi.contains('umum')) return Icons.build_circle_outlined;
+    if (divisi.contains('satpam') || divisi.contains('security'))
+      return Icons.shield_outlined;
+    if (divisi.contains('kebersihan') || divisi.contains('clean'))
+      return Icons.cleaning_services_outlined;
+    return Icons.event_note;
+  }
+
+  static Color _colorForDivisi(String? divisiRaw) {
+    final divisi = (divisiRaw ?? '').toLowerCase();
+    if (divisi.contains('it support') || divisi == 'it') return Colors.indigo;
+    if (divisi.contains('jahit')) return Colors.pink.shade700;
+    if (divisi.contains('umum')) return Colors.orange.shade700;
+    if (divisi.contains('satpam') || divisi.contains('security'))
+      return Colors.blueGrey.shade700;
+    if (divisi.contains('kebersihan') || divisi.contains('clean'))
+      return Colors.teal.shade700;
+    return AppColors.primary;
+  }
 
   @override
   Widget build(BuildContext context) {
     final sc = _statusColor[jadwal.jdwStatus] ?? AppColors.textSecondary;
     final sb = _statusBg[jadwal.jdwStatus] ?? AppColors.bgGray;
 
-    return Card(
-      margin: EdgeInsets.zero,
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.black.withOpacity(0.04)),
+        boxShadow: [
+          BoxShadow(
+              color: Colors.black.withOpacity(0.03),
+              blurRadius: 8,
+              offset: const Offset(0, 2)),
+        ],
+      ),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         child: Padding(
           padding: const EdgeInsets.all(14),
           child:
               Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             // baris 1: judul + status badge
             Row(children: [
-              Icon(_frekuensiIcon[jadwal.jdwFrekuensi] ?? Icons.event_outlined,
-                  size: 18, color: AppColors.primary),
-              const SizedBox(width: 8),
+              CircleAvatar(
+                radius: 16,
+                backgroundColor:
+                    _colorForDivisi(jadwal.jdwDivisi).withOpacity(0.14),
+                child: Icon(
+                  _iconForDivisi(jadwal.jdwDivisi),
+                  size: 16,
+                  color: _colorForDivisi(jadwal.jdwDivisi),
+                ),
+              ),
+              const SizedBox(width: 10),
               Expanded(
                   child: Text(jadwal.jdwJudul,
                       style: const TextStyle(
@@ -502,6 +734,7 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: _kPageBg,
       appBar: AppBar(title: const Text('Detail Jadwal')),
       body: Consumer<JadwalProvider>(
         builder: (_, p, __) {
@@ -858,7 +1091,7 @@ class _JadwalFormState extends State<_JadwalForm> {
       minChildSize: 0.5,
       builder: (_, ctrl) => Container(
         decoration: const BoxDecoration(
-          color: AppColors.bgGray,
+          color: _kPageBg,
           borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         ),
         child: Form(
