@@ -296,12 +296,16 @@ class _RealisasiHistoryScreenState extends State<RealisasiHistoryScreen> {
 
     int targetCount = 0;
     for (final jadwal in jadwalList) {
-      if (jadwal.jdwStatus != 'Aktif') continue;
-      targetCount += _countScheduleAppearancesInMonth(
+      if (jadwal.jdwStatus != 'Draft') continue;
+      final appearances = _countScheduleAppearancesInMonth(
         jadwal,
         monthStart,
         monthEnd,
       );
+      final perScheduleTarget = (jadwal.jdwTarget ?? 0) > 0
+          ? (jadwal.jdwTarget ?? 0)
+          : ((jadwal.jdwTotalUnit ?? 0) > 0 ? (jadwal.jdwTotalUnit ?? 0) : 0);
+      targetCount += appearances * perScheduleTarget;
     }
 
     final doneCount = realisasiList.length;
@@ -515,6 +519,7 @@ class _SummaryCard extends StatelessWidget {
   }
 
   Widget _metricsColumn(double completionRate) {
+    final completionPercent = completionRate * 100;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -532,7 +537,7 @@ class _SummaryCard extends StatelessWidget {
         const SizedBox(height: 8),
         _metricLine(
           label: 'Capaian',
-          value: '${(completionRate * 100).toStringAsFixed(1)}%',
+          value: '${completionPercent.toStringAsFixed(1)}%',
           color: AppColors.warning,
         ),
       ],
@@ -788,7 +793,8 @@ class _DonutChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final clamped = progress.clamp(0.0, 1.0);
+    final chartProgress = progress.clamp(0.0, 1.0);
+    final labelPercent = (progress < 0 ? 0 : progress * 100);
     return SizedBox(
       width: size,
       height: size,
@@ -798,7 +804,7 @@ class _DonutChart extends StatelessWidget {
           CustomPaint(
             size: Size.square(size),
             painter: _DonutPainter(
-              progress: clamped,
+              progress: chartProgress,
               doneColor: doneColor,
               remainingColor: remainingColor,
             ),
@@ -807,7 +813,7 @@ class _DonutChart extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                '${(clamped * 100).toStringAsFixed(0)}%',
+                '${labelPercent.toStringAsFixed(0)}%',
                 style:
                     const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
               ),
@@ -945,7 +951,7 @@ class _MonthlyHistoryMetrics {
   });
 
   double get completionRate {
-    if (targetCount <= 0) return doneCount > 0 ? 1 : 0;
-    return (doneCount / targetCount).clamp(0, 1);
+    if (targetCount <= 0) return 0;
+    return doneCount / targetCount;
   }
 }

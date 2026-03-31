@@ -13,6 +13,7 @@ class JadwalModel {
   final int? jdwAssignedTo;
   final String? jdwPabrikKode;
   final String jdwStatus;
+  final int? jdwTarget;
   final int? jdwTotalUnit;
   final int? jdwSelesaiUnit;
   final String? jdwNotes;
@@ -34,6 +35,7 @@ class JadwalModel {
     this.jdwAssignedTo,
     this.jdwPabrikKode,
     required this.jdwStatus,
+    this.jdwTarget,
     this.jdwTotalUnit,
     this.jdwSelesaiUnit,
     this.jdwNotes,
@@ -55,7 +57,10 @@ class JadwalModel {
         jdwTahun: j['jdw_tahun'] ?? DateTime.now().year,
         jdwAssignedTo: j['jdw_assigned_to'],
         jdwPabrikKode: j['jdw_pabrik_kode']?.toString(),
-        jdwStatus: j['jdw_status'] ?? 'Aktif',
+        jdwStatus: j['jdw_status'] ?? 'Draft',
+        jdwTarget: j['jdw_target'] is int
+            ? j['jdw_target']
+            : int.tryParse('${j['jdw_target'] ?? ''}'),
         jdwTotalUnit: j['jdw_total_unit'] is int
             ? j['jdw_total_unit']
             : int.tryParse('${j['jdw_total_unit'] ?? ''}'),

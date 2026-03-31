@@ -79,9 +79,9 @@ class _JadwalScreenState extends State<JadwalScreen> {
       return;
     }
 
-    if (jadwal.jdwStatus != 'Aktif') {
+    if (jadwal.jdwStatus != 'Draft') {
       await AppNotifier.showError(
-          context, 'Jadwal belum aktif untuk direalisasi');
+          context, 'Jadwal harus dalam status Draft untuk direalisasi');
       return;
     }
 
@@ -93,13 +93,13 @@ class _JadwalScreenState extends State<JadwalScreen> {
         .map((e) => Map<String, dynamic>.from(e as Map))
         .toList();
 
-    await p.fetchRealisasi(jadwalId: jadwal.jdwId, status: 'Selesai');
+    await p.fetchRealisasi(jadwalId: jadwal.jdwId);
     if (!mounted) return;
-    final selesaiInvIds = p.realisasiList.map((r) => r.realInvId).toSet();
+    final terpakaiInvIds = p.realisasiList.map((r) => r.realInvId).toSet();
     final belumSelesaiList = inventarisList.where((inv) {
       final invIdRaw = inv['inv_id'];
       final invId = invIdRaw is int ? invIdRaw : int.tryParse('$invIdRaw');
-      return invId == null || !selesaiInvIds.contains(invId);
+      return invId == null || !terpakaiInvIds.contains(invId);
     }).toList();
 
     if (inventarisList.isEmpty) {
@@ -121,13 +121,13 @@ class _JadwalScreenState extends State<JadwalScreen> {
       return;
     }
 
-    _showInventarisPicker(jadwal, inventarisList, selesaiInvIds);
+    _showInventarisPicker(jadwal, inventarisList, terpakaiInvIds);
   }
 
   void _showInventarisPicker(
     JadwalModel jadwal,
     List<Map<String, dynamic>> inventarisList,
-    Set<int> selesaiInvIds,
+    Set<int> terpakaiInvIds,
   ) {
     showModalBottomSheet(
       context: context,
@@ -174,7 +174,7 @@ class _JadwalScreenState extends State<JadwalScreen> {
                           ? invIdRaw
                           : int.tryParse('$invIdRaw');
                       final sudahDirealisasi =
-                          invId != null && selesaiInvIds.contains(invId);
+                          invId != null && terpakaiInvIds.contains(invId);
                       return Card(
                         margin: EdgeInsets.zero,
                         child: ListTile(
@@ -182,7 +182,7 @@ class _JadwalScreenState extends State<JadwalScreen> {
                               color: AppColors.primary),
                           title: Text(inv['inv_nama'] ?? '-'),
                           subtitle: Text(
-                              '${inv['inv_no'] ?? '-'} · ${inv['inv_pabrik_kode'] ?? '-'}${sudahDirealisasi ? '\nSudah direalisasi' : '\nBelum direalisasi'}'),
+                              '${inv['inv_no'] ?? '-'} · ${inv['inv_pabrik_kode'] ?? '-'}${sudahDirealisasi ? '\nSudah dipilih di jadwal ini' : '\nBelum dipilih'}'),
                           trailing: sudahDirealisasi
                               ? const Icon(Icons.check_circle,
                                   color: AppColors.success)
@@ -303,8 +303,8 @@ class _JadwalScreenState extends State<JadwalScreen> {
           ...List.generate(freqs.length, (i) {
             final f = freqs[i];
             final items = aktifList.where((j) => j.jdwFrekuensi == f).toList();
-            final targetCount =
-                items.fold<int>(0, (sum, j) => sum + (j.jdwTotalUnit ?? 0));
+            final targetCount = items.fold<int>(
+                0, (sum, j) => sum + (j.jdwTarget ?? j.jdwTotalUnit ?? 0));
             final realisasiCount =
                 items.fold<int>(0, (sum, j) => sum + (j.jdwSelesaiUnit ?? 0));
             final pct = targetCount > 0
@@ -448,7 +448,7 @@ class _JadwalScreenState extends State<JadwalScreen> {
 
           final jadwalAktif = p.jadwalList
               .where((j) =>
-                  j.jdwStatus == 'Aktif' &&
+                  j.jdwStatus == 'Draft' &&
                   (isAdmin || _hasRemainingUnitToRealisasi(j)))
               .toList();
 
@@ -534,12 +534,12 @@ class _JadwalCard extends StatelessWidget {
   });
 
   static const _statusColor = {
-    'Aktif': Color(0xFF16A34A),
-    // 'Nonaktif': Color(0xFFDC2626),
+    'Draft': Color(0xFF2563EB),
+    'Selesai': Color(0xFF16A34A),
   };
   static const _statusBg = {
-    'Aktif': Color(0xFFDCFCE7),
-    // 'Nonaktif': Color(0xFFFEE2E2),
+    'Draft': Color(0xFFDEBFFC),
+    'Selesai': Color(0xFFDCFCE7),
   };
   static IconData _iconForDivisi(String? divisiRaw) {
     final divisi = (divisiRaw ?? '').toLowerCase();
@@ -883,6 +883,7 @@ class _JadwalForm extends StatefulWidget {
 class _JadwalFormState extends State<_JadwalForm> {
   final _form = GlobalKey<FormState>();
   final _judulCtrl = TextEditingController();
+  final _targetCtrl = TextEditingController();
   final _notesCtrl = TextEditingController();
   final TextEditingController _jenisCtrl = TextEditingController();
   int? _jenisId;
@@ -892,6 +893,9 @@ class _JadwalFormState extends State<_JadwalForm> {
   String _frekuensi = 'Harian';
   DateTime? _tglMulai;
   DateTime? _tglSelesai;
+  int? _maxTargetUnit;
+  bool _loadingTargetLimit = false;
+  String? _targetLimitError;
 
   static const _frekuensiList = ['Harian', 'Mingguan', 'Bulanan'];
 
@@ -901,6 +905,7 @@ class _JadwalFormState extends State<_JadwalForm> {
     final d = widget.item;
     if (d != null) {
       _judulCtrl.text = d.jdwJudul;
+      _targetCtrl.text = '${d.jdwTarget ?? 1}';
       _notesCtrl.text = d.jdwNotes ?? '';
       _jenisId = d.jdwJenisId;
       _divisi = d.jdwDivisi;
@@ -913,15 +918,22 @@ class _JadwalFormState extends State<_JadwalForm> {
       final jenis = context.read<MasterProvider>().jenisById(d.jdwJenisId);
       _jenisCtrl.text = jenis?.jenisNama ?? 'ID ${d.jdwJenisId}';
     } else {
+      _targetCtrl.text = '1';
       // Untuk create, set divisi dari auth user
       final auth = context.read<AuthProvider>();
       _divisi = auth.user?['user_divisi'] ?? '';
     }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _jenisId == null) return;
+      _syncTargetLimitForJenis(_jenisId!);
+    });
   }
 
   @override
   void dispose() {
     _judulCtrl.dispose();
+    _targetCtrl.dispose();
     _notesCtrl.dispose();
     _jenisCtrl.dispose();
     super.dispose();
@@ -931,6 +943,65 @@ class _JadwalFormState extends State<_JadwalForm> {
 
   String _fmtDateDisplay(DateTime? d) =>
       DateFormatter.toDisplayFromDate(d, fallback: '');
+
+  int get _currentTargetValue => int.tryParse(_targetCtrl.text.trim()) ?? 1;
+
+  void _setTargetValue(int value) {
+    _targetCtrl.text = '$value';
+    _targetCtrl.selection = TextSelection.fromPosition(
+      TextPosition(offset: _targetCtrl.text.length),
+    );
+  }
+
+  Future<void> _syncTargetLimitForJenis(int jenisId) async {
+    setState(() => _loadingTargetLimit = true);
+    final master = context.read<MasterProvider>();
+    await master.fetchInventaris(
+      jenis: '$jenisId',
+      showLoading: false,
+      updateKategoriMap: false,
+    );
+    if (!mounted) return;
+
+    final maxTarget = master.inventarisList.length;
+    setState(() {
+      _maxTargetUnit = maxTarget;
+      _loadingTargetLimit = false;
+      _targetLimitError = null;
+    });
+
+    if (maxTarget < 1) {
+      _setTargetValue(1);
+      return;
+    }
+
+    final current = _currentTargetValue;
+    if (current > maxTarget) {
+      _setTargetValue(maxTarget);
+    } else if (current < 1) {
+      _setTargetValue(1);
+    }
+  }
+
+  void _adjustTarget(int delta) {
+    final max = _maxTargetUnit;
+    if (max == null || max < 1) return;
+    final current = _currentTargetValue;
+    if (delta > 0 && current >= max) {
+      setState(() {
+        _targetLimitError = 'Inventaris ${_jenisCtrl.text} hanya $max unit';
+      });
+      return;
+    }
+
+    final next = (current + delta).clamp(1, max);
+    _setTargetValue(next);
+    if (_targetLimitError != null) {
+      setState(() {
+        _targetLimitError = null;
+      });
+    }
+  }
 
   Future<void> _pickDate(bool isMulai) async {
     final picked = await showDatePicker(
@@ -985,6 +1056,7 @@ class _JadwalFormState extends State<_JadwalForm> {
         _jenisCtrl.text = result.jenisNama;
         // Divisi sudah otomatis dari auth user, tidak perlu diubah
       });
+      await _syncTargetLimitForJenis(result.jenisId);
     }
   }
 
@@ -1042,10 +1114,23 @@ class _JadwalFormState extends State<_JadwalForm> {
       await AppNotifier.showWarning(context, 'Pelaksana wajib dipilih');
       return;
     }
+    final parsedTarget = int.tryParse(_targetCtrl.text.trim());
+    if (parsedTarget == null || parsedTarget < 1) {
+      await AppNotifier.showWarning(context, 'Target wajib angka minimal 1');
+      return;
+    }
+    if (_maxTargetUnit != null && parsedTarget > _maxTargetUnit!) {
+      await AppNotifier.showWarning(
+        context,
+        'Target tidak boleh melebihi total inventaris jenis ($_maxTargetUnit unit)',
+      );
+      return;
+    }
     final p = context.read<JadwalProvider>();
     final body = {
       'jdw_judul': _judulCtrl.text.trim(),
       'jdw_jenis_id': _jenisId!,
+      'jdw_target': parsedTarget,
       'jdw_divisi': _divisi,
       'jdw_pabrik_kode': _pabrikKode,
       'jdw_assigned_to': _assignedToUserId,
@@ -1179,6 +1264,58 @@ class _JadwalFormState extends State<_JadwalForm> {
                     .map((f) => DropdownMenuItem(value: f, child: Text(f)))
                     .toList(),
                 onChanged: (v) => setState(() => _frekuensi = v!),
+              ),
+              const SizedBox(height: 14),
+              TextFormField(
+                controller: _targetCtrl,
+                keyboardType: TextInputType.number,
+                onChanged: (_) {
+                  if (_targetLimitError != null) {
+                    setState(() {
+                      _targetLimitError = null;
+                    });
+                  }
+                },
+                decoration: InputDecoration(
+                  labelText: 'Target Unit per Jadwal',
+                  prefixIcon: const Icon(Icons.flag_outlined),
+                  hintText: 'Contoh: 6',
+                  errorText: _targetLimitError,
+                  suffixIcon: SizedBox(
+                    width: 40,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        InkWell(
+                          onTap: (_loadingTargetLimit || _maxTargetUnit == null)
+                              ? null
+                              : () => setState(() => _adjustTarget(1)),
+                          child: const Padding(
+                            padding: EdgeInsets.only(top: 2),
+                            child: Icon(Icons.keyboard_arrow_up, size: 20),
+                          ),
+                        ),
+                        InkWell(
+                          onTap: (_loadingTargetLimit || _maxTargetUnit == null)
+                              ? null
+                              : () => setState(() => _adjustTarget(-1)),
+                          child: const Padding(
+                            padding: EdgeInsets.only(bottom: 2),
+                            child: Icon(Icons.keyboard_arrow_down, size: 20),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                validator: (v) {
+                  final n = int.tryParse((v ?? '').trim());
+                  if (n == null || n < 1) return 'Target wajib angka minimal 1';
+                  if (_maxTargetUnit != null && n > _maxTargetUnit!) {
+                    return 'Target maksimal $_maxTargetUnit unit';
+                  }
+                  return null;
+                },
               ),
               const SizedBox(height: 14),
               InkWell(

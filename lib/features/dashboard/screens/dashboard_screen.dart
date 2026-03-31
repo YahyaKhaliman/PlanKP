@@ -81,10 +81,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
       return;
     }
 
-    if (jadwal.jdwStatus != 'Aktif') {
+    if (jadwal.jdwStatus != 'Draft') {
       await AppNotifier.showError(
         context,
-        'Jadwal belum aktif untuk direalisasi',
+        'Jadwal harus dalam status Draft untuk direalisasi',
       );
       return;
     }
@@ -103,8 +103,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         .toList();
 
     // Fetch realisasi for this specific jadwal WITHOUT overwriting realisasiList
-    final jadwalRealisasi =
-        await provider.fetchRealisasiByJadwal(jadwal.jdwId, status: 'Selesai');
+    final jadwalRealisasi = await provider.fetchRealisasiByJadwal(jadwal.jdwId);
     if (!mounted) {
       return;
     }
@@ -197,7 +196,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               color: AppColors.primary),
                           title: Text(inv['inv_nama'] ?? '-'),
                           subtitle: Text(
-                            '${inv['inv_no'] ?? '-'} · ${inv['inv_lokasi'] ?? '-'}${sudahDirealisasi ? '\nSudah direalisasi' : '\nBelum direalisasi'}',
+                            '${inv['inv_no'] ?? '-'} · ${inv['inv_lokasi'] ?? '-'}${sudahDirealisasi ? '\nSudah dipilih di jadwal ini' : '\nBelum dipilih'}',
                           ),
                           trailing: sudahDirealisasi
                               ? const Icon(Icons.check_circle,
