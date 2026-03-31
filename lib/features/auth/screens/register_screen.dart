@@ -20,11 +20,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _nikCtrl = TextEditingController();
   final _divisiCtrl = TextEditingController();
   final _divisiOptions = const [
-    'Teknisi Jahit',
-    'Teknisi Umum',
-    'IT Support',
-    'Satpam',
-    'Kebersihan',
+    'GA',
+    'IT',
+    'Driver',
   ];
   final _cabangCtrl = TextEditingController();
   static const _defaultJabatan = 'user';

@@ -220,7 +220,7 @@ class _RealisasiFormScreenState extends State<RealisasiFormScreen> {
                       color: AppColors.textSecondary)),
               const SizedBox(height: 10),
               _infoRow('Jenis',
-                  _invJenisNama.isNotEmpty ? _invJenisNama : '${_invJenisId}'),
+                  _invJenisNama.isNotEmpty ? _invJenisNama : '$_invJenisId'),
               if (_invNama.isNotEmpty) _infoRow('Unit', _invNama),
               if ((_invNo ?? '').isNotEmpty) _infoRow('No Inventaris', _invNo!),
               if (_invKondisiAwal != null)
@@ -304,7 +304,7 @@ class _RealisasiFormScreenState extends State<RealisasiFormScreen> {
                 decoration: BoxDecoration(
                   color: selected
                       ? _kondisiColor(k)
-                      : _kondisiColor(k).withOpacity(0.08),
+                      : _kondisiColor(k).withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(
                       color: selected ? _kondisiColor(k) : Colors.transparent),
@@ -414,7 +414,7 @@ class _ChecklistItemCardState extends State<_ChecklistItemCard> {
               width: 26,
               height: 26,
               decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.1),
+                color: AppColors.primary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(6),
               ),
               child: Center(
@@ -461,7 +461,7 @@ class _ChecklistItemCardState extends State<_ChecklistItemCard> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(vertical: 8),
                   decoration: BoxDecoration(
-                    color: sel ? color : color.withOpacity(0.08),
+                    color: sel ? color : color.withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: sel ? color : Colors.transparent),
                   ),
@@ -510,7 +510,7 @@ class _ChecklistItemCardState extends State<_ChecklistItemCard> {
                     decoration: BoxDecoration(
                       color: sel
                           ? AppColors.warning
-                          : AppColors.warning.withOpacity(0.1),
+                          : AppColors.warning.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(6),
                       border: Border.all(
                           color: sel ? AppColors.warning : Colors.transparent),
@@ -625,8 +625,9 @@ class _TtdDialogState extends State<_TtdDialog> {
         if (!started) {
           path.moveTo(pt.dx, pt.dy);
           started = true;
-        } else
+        } else {
           path.lineTo(pt.dx, pt.dy);
+        }
       }
       canvas.drawPath(path, paint);
     }
@@ -823,8 +824,9 @@ class _SignaturePainter extends CustomPainter {
       if (!started) {
         path.moveTo(pt.dx, pt.dy);
         started = true;
-      } else
+      } else {
         path.lineTo(pt.dx, pt.dy);
+      }
     }
     canvas.drawPath(path, _paint);
   }
@@ -839,7 +841,9 @@ class _SignaturePainter extends CustomPainter {
         ..color = AppColors.border
         ..strokeWidth = 0.8,
     );
-    for (final s in strokes) _drawStroke(canvas, s);
+    for (final s in strokes) {
+      _drawStroke(canvas, s);
+    }
     _drawStroke(canvas, currentStroke);
   }
 

@@ -50,20 +50,14 @@ class InMemorySecureStorage implements SecureStorage {
 }
 
 class SecureStorageService {
-  static SecureStorage _delegate = const FlutterSecureStorageAdapter();
+  static SecureStorage instance = const FlutterSecureStorageAdapter();
 
-  static SecureStorage get instance => _delegate;
-
-  static set instance(SecureStorage storage) {
-    _delegate = storage;
-  }
-
-  static Future<String?> read(String key) => _delegate.read(key);
+  static Future<String?> read(String key) => instance.read(key);
 
   static Future<void> write(String key, String value) =>
-      _delegate.write(key, value);
+      instance.write(key, value);
 
-  static Future<void> delete(String key) => _delegate.delete(key);
+  static Future<void> delete(String key) => instance.delete(key);
 
-  static Future<void> deleteAll() => _delegate.deleteAll();
+  static Future<void> deleteAll() => instance.deleteAll();
 }

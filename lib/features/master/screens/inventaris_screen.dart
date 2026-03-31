@@ -34,7 +34,7 @@ class _InventarisScreenState extends State<InventarisScreen> {
   Future<void> _openForm([InventarisModel? item]) async {
     final provider = context.read<MasterProvider>();
     await provider.fetchJenis(showLoading: false);
-    await provider.fetchUsers(jabatan: 'user', showLoading: false);
+    await provider.fetchPabrik();
     if (!mounted) return;
     showModalBottomSheet(
       context: context,
@@ -108,6 +108,9 @@ class _InventarisScreenState extends State<InventarisScreen> {
                       final item = p.inventarisList[i];
                       return _InventarisCard(
                         item: item,
+                        kategoriLabel: p.kategoriByJenisId(item.invJenisId) ??
+                            item.invKategori,
+                        pabrikLabel: p.displayPabrik(item.invPabrikKode),
                         onEdit: () => _openForm(item),
                         onToggle: () => p.toggleInventarisAktif(item.invId),
                       );
@@ -125,10 +128,14 @@ class _InventarisScreenState extends State<InventarisScreen> {
 
 class _InventarisCard extends StatelessWidget {
   final InventarisModel item;
+  final String kategoriLabel;
+  final String pabrikLabel;
   final VoidCallback onEdit;
   final VoidCallback onToggle;
   const _InventarisCard({
     required this.item,
+    required this.kategoriLabel,
+    required this.pabrikLabel,
     required this.onEdit,
     required this.onToggle,
   });
@@ -165,8 +172,11 @@ class _InventarisCard extends StatelessWidget {
               color: AppColors.primary.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(_kategoriIcon(item.invKategori),
-                color: AppColors.primary, size: 22),
+            child: Icon(
+              _kategoriIcon(kategoriLabel),
+              color: AppColors.primary,
+              size: 22,
+            ),
           ),
           const SizedBox(width: 12),
 
@@ -202,13 +212,13 @@ class _InventarisCard extends StatelessWidget {
               Text('${item.invNo} · ID Jenis ${item.invJenisId}',
                   style: const TextStyle(
                       fontSize: 12, color: AppColors.textSecondary)),
-              if (item.invLokasi != null) ...[
+              if (item.invPabrikKode != null) ...[
                 const SizedBox(height: 2),
                 Row(children: [
                   const Icon(Icons.location_on_outlined,
                       size: 12, color: AppColors.textSecondary),
                   const SizedBox(width: 2),
-                  Text(item.invLokasi!,
+                  Text(pabrikLabel,
                       style: const TextStyle(
                           fontSize: 11, color: AppColors.textSecondary)),
                 ]),
@@ -238,13 +248,13 @@ class _InventarisCard extends StatelessWidget {
   }
 
   IconData _kategoriIcon(String k) {
-    switch (k) {
-      case 'Mesin':
-        return Icons.precision_manufacturing_outlined;
-      case 'Hardware':
+    switch (k.toUpperCase()) {
+      case 'IT':
         return Icons.computer_outlined;
-      case 'APAR':
-        return Icons.fire_extinguisher_outlined;
+      case 'DRIVER':
+        return Icons.local_shipping_outlined;
+      case 'GA':
+        return Icons.precision_manufacturing_outlined;
       default:
         return Icons.inventory_2_outlined;
     }
@@ -266,7 +276,7 @@ class _InventarisFormState extends State<_InventarisForm> {
   final _jenisCtrl = TextEditingController();
   final _kategoriCtrl = TextEditingController();
   int? _jenisId;
-  final _lokasiCtrl = TextEditingController();
+  String? _pabrikKode;
   final _merkCtrl = TextEditingController();
   final _snCtrl = TextEditingController();
   final _picCtrl = TextEditingController();
@@ -286,7 +296,7 @@ class _InventarisFormState extends State<_InventarisForm> {
       _jenisId = d.invJenisId;
       final jenis = context.read<MasterProvider>().jenisById(d.invJenisId);
       _jenisCtrl.text = jenis?.jenisNama ?? 'ID ${d.invJenisId}';
-      _lokasiCtrl.text = d.invLokasi ?? '';
+      _pabrikKode = d.invPabrikKode;
       _merkCtrl.text = d.invMerk ?? '';
       _snCtrl.text = d.invSerialNumber ?? '';
       _picCtrl.text = d.invPic ?? '';
@@ -307,7 +317,6 @@ class _InventarisFormState extends State<_InventarisForm> {
     _namaCtrl.dispose();
     _jenisCtrl.dispose();
     _kategoriCtrl.dispose();
-    _lokasiCtrl.dispose();
     _merkCtrl.dispose();
     _snCtrl.dispose();
     _picCtrl.dispose();
@@ -330,10 +339,8 @@ class _InventarisFormState extends State<_InventarisForm> {
     final body = {
       'inv_no': _noCtrl.text.trim(),
       'inv_nama': _namaCtrl.text.trim(),
-      'inv_kategori': _kategori,
       'inv_jenis_id': _jenisId,
-      'inv_lokasi':
-          _lokasiCtrl.text.trim().isEmpty ? null : _lokasiCtrl.text.trim(),
+      'inv_pabrik_kode': _pabrikKode,
       'inv_merk': _merkCtrl.text.trim().isEmpty ? null : _merkCtrl.text.trim(),
       'inv_serial_number':
           _snCtrl.text.trim().isEmpty ? null : _snCtrl.text.trim(),
@@ -360,6 +367,7 @@ class _InventarisFormState extends State<_InventarisForm> {
   @override
   Widget build(BuildContext context) {
     final isEdit = widget.item != null;
+    final master = context.watch<MasterProvider>();
     return DraggableScrollableSheet(
       initialChildSize: 0.92,
       maxChildSize: 0.95,
@@ -404,7 +412,25 @@ class _InventarisFormState extends State<_InventarisForm> {
                 const SizedBox(height: 14),
 
                 _jenisPickerField(),
-                _field(_lokasiCtrl, 'Lokasi', Icons.location_on_outlined),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 14),
+                  child: DropdownButtonFormField<String>(
+                    initialValue: _pabrikKode,
+                    decoration: const InputDecoration(
+                      labelText: 'Lokasi / Pabrik',
+                      prefixIcon: Icon(Icons.location_on_outlined),
+                    ),
+                    items: master.pabrikList
+                        .map(
+                          (pabrik) => DropdownMenuItem(
+                            value: pabrik.pabKode,
+                            child: Text(pabrik.displayLabel),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (value) => setState(() => _pabrikKode = value),
+                  ),
+                ),
                 _field(_merkCtrl, 'Merk', Icons.branding_watermark_outlined),
                 _field(_snCtrl, 'Serial Number', Icons.qr_code_outlined),
                 _field(_picCtrl, 'PIC', Icons.person_outline,

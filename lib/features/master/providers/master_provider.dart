@@ -5,6 +5,7 @@ import '../models/checklist_template_model.dart';
 import '../models/divisi_model.dart';
 import '../models/inventaris_model.dart';
 import '../models/jenis_model.dart';
+import '../models/pabrik_model.dart';
 import '../models/user_model.dart';
 
 class MasterProvider extends ChangeNotifier {
@@ -13,6 +14,7 @@ class MasterProvider extends ChangeNotifier {
   List<UserModel> userList = [];
   List<DivisiModel> divisiList = [];
   List<JenisModel> jenisMaster = [];
+  List<PabrikModel> pabrikList = [];
   final Map<int, String> _jenisKategoriMap = {};
   Set<int> _jenisWithInventarisIds = {};
 
@@ -50,6 +52,21 @@ class MasterProvider extends ChangeNotifier {
     } catch (_) {
       return null;
     }
+  }
+
+  PabrikModel? pabrikByKode(String? kode) {
+    if (kode == null || kode.isEmpty) return null;
+    try {
+      return pabrikList.firstWhere((p) => p.pabKode == kode);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  String displayPabrik(String? kode) {
+    final pabrik = pabrikByKode(kode);
+    if (pabrik == null) return kode ?? '-';
+    return pabrik.displayLabel;
   }
 
   Future<void> fetchInventaris(
@@ -111,7 +128,7 @@ class MasterProvider extends ChangeNotifier {
           invNama: current.invNama,
           invKategori: current.invKategori,
           invJenisId: current.invJenisId,
-          invLokasi: current.invLokasi,
+          invPabrikKode: current.invPabrikKode,
           invMerk: current.invMerk,
           invSerialNumber: current.invSerialNumber,
           invPic: current.invPic,
@@ -126,6 +143,21 @@ class MasterProvider extends ChangeNotifier {
     } on ApiException catch (e) {
       _setError(e.message);
       return false;
+    }
+  }
+
+  Future<void> fetchPabrik({bool showLoading = false}) async {
+    if (showLoading) _setLoading(true);
+    try {
+      final res = await ApiClient.get(ApiConfig.pabrik);
+      pabrikList =
+          (res['data'] as List).map((e) => PabrikModel.fromJson(e)).toList();
+      _setError(null);
+      notifyListeners();
+    } on ApiException catch (e) {
+      _setError(e.message);
+    } finally {
+      if (showLoading) _setLoading(false);
     }
   }
 
@@ -339,7 +371,6 @@ class MasterProvider extends ChangeNotifier {
   Future<List<UserModel>> fetchUsers(
       {String? jabatan,
       String? divisi,
-      String? kategori,
       bool showLoading = true,
       bool replaceState = true}) async {
     final toggleLoading = showLoading && replaceState;
@@ -348,7 +379,6 @@ class MasterProvider extends ChangeNotifier {
       final query = {
         if (jabatan != null) 'jabatan': jabatan,
         if (divisi != null) 'divisi': divisi,
-        if (kategori != null) 'kategori': kategori,
       };
       final res = await ApiClient.get(ApiConfig.users,
           query: query.isEmpty ? null : query);

@@ -83,7 +83,7 @@ class _JenisLookupSheetState extends State<JenisLookupSheet> {
                           final selected = jenis.jenisId == widget.initialId;
                           return ListTile(
                             tileColor: selected
-                                ? AppColors.primary.withOpacity(0.08)
+                                ? AppColors.primary.withValues(alpha: 0.08)
                                 : null,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),

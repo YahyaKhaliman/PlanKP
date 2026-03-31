@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/app_notifier.dart';
 import '../../../core/widgets/empty_state.dart';
@@ -171,59 +172,95 @@ class _JenisForm extends StatefulWidget {
 
 class _JenisFormState extends State<_JenisForm> {
   final _form = GlobalKey<FormState>();
-  final _namaCtrl = TextEditingController();
-  String _kategori = 'Mesin Jahit';
+  String _kategori = '';
 
-  static const _kategoriList = [
-    'Mesin Jahit',
-    'Mesin Umum',
-    'Hardware',
-    'APAR'
-  ];
+  // Edit mode: single field
+  final _namaCtrl = TextEditingController();
+
+  // Create mode: multiple fields
+  final List<TextEditingController> _namaCtrls = [];
+
+  bool get _isEdit => widget.jenis != null;
 
   @override
   void initState() {
     super.initState();
-    final jenis = widget.jenis;
-    if (jenis != null) {
-      _namaCtrl.text = jenis.jenisNama;
-      _kategori = jenis.jenisKategori;
+    if (_isEdit) {
+      _namaCtrl.text = widget.jenis!.jenisNama;
+      _kategori = widget.jenis!.jenisKategori;
+    } else {
+      _namaCtrls.add(TextEditingController());
+      final auth = context.read<AuthProvider>();
+      _kategori = (auth.user?['user_divisi'] ?? '').toString();
     }
   }
 
   @override
   void dispose() {
     _namaCtrl.dispose();
+    for (final c in _namaCtrls) {
+      c.dispose();
+    }
     super.dispose();
   }
 
+  void _addField() => setState(() => _namaCtrls.add(TextEditingController()));
+
+  void _removeField(int index) {
+    setState(() {
+      _namaCtrls[index].dispose();
+      _namaCtrls.removeAt(index);
+    });
+  }
+
   Future<void> _submit() async {
-    if (!_form.currentState!.validate()) {
-      await AppNotifier.showWarning(
-          context, 'Lengkapi data jenis terlebih dahulu');
+    final provider = context.read<MasterProvider>();
+
+    if (_isEdit) {
+      if (!_form.currentState!.validate()) return;
+      final ok = await provider.saveJenis(
+        {'jenis_nama': _namaCtrl.text.trim(), 'jenis_kategori': _kategori},
+        id: widget.jenis!.jenisId,
+      );
+      if (ok && mounted) {
+        await AppNotifier.showSuccess(context, 'Jenis berhasil diperbarui');
+        if (!mounted) return;
+        Navigator.pop(context);
+      } else if (mounted) {
+        await AppNotifier.showError(
+            context, provider.error ?? 'Gagal menyimpan jenis');
+      }
       return;
     }
-    final isEdit = widget.jenis != null;
-    final body = {
-      'jenis_nama': _namaCtrl.text.trim(),
-      'jenis_kategori': _kategori,
-    };
-    final provider = context.read<MasterProvider>();
-    final ok = await provider.saveJenis(body, id: widget.jenis?.jenisId);
-    if (ok && mounted) {
-      await AppNotifier.showSuccess(context,
-          isEdit ? 'Jenis berhasil diperbarui' : 'Jenis berhasil ditambahkan');
+
+    // Create mode: submit all non-empty fields
+    final valid = _namaCtrls.where((c) => c.text.trim().isNotEmpty).toList();
+    if (valid.isEmpty) {
+      await AppNotifier.showWarning(context, 'Isi minimal satu nama jenis');
+      return;
+    }
+    int count = 0;
+    for (final ctrl in valid) {
+      final ok = await provider.saveJenis({
+        'jenis_nama': ctrl.text.trim(),
+        'jenis_kategori': _kategori,
+      });
+      if (ok) count++;
+    }
+    if (!mounted) return;
+    if (count > 0) {
+      await AppNotifier.showSuccess(
+          context, '$count jenis berhasil ditambahkan');
       if (!mounted) return;
       Navigator.pop(context);
-    } else if (mounted) {
+    } else {
       await AppNotifier.showError(
-          context, provider.error ?? 'Gagal menyimpan master jenis');
+          context, provider.error ?? 'Gagal menyimpan jenis');
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final isEdit = widget.jenis != null;
     return Padding(
       padding:
           EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
@@ -249,33 +286,86 @@ class _JenisFormState extends State<_JenisForm> {
                       color: Colors.grey[300],
                       borderRadius: BorderRadius.circular(2)),
                 )),
-                Text(isEdit ? 'Edit Jenis' : 'Tambah Jenis',
-                    style: const TextStyle(
-                        fontSize: 18, fontWeight: FontWeight.w700)),
+                Row(
+                  children: [
+                    Text(_isEdit ? 'Edit Jenis' : 'Tambah Jenis',
+                        style: const TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.w700)),
+                    const Spacer(),
+                    if (_kategori.isNotEmpty)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(_kategori,
+                            style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                                color: AppColors.primary)),
+                      ),
+                  ],
+                ),
                 const SizedBox(height: 20),
-                TextFormField(
-                  controller: _namaCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'Nama Jenis',
-                    prefixIcon: Icon(Icons.label_outlined),
+                if (_isEdit)
+                  TextFormField(
+                    controller: _namaCtrl,
+                    autofocus: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Nama Jenis',
+                      prefixIcon: Icon(Icons.label_outlined),
+                    ),
+                    validator: (v) =>
+                        (v == null || v.trim().isEmpty) ? 'Wajib diisi' : null,
+                  )
+                else ...[
+                  ..._namaCtrls.asMap().entries.map((e) {
+                    final i = e.key;
+                    final ctrl = e.value;
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: TextFormField(
+                              controller: ctrl,
+                              autofocus: i == 0,
+                              textCapitalization: TextCapitalization.words,
+                              decoration: InputDecoration(
+                                hintText: 'Nama jenis ${i + 1}',
+                                prefixIcon:
+                                    const Icon(Icons.label_outlined, size: 20),
+                                isDense: true,
+                              ),
+                            ),
+                          ),
+                          if (_namaCtrls.length > 1)
+                            IconButton(
+                              icon: const Icon(Icons.remove_circle_outline,
+                                  color: Colors.red, size: 20),
+                              onPressed: () => _removeField(i),
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                              visualDensity: VisualDensity.compact,
+                            ),
+                        ],
+                      ),
+                    );
+                  }),
+                  TextButton.icon(
+                    onPressed: _addField,
+                    icon: const Icon(Icons.add, size: 16),
+                    label: const Text('Tambah baris'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppColors.primary,
+                      padding: EdgeInsets.zero,
+                      visualDensity: VisualDensity.compact,
+                    ),
                   ),
-                  validator: (v) => (v == null || v.trim().isEmpty)
-                      ? 'Nama wajib diisi'
-                      : null,
-                ),
-                const SizedBox(height: 14),
-                DropdownButtonFormField<String>(
-                  initialValue: _kategori,
-                  decoration: const InputDecoration(
-                    labelText: 'Kategori',
-                    prefixIcon: Icon(Icons.category_outlined),
-                  ),
-                  items: _kategoriList
-                      .map((k) => DropdownMenuItem(value: k, child: Text(k)))
-                      .toList(),
-                  onChanged: (v) => setState(() => _kategori = v!),
-                ),
-                const SizedBox(height: 24),
+                ],
+                const SizedBox(height: 20),
                 Consumer<MasterProvider>(
                   builder: (_, p, __) => ElevatedButton(
                     onPressed: p.loading ? null : _submit,
@@ -285,7 +375,7 @@ class _JenisFormState extends State<_JenisForm> {
                             width: 20,
                             child: CircularProgressIndicator(
                                 color: Colors.white, strokeWidth: 2))
-                        : Text(isEdit ? 'Simpan Perubahan' : 'Tambah Jenis'),
+                        : Text(_isEdit ? 'Simpan' : 'Tambah Semua'),
                   ),
                 ),
               ],

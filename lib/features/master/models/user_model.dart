@@ -37,29 +37,17 @@ class UserModel {
   bool get aktif => userIsActive;
 
   static const List<String> divisiList = [
-    'Teknisi Jahit',
-    'Teknisi Umum',
-    'IT Support',
-    'Satpam',
-    'Kebersihan',
+    'GA',
+    'IT',
+    'Driver',
   ];
-
-  static const Map<String, List<String>> kategoriToDivisi = {
-    'Mesin Jahit': ['Teknisi Jahit'],
-    'Mesin Umum': ['Teknisi Umum'],
-    'Hardware': ['IT Support'],
-    'APAR': ['Teknisi Jahit', 'Teknisi Umum', 'IT Support', 'Satpam'],
-    'Lainnya': divisiList,
-  };
 
   String get jabatanLabel {
     switch (userJabatan) {
       case 'admin':
         return 'Admin';
-      case 'teknisi':
-        return 'Teknisi';
-      case 'it_support':
-        return 'IT Support';
+      case 'user':
+        return 'User';
       default:
         return userJabatan;
     }

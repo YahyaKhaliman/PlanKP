@@ -17,6 +17,7 @@ class JadwalProvider extends ChangeNotifier {
   bool _loadingDetail = false;
   String? _error;
   bool _lastFetchDivisi = false;
+  bool _lastFetchUser = false;
   bool get loading => _loading;
   bool get loadingDetail => _loadingDetail;
   String? get error => _error;
@@ -64,6 +65,7 @@ class JadwalProvider extends ChangeNotifier {
   Future<void> fetchJadwalByDivisi({String? status, int? jenisId}) async {
     _setLoading(true);
     _lastFetchDivisi = true;
+    _lastFetchUser = false;
     try {
       final query = <String, dynamic>{
         if (status != null) 'status': status,
@@ -71,6 +73,27 @@ class JadwalProvider extends ChangeNotifier {
       };
       final res =
           await ApiClient.get('${ApiConfig.jadwal}/divisi', query: query);
+      jadwalList =
+          (res['data'] as List).map((e) => JadwalModel.fromJson(e)).toList();
+      _setError(null);
+    } on ApiException catch (e) {
+      _setError(e.message);
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  Future<void> fetchJadwalByUser({String? status, int? jenisId}) async {
+    _setLoading(true);
+    _lastFetchUser = true;
+    _lastFetchDivisi = false;
+    try {
+      final query = <String, dynamic>{
+        if (status != null) 'status': status,
+        if (jenisId != null) 'jenis': jenisId,
+      };
+      final res =
+          await ApiClient.get('${ApiConfig.jadwal}/assigned', query: query);
       jadwalList =
           (res['data'] as List).map((e) => JadwalModel.fromJson(e)).toList();
       _setError(null);
@@ -125,7 +148,9 @@ class JadwalProvider extends ChangeNotifier {
       } else {
         await ApiClient.post(ApiConfig.jadwal, body);
       }
-      if (_lastFetchDivisi) {
+      if (_lastFetchUser) {
+        await fetchJadwalByUser();
+      } else if (_lastFetchDivisi) {
         await fetchJadwalByDivisi();
       } else {
         await fetchJadwal();
@@ -141,7 +166,9 @@ class JadwalProvider extends ChangeNotifier {
     try {
       await ApiClient.patch(
           '${ApiConfig.jadwal}/$id/status', {'status': status});
-      if (_lastFetchDivisi) {
+      if (_lastFetchUser) {
+        await fetchJadwalByUser();
+      } else if (_lastFetchDivisi) {
         await fetchJadwalByDivisi();
       } else {
         await fetchJadwal();

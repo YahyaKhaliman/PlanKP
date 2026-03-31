@@ -15,17 +15,28 @@ class UserScreen extends StatefulWidget {
 
 class _UserScreenState extends State<UserScreen> {
   static const _kPageBg = Color(0xFFF8FAFC);
-  String? _filterDivisi;
   final Set<int> _togglingUserIds = {};
+  final TextEditingController _searchCtrl = TextEditingController();
+  String _searchQuery = '';
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback(
         (_) => context.read<MasterProvider>().fetchUsers());
+    _searchCtrl
+        .addListener(() => setState(() => _searchQuery = _searchCtrl.text));
   }
 
-  void _openForm([UserModel? user]) {
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _openForm([UserModel? user]) async {
+    await context.read<MasterProvider>().fetchPabrik();
+    if (!mounted) return;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -69,27 +80,27 @@ class _UserScreenState extends State<UserScreen> {
       body: Column(children: [
         Container(
           color: AppColors.white,
-          child: SizedBox(
-            height: 48,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              children: [
-                _FilterChip(
-                    label: 'Semua',
-                    selected: _filterDivisi == null,
-                    onTap: () {
-                      setState(() => _filterDivisi = null);
-                      context.read<MasterProvider>().fetchUsers();
-                    }),
-                ...UserModel.divisiList.map((div) => _FilterChip(
-                    label: div,
-                    selected: _filterDivisi == div,
-                    onTap: () {
-                      setState(() => _filterDivisi = div);
-                      context.read<MasterProvider>().fetchUsers(divisi: div);
-                    })),
-              ],
+          padding: const EdgeInsets.all(12),
+          child: TextField(
+            controller: _searchCtrl,
+            decoration: InputDecoration(
+              hintText: 'Cari nama atau NIK...',
+              prefixIcon: const Icon(Icons.search_outlined),
+              suffixIcon: _searchQuery.isNotEmpty
+                  ? IconButton(
+                      icon: const Icon(Icons.clear_outlined),
+                      onPressed: () {
+                        _searchCtrl.clear();
+                        setState(() => _searchQuery = '');
+                      },
+                    )
+                  : null,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: AppColors.border),
+              ),
+              isDense: true,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12),
             ),
           ),
         ),
@@ -99,19 +110,26 @@ class _UserScreenState extends State<UserScreen> {
               if (p.loading) {
                 return const Center(child: CircularProgressIndicator());
               }
-              if (p.userList.isEmpty) {
+              final filteredUsers = p.userList.where((user) {
+                final q = _searchQuery.toLowerCase();
+                return user.userNama.toLowerCase().contains(q) ||
+                    user.userNik.toLowerCase().contains(q);
+              }).toList();
+              if (filteredUsers.isEmpty) {
                 return EmptyState(
-                  message: 'Belum ada user',
+                  message: _searchQuery.isEmpty
+                      ? 'Belum ada user'
+                      : 'User tidak ditemukan',
                   actionLabel: 'Tambah',
                   onAction: () => _openForm(),
                 );
               }
               return ListView.separated(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 80),
-                itemCount: p.userList.length,
+                itemCount: filteredUsers.length,
                 separatorBuilder: (_, __) => const SizedBox(height: 8),
                 itemBuilder: (_, i) {
-                  final user = p.userList[i];
+                  final user = filteredUsers[i];
                   final isToggling = _togglingUserIds.contains(user.userId);
                   return Container(
                     margin: EdgeInsets.zero,
@@ -154,7 +172,7 @@ class _UserScreenState extends State<UserScreen> {
                               _StatusBadge(isActive: user.aktif),
                               if (user.userCabang != null) ...[
                                 const SizedBox(width: 6),
-                                Text(user.userCabang!,
+                                Text(p.displayPabrik(user.userCabang),
                                     style: const TextStyle(
                                         fontSize: 11,
                                         color: AppColors.textSecondary)),
@@ -268,36 +286,6 @@ class _MinimalSwitch extends StatelessWidget {
   }
 }
 
-class _FilterChip extends StatelessWidget {
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-  const _FilterChip(
-      {required this.label, required this.selected, required this.onTap});
-  @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.only(right: 8),
-        child: GestureDetector(
-          onTap: onTap,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 150),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-            decoration: BoxDecoration(
-              color: selected ? AppColors.primary : AppColors.white,
-              border: Border.all(
-                  color: selected ? AppColors.primary : AppColors.border),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(label,
-                style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    color: selected ? Colors.white : AppColors.textSecondary)),
-          ),
-        ),
-      );
-}
-
 class _UserForm extends StatefulWidget {
   final UserModel? user;
   const _UserForm({this.user});
@@ -310,15 +298,14 @@ class _UserFormState extends State<_UserForm> {
   final _namaCtrl = TextEditingController();
   final _nikCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
-  final _cabangCtrl = TextEditingController();
-  String _jabatan = 'teknisi';
+  String? _cabang;
+  String _jabatan = 'user';
   String? _divisi;
   bool _obscure = true;
 
   static const _jabatanList = [
     {'value': 'admin', 'label': 'Admin'},
-    {'value': 'teknisi', 'label': 'Teknisi'},
-    {'value': 'it_support', 'label': 'IT Support'},
+    {'value': 'user', 'label': 'User'},
   ];
 
   @override
@@ -328,7 +315,7 @@ class _UserFormState extends State<_UserForm> {
     if (u != null) {
       _namaCtrl.text = u.userNama;
       _nikCtrl.text = u.userNik;
-      _cabangCtrl.text = u.userCabang ?? '';
+      _cabang = u.userCabang;
       _jabatan = u.userJabatan;
       _divisi = u.userDivisi;
     }
@@ -339,7 +326,6 @@ class _UserFormState extends State<_UserForm> {
     _namaCtrl.dispose();
     _nikCtrl.dispose();
     _passCtrl.dispose();
-    _cabangCtrl.dispose();
     super.dispose();
   }
 
@@ -356,8 +342,7 @@ class _UserFormState extends State<_UserForm> {
       'user_nik': _nikCtrl.text.trim(),
       'user_jabatan': _jabatan,
       'user_divisi': _divisi,
-      'user_cabang':
-          _cabangCtrl.text.trim().isEmpty ? null : _cabangCtrl.text.trim(),
+      'user_cabang': _cabang,
     };
     if (_passCtrl.text.isNotEmpty) body['user_password'] = _passCtrl.text;
     final ok = await p.saveUser(body, id: widget.user?.userId);
@@ -375,6 +360,7 @@ class _UserFormState extends State<_UserForm> {
   @override
   Widget build(BuildContext context) {
     final isEdit = widget.user != null;
+    final master = context.watch<MasterProvider>();
     return Padding(
       padding:
           EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
@@ -446,12 +432,22 @@ class _UserFormState extends State<_UserForm> {
                 validator: (v) => v == null ? 'Divisi wajib dipilih' : null,
               ),
               const SizedBox(height: 14),
-              TextFormField(
-                  controller: _cabangCtrl,
-                  decoration: const InputDecoration(
-                      labelText: 'Cabang (opsional)',
-                      prefixIcon: Icon(Icons.business_outlined),
-                      hintText: 'KP1, KP2...')),
+              DropdownButtonFormField<String>(
+                initialValue: _cabang,
+                decoration: const InputDecoration(
+                  labelText: 'Cabang',
+                  prefixIcon: Icon(Icons.business_outlined),
+                ),
+                items: master.pabrikList
+                    .map(
+                      (pabrik) => DropdownMenuItem(
+                        value: pabrik.pabKode,
+                        child: Text(pabrik.displayLabel),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (v) => setState(() => _cabang = v),
+              ),
               const SizedBox(height: 14),
               TextFormField(
                   controller: _passCtrl,
@@ -473,7 +469,7 @@ class _UserFormState extends State<_UserForm> {
                           if (v == null || v.isEmpty) {
                             return 'Password wajib diisi';
                           }
-                          if (v.length < 6) return 'Minimal 6 karakter';
+                          if (v.length < 3) return 'Minimal 3 karakter';
                           return null;
                         }),
               const SizedBox(height: 24),

@@ -6,7 +6,6 @@ import '../../../core/utils/date_formatter.dart';
 import '../../../core/widgets/app_notifier.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../auth/providers/auth_provider.dart';
-import '../../../features/master/models/user_model.dart';
 import '../../../features/master/providers/master_provider.dart';
 import '../../../features/master/widgets/jenis_lookup_sheet.dart';
 import '../../../features/master/models/jenis_model.dart';
@@ -46,13 +45,21 @@ class _JadwalScreenState extends State<JadwalScreen> {
     if (isAdmin) {
       await jadwalProvider.fetchJadwal();
     } else {
-      await jadwalProvider.fetchJadwalByDivisi();
+      await jadwalProvider.fetchJadwalByUser();
     }
     if (!mounted) return;
     await context.read<MasterProvider>().fetchJenis();
   }
 
-  void _openForm([JadwalModel? item]) {
+  Future<void> _openForm([JadwalModel? item]) async {
+    final master = context.read<MasterProvider>();
+    final auth = context.read<AuthProvider>();
+    await master.fetchJenis(showLoading: false);
+    await master.fetchPabrik();
+    // Fetch users dengan divisi yang sama dengan user login
+    final userDivisi = auth.user?['user_divisi'] ?? '';
+    await master.fetchUsers(divisi: userDivisi, showLoading: false);
+    if (!mounted) return;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -87,6 +94,7 @@ class _JadwalScreenState extends State<JadwalScreen> {
         .toList();
 
     await p.fetchRealisasi(jadwalId: jadwal.jdwId, status: 'Selesai');
+    if (!mounted) return;
     final selesaiInvIds = p.realisasiList.map((r) => r.realInvId).toSet();
     final belumSelesaiList = inventarisList.where((inv) {
       final invIdRaw = inv['inv_id'];
@@ -174,7 +182,7 @@ class _JadwalScreenState extends State<JadwalScreen> {
                               color: AppColors.primary),
                           title: Text(inv['inv_nama'] ?? '-'),
                           subtitle: Text(
-                              '${inv['inv_no'] ?? '-'} · ${inv['inv_lokasi'] ?? '-'}${sudahDirealisasi ? '\nSudah direalisasi' : '\nBelum direalisasi'}'),
+                              '${inv['inv_no'] ?? '-'} · ${inv['inv_pabrik_kode'] ?? '-'}${sudahDirealisasi ? '\nSudah direalisasi' : '\nBelum direalisasi'}'),
                           trailing: sudahDirealisasi
                               ? const Icon(Icons.check_circle,
                                   color: AppColors.success)
@@ -223,8 +231,7 @@ class _JadwalScreenState extends State<JadwalScreen> {
         'invNama': inv['inv_nama'],
         'invNo': inv['inv_no'],
         'invKondisi': inv['inv_kondisi'],
-        'invPicNama': inv['pic_user']?['user_nama'],
-        'invPicId': inv['pic_user']?['user_id'],
+        'invPicNama': inv['inv_pic'],
       },
     );
     if (!mounted) return;
@@ -245,27 +252,27 @@ class _JadwalScreenState extends State<JadwalScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.black.withOpacity(0.06)),
+        border: Border.all(color: Colors.black.withValues(alpha: 0.06)),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withOpacity(0.025),
+              color: Colors.black.withValues(alpha: 0.025),
               blurRadius: 6,
               offset: const Offset(0, 2)),
         ],
       ),
       child: Column(
         children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             child: Row(children: [
-              const Expanded(
+              Expanded(
                   flex: 3,
                   child: Text('Frekuensi',
                       style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
                           color: AppColors.textSecondary))),
-              const Expanded(
+              Expanded(
                   flex: 2,
                   child: Text('Target',
                       textAlign: TextAlign.center,
@@ -273,7 +280,7 @@ class _JadwalScreenState extends State<JadwalScreen> {
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
                           color: AppColors.textSecondary))),
-              const Expanded(
+              Expanded(
                   flex: 2,
                   child: Text('Realisasi',
                       textAlign: TextAlign.center,
@@ -281,7 +288,7 @@ class _JadwalScreenState extends State<JadwalScreen> {
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
                           color: AppColors.textSecondary))),
-              const Expanded(
+              Expanded(
                   flex: 2,
                   child: Text('%',
                       textAlign: TextAlign.center,
@@ -289,7 +296,7 @@ class _JadwalScreenState extends State<JadwalScreen> {
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
                           color: AppColors.textSecondary))),
-              const SizedBox(width: 20),
+              SizedBox(width: 20),
             ]),
           ),
           const Divider(height: 1),
@@ -320,7 +327,7 @@ class _JadwalScreenState extends State<JadwalScreen> {
                         horizontal: 14, vertical: 11),
                     decoration: BoxDecoration(
                       color: isSelected
-                          ? AppColors.primary.withOpacity(0.07)
+                          ? AppColors.primary.withValues(alpha: 0.07)
                           : Colors.transparent,
                       borderRadius: isLast
                           ? const BorderRadius.vertical(
@@ -338,7 +345,8 @@ class _JadwalScreenState extends State<JadwalScreen> {
                             decoration: BoxDecoration(
                               color: isSelected
                                   ? AppColors.primary
-                                  : AppColors.textSecondary.withOpacity(0.35),
+                                  : AppColors.textSecondary
+                                      .withValues(alpha: 0.35),
                               shape: BoxShape.circle,
                             ),
                           ),
@@ -427,15 +435,16 @@ class _JadwalScreenState extends State<JadwalScreen> {
           ? FloatingActionButton(
               onPressed: () => _openForm(),
               tooltip: 'Buat Jadwal',
-              child: const Icon(Icons.add),
               backgroundColor: AppColors.primary,
               foregroundColor: AppColors.white,
+              child: const Icon(Icons.add),
             )
           : null,
       body: Consumer<JadwalProvider>(
         builder: (_, p, __) {
-          if (p.loading)
+          if (p.loading) {
             return const Center(child: CircularProgressIndicator());
+          }
 
           final jadwalAktif = p.jadwalList
               .where((j) =>
@@ -534,26 +543,17 @@ class _JadwalCard extends StatelessWidget {
   };
   static IconData _iconForDivisi(String? divisiRaw) {
     final divisi = (divisiRaw ?? '').toLowerCase();
-    if (divisi.contains('it support') || divisi == 'it')
-      return Icons.support_agent_rounded;
-    if (divisi.contains('jahit')) return Icons.content_cut_rounded;
-    if (divisi.contains('umum')) return Icons.build_circle_outlined;
-    if (divisi.contains('satpam') || divisi.contains('security'))
-      return Icons.shield_outlined;
-    if (divisi.contains('kebersihan') || divisi.contains('clean'))
-      return Icons.cleaning_services_outlined;
+    if (divisi == 'it') return Icons.support_agent_rounded;
+    if (divisi == 'ga') return Icons.precision_manufacturing_outlined;
+    if (divisi == 'driver') return Icons.local_shipping_outlined;
     return Icons.event_note;
   }
 
   static Color _colorForDivisi(String? divisiRaw) {
     final divisi = (divisiRaw ?? '').toLowerCase();
-    if (divisi.contains('it support') || divisi == 'it') return Colors.indigo;
-    if (divisi.contains('jahit')) return Colors.pink.shade700;
-    if (divisi.contains('umum')) return Colors.orange.shade700;
-    if (divisi.contains('satpam') || divisi.contains('security'))
-      return Colors.blueGrey.shade700;
-    if (divisi.contains('kebersihan') || divisi.contains('clean'))
-      return Colors.teal.shade700;
+    if (divisi == 'it') return Colors.indigo;
+    if (divisi == 'ga') return Colors.orange.shade700;
+    if (divisi == 'driver') return Colors.teal.shade700;
     return AppColors.primary;
   }
 
@@ -566,10 +566,10 @@ class _JadwalCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.black.withOpacity(0.04)),
+        border: Border.all(color: Colors.black.withValues(alpha: 0.04)),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withOpacity(0.03),
+              color: Colors.black.withValues(alpha: 0.03),
               blurRadius: 8,
               offset: const Offset(0, 2)),
         ],
@@ -586,7 +586,7 @@ class _JadwalCard extends StatelessWidget {
               CircleAvatar(
                 radius: 16,
                 backgroundColor:
-                    _colorForDivisi(jadwal.jdwDivisi).withOpacity(0.14),
+                    _colorForDivisi(jadwal.jdwDivisi).withValues(alpha: 0.14),
                 child: Icon(
                   _iconForDivisi(jadwal.jdwDivisi),
                   size: 16,
@@ -649,7 +649,7 @@ class _JadwalCard extends StatelessWidget {
   Widget _chip(String label, IconData icon) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
         decoration: BoxDecoration(
-            color: AppColors.primary.withOpacity(0.07),
+            color: AppColors.primary.withValues(alpha: 0.07),
             borderRadius: BorderRadius.circular(6)),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
           Icon(icon, size: 11, color: AppColors.primary),
@@ -670,7 +670,7 @@ class _JadwalCard extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
           decoration: BoxDecoration(
-              color: color.withOpacity(0.08),
+              color: color.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(6)),
           child: Row(mainAxisSize: MainAxisSize.min, children: [
             Icon(icon, size: 14, color: color),
@@ -740,8 +740,9 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
       appBar: AppBar(title: const Text('Detail Jadwal')),
       body: Consumer<JadwalProvider>(
         builder: (_, p, __) {
-          if (p.loading)
+          if (p.loading) {
             return const Center(child: CircularProgressIndicator());
+          }
           if (p.jadwalDetail == null) return const SizedBox.shrink();
 
           final jdw = p.jadwalDetail!;
@@ -769,6 +770,17 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
                       const SizedBox(height: 12),
                       _row('Jenis Inventaris', jenisNama),
                       _row('Frekuensi', jdw.jdwFrekuensi),
+                      _row('Divisi', jdw.jdwDivisi),
+                      if (jdw.assignedUser != null)
+                        _row(
+                            'Pelaksana', jdw.assignedUser!['user_nama'] ?? '-'),
+                      if (jdw.jdwPabrikKode != null)
+                        _row(
+                          'Pabrik',
+                          context
+                              .read<MasterProvider>()
+                              .displayPabrik(jdw.jdwPabrikKode),
+                        ),
                       _row('Tanggal Mulai',
                           DateFormatter.toDisplay(jdw.jdwTglMulai)),
                       if (jdw.jdwTglSelesai != null)
@@ -809,7 +821,7 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
                         width: 40,
                         height: 40,
                         decoration: BoxDecoration(
-                            color: AppColors.primary.withOpacity(0.08),
+                            color: AppColors.primary.withValues(alpha: 0.08),
                             borderRadius: BorderRadius.circular(10)),
                         child: const Icon(Icons.inventory_2_outlined,
                             color: AppColors.primary, size: 20),
@@ -817,7 +829,7 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
                       title: Text(inv['inv_nama'] ?? '',
                           style: const TextStyle(fontWeight: FontWeight.w600)),
                       subtitle: Text(
-                        '${inv['inv_no']} · ${inv['inv_lokasi'] ?? '-'}\n${sudahTerealisasi ? 'Sudah terealisasi' : 'Belum terealisasi'}',
+                        '${inv['inv_no']} · ${context.read<MasterProvider>().displayPabrik(inv['inv_pabrik_kode']?.toString())}\n${sudahTerealisasi ? 'Sudah terealisasi' : 'Belum terealisasi'}',
                         style: const TextStyle(fontSize: 12),
                       ),
                       isThreeLine: true,
@@ -829,7 +841,7 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
                                   size: 16),
                               label: const Text('Detail'),
                             )
-                          : Icon(
+                          : const Icon(
                               Icons.radio_button_unchecked,
                               color: AppColors.textSecondary,
                             ),
@@ -875,6 +887,8 @@ class _JadwalFormState extends State<_JadwalForm> {
   final TextEditingController _jenisCtrl = TextEditingController();
   int? _jenisId;
   String? _divisi;
+  String? _pabrikKode;
+  int? _assignedToUserId;
   String _frekuensi = 'Harian';
   DateTime? _tglMulai;
   DateTime? _tglSelesai;
@@ -890,12 +904,18 @@ class _JadwalFormState extends State<_JadwalForm> {
       _notesCtrl.text = d.jdwNotes ?? '';
       _jenisId = d.jdwJenisId;
       _divisi = d.jdwDivisi;
+      _pabrikKode = d.jdwPabrikKode;
+      _assignedToUserId = d.jdwAssignedTo;
       _frekuensi = d.jdwFrekuensi;
       _tglMulai = DateTime.tryParse(d.jdwTglMulai);
       _tglSelesai =
           d.jdwTglSelesai != null ? DateTime.tryParse(d.jdwTglSelesai!) : null;
       final jenis = context.read<MasterProvider>().jenisById(d.jdwJenisId);
       _jenisCtrl.text = jenis?.jenisNama ?? 'ID ${d.jdwJenisId}';
+    } else {
+      // Untuk create, set divisi dari auth user
+      final auth = context.read<AuthProvider>();
+      _divisi = auth.user?['user_divisi'] ?? '';
     }
   }
 
@@ -923,10 +943,11 @@ class _JadwalFormState extends State<_JadwalForm> {
     );
     if (picked != null) {
       setState(() {
-        if (isMulai)
+        if (isMulai) {
           _tglMulai = picked;
-        else
+        } else {
           _tglSelesai = picked;
+        }
       });
     }
   }
@@ -962,12 +983,7 @@ class _JadwalFormState extends State<_JadwalForm> {
       setState(() {
         _jenisId = result.jenisId;
         _jenisCtrl.text = result.jenisNama;
-        final kategori = master.kategoriByJenisId(result.jenisId);
-        if (_divisi == null && kategori != null) {
-          _divisi = _divisiFromKategori(kategori) ?? _validDivisi(kategori);
-        } else if (_divisi != null) {
-          _divisi = _validDivisi(_divisi);
-        }
+        // Divisi sudah otomatis dari auth user, tidak perlu diubah
       });
     }
   }
@@ -1000,23 +1016,6 @@ class _JadwalFormState extends State<_JadwalForm> {
     );
   }
 
-  String? _divisiFromKategori(String? kategori) {
-    if (kategori == null || kategori.isEmpty) return null;
-    final allowed = UserModel.kategoriToDivisi[kategori];
-    if (allowed != null && allowed.isNotEmpty) {
-      for (final div in allowed) {
-        final valid = _validDivisi(div);
-        if (valid != null) return valid;
-      }
-    }
-    return _validDivisi(kategori);
-  }
-
-  String? _validDivisi(String? value) {
-    if (value == null || value.isEmpty) return null;
-    return UserModel.divisiList.contains(value) ? value : null;
-  }
-
   Future<void> _submit() async {
     if (!_form.currentState!.validate()) {
       await AppNotifier.showWarning(
@@ -1039,14 +1038,17 @@ class _JadwalFormState extends State<_JadwalForm> {
       await AppNotifier.showWarning(context, 'Tanggal mulai wajib dipilih');
       return;
     }
+    if (_assignedToUserId == null) {
+      await AppNotifier.showWarning(context, 'Pelaksana wajib dipilih');
+      return;
+    }
     final p = context.read<JadwalProvider>();
-    final divisi = _divisi ??
-        (_jenisId != null ? master.kategoriByJenisId(_jenisId!) : null) ??
-        widget.item?.jdwDivisi;
     final body = {
       'jdw_judul': _judulCtrl.text.trim(),
       'jdw_jenis_id': _jenisId!,
-      'jdw_divisi': divisi,
+      'jdw_divisi': _divisi,
+      'jdw_pabrik_kode': _pabrikKode,
+      'jdw_assigned_to': _assignedToUserId,
       'jdw_frekuensi': _frekuensi,
       'jdw_tgl_mulai': _fmtDateApi(_tglMulai),
       'jdw_tgl_selesai': _tglSelesai != null ? _fmtDateApi(_tglSelesai) : null,
@@ -1078,14 +1080,6 @@ class _JadwalFormState extends State<_JadwalForm> {
         });
       }
     }
-    final allDivisi = UserModel.divisiList;
-    final kategori =
-        _jenisId != null ? master.kategoriByJenisId(_jenisId!) : null;
-    final defaultDivisi =
-        kategori != null && UserModel.divisiList.contains(kategori)
-            ? kategori
-            : null;
-    final divisiValue = _divisi ?? defaultDivisi ?? widget.item?.jdwDivisi;
 
     return DraggableScrollableSheet(
       initialChildSize: 0.92,
@@ -1130,24 +1124,53 @@ class _JadwalFormState extends State<_JadwalForm> {
               _jenisPickerField(),
               const SizedBox(height: 14),
               DropdownButtonFormField<String>(
-                value: divisiValue,
+                initialValue: _pabrikKode,
+                decoration: const InputDecoration(
+                  labelText: 'Pabrik / Lokasi',
+                  prefixIcon: Icon(Icons.location_on_outlined),
+                ),
+                items: master.pabrikList
+                    .map(
+                      (pabrik) => DropdownMenuItem(
+                        value: pabrik.pabKode,
+                        child: Text(pabrik.displayLabel),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (v) => setState(() => _pabrikKode = v),
+              ),
+              const SizedBox(height: 14),
+              TextFormField(
+                initialValue: _divisi ?? '',
+                readOnly: true,
                 decoration: const InputDecoration(
                   labelText: 'Divisi Pelaksana',
                   prefixIcon: Icon(Icons.account_tree_outlined),
+                  helperText: 'Berdasarkan divisi login Anda',
                 ),
-                hint: const Text('Pilih divisi pelaksanan'),
-                items: allDivisi
-                    .map(
-                        (div) => DropdownMenuItem(value: div, child: Text(div)))
+              ),
+              const SizedBox(height: 14),
+              DropdownButtonFormField<int>(
+                initialValue: _assignedToUserId,
+                decoration: const InputDecoration(
+                  labelText: 'Pelaksana / User',
+                  prefixIcon: Icon(Icons.person_outlined),
+                ),
+                hint: const Text('Pilih pelaksana'),
+                items: master.userList
+                    .where((u) =>
+                        u.userDivisi == _divisi && u.userJabatan == 'user')
+                    .map((u) => DropdownMenuItem(
+                          value: u.userId,
+                          child: Text(u.userNama),
+                        ))
                     .toList(),
-                onChanged: (v) {
-                  setState(() => _divisi = v);
-                },
-                validator: (v) => v == null ? 'Divisi wajib dipilih' : null,
+                onChanged: (v) => setState(() => _assignedToUserId = v),
+                validator: (v) => v == null ? 'Pelaksana wajib dipilih' : null,
               ),
               const SizedBox(height: 14),
               DropdownButtonFormField<String>(
-                value: _frekuensi,
+                initialValue: _frekuensi,
                 decoration: const InputDecoration(
                   labelText: 'Frekuensi',
                   prefixIcon: Icon(Icons.repeat_outlined),

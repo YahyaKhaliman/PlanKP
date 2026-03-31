@@ -38,7 +38,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (isAdmin) {
       await p.fetchJadwal();
     } else {
-      await p.fetchJadwalByDivisi();
+      await p.fetchJadwalByUser();
     }
     await p.fetchRealisasi(status: 'Selesai', byDivisi: true);
     if (!mounted) return;
@@ -1013,39 +1013,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   IconData _iconForDivisi(String? divisiRaw) {
     final divisi = (divisiRaw ?? '').toLowerCase();
-    if (divisi.contains('it support') || divisi == 'it') {
+    if (divisi == 'it') {
       return Icons.support_agent_rounded;
     }
-    if (divisi.contains('jahit')) {
-      return Icons.content_cut_rounded;
+    if (divisi == 'ga') {
+      return Icons.precision_manufacturing_outlined;
     }
-    if (divisi.contains('umum')) {
-      return Icons.build_circle_outlined;
-    }
-    if (divisi.contains('satpam') || divisi.contains('security')) {
-      return Icons.shield_outlined;
-    }
-    if (divisi.contains('kebersihan') || divisi.contains('clean')) {
-      return Icons.cleaning_services_outlined;
+    if (divisi == 'driver') {
+      return Icons.local_shipping_outlined;
     }
     return Icons.event_note;
   }
 
   Color _colorForDivisi(String? divisiRaw) {
     final divisi = (divisiRaw ?? '').toLowerCase();
-    if (divisi.contains('it support') || divisi == 'it') {
+    if (divisi == 'it') {
       return Colors.indigo;
     }
-    if (divisi.contains('jahit')) {
-      return Colors.pink.shade700;
-    }
-    if (divisi.contains('umum')) {
+    if (divisi == 'ga') {
       return Colors.orange.shade700;
     }
-    if (divisi.contains('satpam') || divisi.contains('security')) {
-      return Colors.blueGrey.shade700;
-    }
-    if (divisi.contains('kebersihan') || divisi.contains('clean')) {
+    if (divisi == 'driver') {
       return Colors.teal.shade700;
     }
     return AppColors.primary;

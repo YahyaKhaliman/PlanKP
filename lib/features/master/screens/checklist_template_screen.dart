@@ -228,7 +228,7 @@ class _SingleItemFormState extends State<_SingleItemForm> {
 
                 // Dropdown jenis
                 DropdownButtonFormField<String>(
-                  value: _selectedJenis,
+                  initialValue: _selectedJenis,
                   decoration: const InputDecoration(
                     labelText: 'Jenis Inventaris',
                     prefixIcon: Icon(Icons.label_outline),
@@ -339,8 +339,12 @@ class _BulkInputFormState extends State<_BulkInputForm> {
 
   @override
   void dispose() {
-    for (final c in _itemCtrls) c.dispose();
-    for (final c in _ketCtrls) c.dispose();
+    for (final c in _itemCtrls) {
+      c.dispose();
+    }
+    for (final c in _ketCtrls) {
+      c.dispose();
+    }
     super.dispose();
   }
 
@@ -477,7 +481,7 @@ class _BulkInputFormState extends State<_BulkInputForm> {
 
                 // dropdown jenis
                 DropdownButtonFormField<String>(
-                  value: widget.jenisLocked
+                  initialValue: widget.jenisLocked
                       ? (widget.initialJenis ?? _selectedJenis)
                       : _selectedJenis,
                   decoration: const InputDecoration(
@@ -498,7 +502,7 @@ class _BulkInputFormState extends State<_BulkInputForm> {
                 const SizedBox(height: 12),
 
                 // label kolom
-                Row(children: const [
+                const Row(children: [
                   SizedBox(width: 32),
                   SizedBox(width: 8),
                   Expanded(
@@ -551,7 +555,7 @@ class _BulkInputFormState extends State<_BulkInputForm> {
                       width: 32,
                       height: 44,
                       decoration: BoxDecoration(
-                        color: AppColors.primary.withOpacity(0.08),
+                        color: AppColors.primary.withValues(alpha: 0.08),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Center(
@@ -789,10 +793,10 @@ class _ChecklistTab extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.black.withOpacity(0.04)),
+          border: Border.all(color: Colors.black.withValues(alpha: 0.04)),
           boxShadow: [
             BoxShadow(
-                color: Colors.black.withOpacity(0.03),
+                color: Colors.black.withValues(alpha: 0.03),
                 blurRadius: 8,
                 offset: const Offset(0, 2)),
           ],
@@ -819,7 +823,7 @@ class _ChecklistTab extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.12),
+                color: AppColors.primary.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Text('${list.length} item',
@@ -835,10 +839,10 @@ class _ChecklistTab extends StatelessWidget {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.1),
+                  color: AppColors.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: Row(mainAxisSize: MainAxisSize.min, children: const [
+                child: const Row(mainAxisSize: MainAxisSize.min, children: [
                   Icon(Icons.add, size: 16, color: AppColors.primary),
                   SizedBox(width: 4),
                   Text('Tambah',

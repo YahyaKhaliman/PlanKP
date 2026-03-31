@@ -4,7 +4,7 @@ class InventarisModel {
   final String invNama;
   final String invKategori;
   final int invJenisId;
-  final String? invLokasi;
+  final String? invPabrikKode;
   final String? invMerk;
   final String? invSerialNumber;
   final String? invPic;
@@ -19,7 +19,7 @@ class InventarisModel {
     required this.invNama,
     required this.invKategori,
     required this.invJenisId,
-    this.invLokasi,
+    this.invPabrikKode,
     this.invMerk,
     this.invSerialNumber,
     this.invPic,
@@ -33,9 +33,9 @@ class InventarisModel {
         invId: j['inv_id'],
         invNo: j['inv_no'] ?? '',
         invNama: j['inv_nama'] ?? '',
-        invKategori: j['inv_kategori'] ?? '',
+        invKategori: j['inv_kategori'] ?? j['jenis']?['jenis_kategori'] ?? '',
         invJenisId: j['inv_jenis_id'] ?? 0,
-        invLokasi: j['inv_lokasi'],
+        invPabrikKode: j['inv_pabrik_kode'] ?? j['inv_lokasi'],
         invMerk: j['inv_merk'],
         invSerialNumber: j['inv_serial_number'],
         invPic: j['inv_pic'],
@@ -46,4 +46,5 @@ class InventarisModel {
       );
 
   bool get aktif => invIsActive;
+  String? get invLokasi => invPabrikKode;
 }

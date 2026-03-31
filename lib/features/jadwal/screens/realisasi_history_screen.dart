@@ -39,7 +39,7 @@ class _RealisasiHistoryScreenState extends State<RealisasiHistoryScreen> {
       await provider.fetchJadwal();
       await provider.fetchRealisasi(status: 'Selesai');
     } else {
-      await provider.fetchJadwalByDivisi();
+      await provider.fetchJadwalByUser();
       await provider.fetchRealisasi(status: 'Selesai', byDivisi: true);
     }
   }
@@ -431,7 +431,7 @@ class _MonthSwitcher extends StatelessWidget {
       child: Tooltip(
         message: tooltip,
         child: Material(
-          color: AppColors.primary.withOpacity(0.08),
+          color: AppColors.primary.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(12),
           child: InkWell(
             borderRadius: BorderRadius.circular(12),
@@ -622,8 +622,8 @@ class _MonthlyDatePreview extends StatelessWidget {
               style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
             ),
             const SizedBox(height: 4),
-            Row(
-              children: const [
+            const Row(
+              children: [
                 Icon(Icons.circle, color: AppColors.success, size: 10),
                 SizedBox(width: 6),
                 Text(
@@ -708,7 +708,7 @@ class _MonthlyDatePreview extends StatelessWidget {
     final bg = isSunday
         ? const Color(0xFFFEE2E2)
         : hasRealisasi
-            ? AppColors.success.withOpacity(0.14)
+            ? AppColors.success.withValues(alpha: 0.14)
             : Colors.white;
     final fg = isSunday
         ? AppColors.danger
