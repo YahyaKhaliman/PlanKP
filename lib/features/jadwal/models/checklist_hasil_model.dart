@@ -40,7 +40,7 @@ class ChecklistInputModel {
   final String ctItem;
   final String? ctKeterangan;
   final int ctUrutan;
-  String hasil = 'N/A';
+  String hasil = 'OK';
   String? kondisi;
   String? keterangan;
 

@@ -1,7 +1,7 @@
-// ignore_for_file: curly_braces_in_flow_control_structures
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_constants.dart';
+import '../../../core/theme/app_theme.dart';
 import '../providers/auth_provider.dart';
 import '../../../core/widgets/app_notifier.dart';
 
@@ -13,15 +13,11 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  static const _pageBg = Color(0xFFF8FAFC);
   final _formKey = GlobalKey<FormState>();
   final _usernameCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
   bool _obscure = true;
-
-  // Warna Identitas Jago (Fallback jika AppColors tidak sesuai)
-  final Color jagoPurple = const Color(0xFF2A0054);
-  final Color jagoYellow = const Color(0xFFFFD000);
-  final Color jagoLightGrey = const Color(0xFFF2F2F2);
 
   @override
   void dispose() {
@@ -57,15 +53,16 @@ class _LoginScreenState extends State<LoginScreen> {
     final isDesktop = size.width > 900;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
+      backgroundColor: _pageBg,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
+            padding: const EdgeInsets.all(20),
             child: ConstrainedBox(
-              constraints: BoxConstraints(
-                maxWidth: isDesktop ? 1100 : double.infinity,
-              ),
-              child: isDesktop ? _buildDesktopLayout() : _buildMobileLayout(),
+              constraints: const BoxConstraints(maxWidth: 1040),
+              child: isDesktop
+                  ? _buildDesktopLayout(context)
+                  : _buildMobileLayout(context),
             ),
           ),
         ),
@@ -73,48 +70,36 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _buildDesktopLayout() {
+  Widget _buildDesktopLayout(BuildContext context) {
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Expanded(
-          flex: 1,
-          child: Padding(
-            padding: const EdgeInsets.all(40.0),
-            child: _buildHeroText(isDark: true),
-          ),
+          child: _buildHeroPanel(context, compact: false),
         ),
+        const SizedBox(width: 24),
         Expanded(
-          flex: 1,
-          child: Center(
-            child: SizedBox(
-              width: 450,
-              child: _buildLoginCard(),
-            ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildLoginCard(context),
+              _buildFooterLink(),
+            ],
           ),
         ),
       ],
     );
   }
 
-  Widget _buildMobileLayout() {
+  Widget _buildMobileLayout(BuildContext context) {
     return Column(
       children: [
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.fromLTRB(24, 60, 24, 80),
-          decoration: BoxDecoration(
-            color: jagoYellow,
-            borderRadius: const BorderRadius.vertical(
-              bottom: Radius.circular(40),
-            ),
-          ),
-          child: _buildHeroText(isDark: false),
-        ),
+        _buildHeroPanel(context, compact: true),
         Transform.translate(
-          offset: const Offset(0, -40),
+          offset: const Offset(0, -22),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: _buildLoginCard(),
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: _buildLoginCard(context),
           ),
         ),
         _buildFooterLink(),
@@ -122,54 +107,67 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _buildHeroText({required bool isDark}) {
-    final color = isDark ? jagoPurple : Colors.white;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: isDark ? jagoYellow : Colors.white.withOpacity(0.2),
-            borderRadius: BorderRadius.circular(16),
+  Widget _buildHeroPanel(BuildContext context, {required bool compact}) {
+    return Container(
+      width: double.infinity,
+      padding:
+          EdgeInsets.fromLTRB(24, compact ? 30 : 42, 24, compact ? 34 : 42),
+      decoration: BoxDecoration(
+        color: AppColors.primary,
+        borderRadius: BorderRadius.circular(32),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.18),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Icon(
+              Icons.space_dashboard_rounded,
+              color: Colors.white,
+              size: 28,
+            ),
           ),
-          child: Icon(Icons.calendar_today_rounded,
-              color: isDark ? Colors.white : Colors.white, size: 32),
-        ),
-        const SizedBox(height: 24),
-        Text(
-          'PlanKP.',
-          style: TextStyle(
-            fontSize: 40,
-            fontWeight: FontWeight.w900,
-            color: color,
-            letterSpacing: -1.5,
+          const SizedBox(height: 18),
+          const Text(
+            'PlanKP',
+            style: TextStyle(
+              fontSize: 36,
+              fontWeight: FontWeight.w800,
+              color: Colors.white,
+              letterSpacing: -1,
+            ),
           ),
-        ),
-        const SizedBox(height: 12),
-        Text(
-          'Solusi cerdas kelola jadwal maintenance dan realisasi operasional harian Anda.',
-          style: TextStyle(
-            fontSize: 18,
-            color: color.withOpacity(0.8),
-            height: 1.4,
+          const SizedBox(height: 8),
+          Text(
+            'Kencana Print',
+            style: TextStyle(
+              fontSize: compact ? 14 : 16,
+              color: Colors.white.withValues(alpha: 0.88),
+              height: 1.45,
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
-  Widget _buildLoginCard() {
+  Widget _buildLoginCard(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(32),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(32),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppColors.border),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.06),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
@@ -178,18 +176,13 @@ class _LoginScreenState extends State<LoginScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
+            const Text(
               'Masuk',
               style: TextStyle(
-                fontSize: 26,
-                fontWeight: FontWeight.bold,
-                color: jagoPurple,
+                fontSize: 24,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary,
               ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Gunakan akun operasional Anda',
-              style: TextStyle(color: Colors.grey[600], fontSize: 14),
             ),
             const SizedBox(height: 32),
             _buildInputField(
@@ -216,8 +209,8 @@ class _LoginScreenState extends State<LoginScreen> {
               builder: (_, auth, __) => ElevatedButton(
                 onPressed: auth.loading ? null : _submit,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: jagoYellow,
-                  foregroundColor: jagoPurple,
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: AppColors.white,
                   minimumSize: const Size(double.infinity, 56),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16)),
@@ -228,12 +221,12 @@ class _LoginScreenState extends State<LoginScreen> {
                         height: 24,
                         width: 24,
                         child: CircularProgressIndicator(
-                            strokeWidth: 2.5, color: Color(0xFF2A0054)),
+                            strokeWidth: 2.5, color: Colors.white),
                       )
                     : const Text(
-                        'Masuk Sekarang',
+                        'Masuk',
                         style: TextStyle(
-                            fontWeight: FontWeight.bold, fontSize: 16),
+                            fontWeight: FontWeight.w700, fontSize: 16),
                       ),
               ),
             ),
@@ -259,24 +252,32 @@ class _LoginScreenState extends State<LoginScreen> {
       validator: validator,
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: TextStyle(color: jagoPurple.withOpacity(0.6)),
-        prefixIcon: Icon(icon, color: jagoPurple),
+        prefixIcon: Icon(icon, color: AppColors.primary),
         suffixIcon: isPassword
             ? IconButton(
                 icon: Icon(obscure
                     ? Icons.visibility_off_outlined
                     : Icons.visibility_outlined),
                 onPressed: onToggle,
-                color: Colors.grey,
+                color: AppColors.textSecondary,
               )
             : null,
         filled: true,
-        fillColor: jagoLightGrey,
+        fillColor: AppColors.white,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide.none,
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: AppColors.border),
         ),
-        contentPadding: const EdgeInsets.symmetric(vertical: 18),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: AppColors.border),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: AppColors.primary, width: 1.8),
+        ),
+        contentPadding:
+            const EdgeInsets.symmetric(vertical: 16, horizontal: 14),
       ),
     );
   }
@@ -290,10 +291,9 @@ class _LoginScreenState extends State<LoginScreen> {
           const Text('Belum punya akun?'),
           TextButton(
             onPressed: () => Navigator.pushNamed(context, AppRoutes.register),
-            child: Text(
-              'Daftar Disini',
-              style: TextStyle(fontWeight: FontWeight.bold, color: jagoPurple),
-            ),
+            child: const Text('Register',
+                style: TextStyle(
+                    fontWeight: FontWeight.w700, color: AppColors.primary)),
           ),
         ],
       ),

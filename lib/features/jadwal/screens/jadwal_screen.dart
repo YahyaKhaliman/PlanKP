@@ -424,10 +424,12 @@ class _JadwalScreenState extends State<JadwalScreen> {
         title: const Text('Penjadwalan'),
       ),
       floatingActionButton: isAdmin
-          ? FloatingActionButton.extended(
+          ? FloatingActionButton(
               onPressed: () => _openForm(),
-              icon: const Icon(Icons.add),
-              label: const Text('Buat Jadwal'),
+              tooltip: 'Buat Jadwal',
+              child: const Icon(Icons.add),
+              backgroundColor: AppColors.primary,
+              foregroundColor: AppColors.white,
             )
           : null,
       body: Consumer<JadwalProvider>(

@@ -18,7 +18,7 @@ class ChecklistTemplateScreen extends StatefulWidget {
 
 class _ChecklistTemplateScreenState extends State<ChecklistTemplateScreen> {
   static const _kPageBg = Color(0xFFF8FAFC);
-  String? _filterJenis;
+  final _searchCtrl = TextEditingController();
 
   void _showSuccess(String message) {
     AppNotifier.showSuccessSnack(context, message);
@@ -32,6 +32,12 @@ class _ChecklistTemplateScreenState extends State<ChecklistTemplateScreen> {
       p.fetchChecklist();
       p.fetchJenis();
     });
+  }
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
   }
 
   // ── buka form single item ──────────────────────────────────
@@ -91,19 +97,22 @@ class _ChecklistTemplateScreenState extends State<ChecklistTemplateScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: _kPageBg,
-      appBar: AppBar(title: const Text('Template Checklist')),
+      appBar: AppBar(title: const Text('Checklist')),
       body: _ChecklistTab(
-        filterJenis: _filterJenis,
-        onFilterChanged: (val) => setState(() => _filterJenis = val),
+        searchQuery: _searchCtrl.text,
+        onSearchChanged: (_) => setState(() {}),
+        searchCtrl: _searchCtrl,
         openBulkForm: _openBulkForm,
         openSingleForm: _openSingleForm,
         confirmDelete: _confirmDelete,
       ),
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: FloatingActionButton(
         heroTag: 'fab_checklist',
         onPressed: _openBulkForm,
-        icon: const Icon(Icons.playlist_add),
-        label: const Text('Bulk Input'),
+        tooltip: 'Bulk Input Checklist',
+        backgroundColor: AppColors.primary,
+        foregroundColor: AppColors.white,
+        child: const Icon(Icons.add),
       ),
     );
   }
@@ -661,15 +670,17 @@ class _BulkInputFormState extends State<_BulkInputForm> {
 //  CHECKLIST TAB
 // ═══════════════════════════════════════════════════════════════
 class _ChecklistTab extends StatelessWidget {
-  final String? filterJenis;
-  final ValueChanged<String?> onFilterChanged;
+  final String searchQuery;
+  final ValueChanged<String> onSearchChanged;
+  final TextEditingController searchCtrl;
   final void Function([String?, List<ChecklistTemplateModel>?]) openBulkForm;
   final void Function([ChecklistTemplateModel?]) openSingleForm;
   final void Function(ChecklistTemplateModel) confirmDelete;
 
   const _ChecklistTab({
-    required this.filterJenis,
-    required this.onFilterChanged,
+    required this.searchQuery,
+    required this.onSearchChanged,
+    required this.searchCtrl,
     required this.openBulkForm,
     required this.openSingleForm,
     required this.confirmDelete,
@@ -683,68 +694,47 @@ class _ChecklistTab extends StatelessWidget {
         final jenisNameById = {
           for (final j in jenisMaster) j.jenisId: j.jenisNama,
         };
-        final selectedJenisNama = filterJenis == null
-            ? null
-            : jenisMaster
-                .where((j) => '${j.jenisId}' == filterJenis)
-                .map((j) => j.jenisNama)
-                .cast<String?>()
-                .firstWhere((_) => true, orElse: () => null);
-        final filtered = filterJenis == null
+        final query = searchQuery.trim().toLowerCase();
+        final filtered = query.isEmpty
             ? p.checklistList
-            : p.checklistList
-                .where((e) => e.ctJenisId.toString() == filterJenis)
-                .toList();
+            : p.checklistList.where((e) {
+                final item = e.ctItem.toLowerCase();
+                final ket = (e.ctKeterangan ?? '').toLowerCase();
+                final jenis =
+                    (e.ctJenisNama ?? jenisNameById[e.ctJenisId] ?? '')
+                        .toLowerCase();
+                return item.contains(query) ||
+                    ket.contains(query) ||
+                    jenis.contains(query);
+              }).toList();
+        final jenisCount = filtered.map((e) => e.ctJenisId).toSet().length;
 
         return Column(children: [
           Container(
             color: AppColors.white,
-            child: Column(children: [
-              SizedBox(
-                height: 48,
-                child: ListView(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                  children: [
-                    _Chip(
-                      label: 'Semua',
-                      selected: filterJenis == null,
-                      onTap: () {
-                        onFilterChanged(null);
-                        p.fetchChecklist();
-                      },
-                    ),
-                    ...jenisMaster.map((j) => _Chip(
-                          label: j.jenisNama,
-                          selected: filterJenis == '${j.jenisId}',
-                          onTap: () {
-                            onFilterChanged('${j.jenisId}');
-                            p.fetchChecklist(jenis: '${j.jenisId}');
-                          },
-                        )),
-                  ],
-                ),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            child: TextField(
+              controller: searchCtrl,
+              decoration: const InputDecoration(
+                hintText: 'Cari item checklist atau jenis...',
+                prefixIcon: Icon(Icons.search, size: 20),
+                contentPadding: EdgeInsets.symmetric(vertical: 10),
               ),
-              const Divider(height: 1),
-            ]),
+              onChanged: onSearchChanged,
+            ),
           ),
           if (filtered.isNotEmpty)
             Container(
               color: const Color(0xFFF8FAFC),
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
               child: Row(children: [
-                Text('${filtered.length} item',
+                Text('$jenisCount item',
                     style: const TextStyle(
                         fontSize: 12, color: AppColors.textSecondary)),
-                if (filterJenis != null) ...[
-                  const Text(' · ',
-                      style: TextStyle(color: AppColors.textSecondary)),
-                  Text(selectedJenisNama ?? 'Jenis tidak dikenal',
-                      style: const TextStyle(
-                          fontSize: 12,
-                          color: AppColors.primary,
-                          fontWeight: FontWeight.w500)),
-                ],
+                if (query.isNotEmpty)
+                  const Text(' · hasil pencarian',
+                      style: TextStyle(
+                          fontSize: 12, color: AppColors.textSecondary)),
               ]),
             ),
           if (filtered.isEmpty)
@@ -752,7 +742,7 @@ class _ChecklistTab extends StatelessWidget {
               child: EmptyState(
                 message: 'Belum ada item checklist',
                 actionLabel: 'Bulk Input',
-                onAction: () => openBulkForm(filterJenis),
+                onAction: () => openBulkForm(),
               ),
             ),
           if (filtered.isNotEmpty)
@@ -775,7 +765,19 @@ class _ChecklistTab extends StatelessWidget {
     for (final item in filtered) {
       grouped.putIfAbsent(item.ctJenisId, () => []).add(item);
     }
-    return grouped.entries.map((entry) {
+    final sortedEntries = grouped.entries.toList()
+      ..sort((a, b) {
+        final aLabel = (a.value.first.ctJenisNama ??
+                jenisNameById[a.key] ??
+                'Jenis tidak dikenal')
+            .toLowerCase();
+        final bLabel = (b.value.first.ctJenisNama ??
+                jenisNameById[b.key] ??
+                'Jenis tidak dikenal')
+            .toLowerCase();
+        return aLabel.compareTo(bLabel);
+      });
+    return sortedEntries.map((entry) {
       final jenisId = entry.key;
       final list = entry.value
         ..sort((a, b) => a.ctUrutan.compareTo(b.ctUrutan));
@@ -898,38 +900,6 @@ class _ChecklistTab extends StatelessWidget {
 // ═══════════════════════════════════════════════════════════════
 //  SHARED WIDGETS
 // ═══════════════════════════════════════════════════════════════
-class _Chip extends StatelessWidget {
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  const _Chip(
-      {required this.label, required this.selected, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.only(right: 8),
-        child: GestureDetector(
-          onTap: onTap,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 150),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
-            decoration: BoxDecoration(
-              color: selected ? AppColors.primary : AppColors.white,
-              border: Border.all(
-                  color: selected ? AppColors.primary : AppColors.border),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(label,
-                style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    color: selected ? Colors.white : AppColors.textSecondary)),
-          ),
-        ),
-      );
-}
-
 class _ErrorBox extends StatelessWidget {
   final String? error;
 

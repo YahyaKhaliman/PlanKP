@@ -61,11 +61,200 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  void _openJadwalDetail(int jadwalId, {bool closeSheetFirst = false}) {
+  Future<void> _openJadwalDetail(
+    JadwalModel jadwal, {
+    bool closeSheetFirst = false,
+  }) async {
     if (closeSheetFirst) {
       Navigator.of(context).pop();
     }
-    Navigator.pushNamed(context, AppRoutes.jadwalDetail, arguments: jadwalId);
+
+    final auth = context.read<AuthProvider>();
+    final isAdmin = auth.user?['user_jabatan'] == 'admin';
+
+    if (isAdmin) {
+      Navigator.pushNamed(
+        context,
+        AppRoutes.jadwalDetail,
+        arguments: jadwal.jdwId,
+      );
+      return;
+    }
+
+    if (jadwal.jdwStatus != 'Aktif') {
+      await AppNotifier.showError(
+        context,
+        'Jadwal belum aktif untuk direalisasi',
+      );
+      return;
+    }
+
+    final provider = context.read<JadwalProvider>();
+    await provider.fetchJadwalDetail(
+      jadwal.jdwId,
+      affectGlobalLoading: false,
+    );
+    if (!mounted) {
+      return;
+    }
+
+    final inventarisList = provider.inventarisByJenis
+        .map((e) => Map<String, dynamic>.from(e as Map))
+        .toList();
+
+    // Fetch realisasi for this specific jadwal WITHOUT overwriting realisasiList
+    final jadwalRealisasi =
+        await provider.fetchRealisasiByJadwal(jadwal.jdwId, status: 'Selesai');
+    if (!mounted) {
+      return;
+    }
+    final selesaiInvIds = jadwalRealisasi.map((r) => r.realInvId).toSet();
+    final belumSelesaiList = inventarisList.where((inv) {
+      final invIdRaw = inv['inv_id'];
+      final invId = invIdRaw is int ? invIdRaw : int.tryParse('$invIdRaw');
+      return invId == null || !selesaiInvIds.contains(invId);
+    }).toList();
+
+    if (inventarisList.isEmpty) {
+      await AppNotifier.showError(
+        context,
+        'Inventaris untuk jadwal ini belum ada',
+      );
+      return;
+    }
+
+    if (inventarisList.length == 1 && belumSelesaiList.isNotEmpty) {
+      await _openRealisasiFromInventaris(jadwal, belumSelesaiList.first);
+      return;
+    }
+
+    if (belumSelesaiList.isEmpty) {
+      await AppNotifier.showWarning(
+        context,
+        'Semua unit pada jadwal ini sudah direalisasi dalam rentang saat ini',
+      );
+      return;
+    }
+
+    _showInventarisPicker(jadwal, inventarisList, selesaiInvIds);
+  }
+
+  void _showInventarisPicker(
+    JadwalModel jadwal,
+    List<Map<String, dynamic>> inventarisList,
+    Set<int> selesaiInvIds,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => Container(
+        decoration: const BoxDecoration(
+          color: _pageBg,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 42,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Pilih Unit untuk Realisasi',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Flexible(
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    itemCount: inventarisList.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 8),
+                    itemBuilder: (_, i) {
+                      final inv = inventarisList[i];
+                      final invIdRaw = inv['inv_id'];
+                      final invId = invIdRaw is int
+                          ? invIdRaw
+                          : int.tryParse('$invIdRaw');
+                      final sudahDirealisasi =
+                          invId != null && selesaiInvIds.contains(invId);
+                      return Card(
+                        margin: EdgeInsets.zero,
+                        child: ListTile(
+                          leading: const Icon(Icons.inventory_2_outlined,
+                              color: AppColors.primary),
+                          title: Text(inv['inv_nama'] ?? '-'),
+                          subtitle: Text(
+                            '${inv['inv_no'] ?? '-'} · ${inv['inv_lokasi'] ?? '-'}${sudahDirealisasi ? '\nSudah direalisasi' : '\nBelum direalisasi'}',
+                          ),
+                          trailing: sudahDirealisasi
+                              ? const Icon(Icons.check_circle,
+                                  color: AppColors.success)
+                              : const Icon(Icons.chevron_right),
+                          isThreeLine: true,
+                          onTap: sudahDirealisasi
+                              ? null
+                              : () {
+                                  Navigator.pop(context);
+                                  _openRealisasiFromInventaris(jadwal, inv);
+                                },
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openRealisasiFromInventaris(
+    JadwalModel jadwal,
+    Map<String, dynamic> inv,
+  ) async {
+    final invJenisRaw =
+        inv['inv_jenis_id'] ?? inv['inv_jenis'] ?? jadwal.jdwJenisId;
+    final invJenisId = invJenisRaw is int
+        ? invJenisRaw
+        : int.tryParse('$invJenisRaw') ?? jadwal.jdwJenisId;
+    final invIdRaw = inv['inv_id'];
+    final invId = invIdRaw is int ? invIdRaw : int.tryParse('$invIdRaw');
+    final jenis = context.read<MasterProvider>().jenisById(invJenisId);
+
+    await Navigator.pushNamed(
+      context,
+      AppRoutes.realisasiForm,
+      arguments: {
+        'jadwalId': jadwal.jdwId,
+        'invJenisId': invJenisId,
+        'invJenisNama': jenis?.jenisNama ?? 'ID $invJenisId',
+        'invId': invId,
+        'invNama': inv['inv_nama'],
+        'invNo': inv['inv_no'],
+        'invKondisi': inv['inv_kondisi'],
+        'invPicNama': inv['pic_user']?['user_nama'],
+        'invPicId': inv['pic_user']?['user_id'],
+      },
+    );
+    if (!mounted) {
+      return;
+    }
+    await _loadData();
   }
 
   @override
@@ -105,13 +294,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Selamat Datang',
-                              style: const TextStyle(
+                          const Text('Selamat Datang',
+                              style: TextStyle(
                                   color: Colors.white,
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold)),
                           Text(
-                              "${auth.user?['user_jabatan']?.toString().toUpperCase()} - ${auth.user?['user_divisi'] ?? '-'}",
+                              "${auth.user?['user_nama']?.toString().toUpperCase()} - ${auth.user?['user_divisi'] ?? '-'}",
                               style: TextStyle(
                                   color: Colors.white.withValues(alpha: 0.8),
                                   fontSize: 13)),
@@ -665,8 +854,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
-        onTap: () =>
-            _openJadwalDetail(item.jdwId, closeSheetFirst: closeSheetOnTap),
+        onTap: () => _openJadwalDetail(item, closeSheetFirst: closeSheetOnTap),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -782,18 +970,45 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final startDate = _parseDateOnly(j.jdwTglMulai);
     if (startDate == null) return DateTime.now();
 
-    final lastDone = p.realisasiList
+    final selesaiByJadwal = p.realisasiList
         .where((r) => r.realJadwalId == j.jdwId && r.selesai)
-        .map((r) => _parseDateOnly(r.realTgl))
-        .whereType<DateTime>()
-        .fold<DateTime?>(null, (prev, curr) {
-      if (prev == null || curr.isAfter(prev)) return curr;
-      return prev;
-    });
+        .toList();
 
-    return lastDone == null
-        ? startDate
-        : _addByFrequency(lastDone, j.jdwFrekuensi);
+    if (selesaiByJadwal.isEmpty) {
+      return startDate;
+    }
+
+    // Track tanggal selesai terakhir per inventaris.
+    final Map<int, DateTime> lastDonePerInv = {};
+    for (final r in selesaiByJadwal) {
+      final tgl = _parseDateOnly(r.realTgl);
+      if (tgl == null) {
+        continue;
+      }
+      final prev = lastDonePerInv[r.realInvId];
+      if (prev == null || tgl.isAfter(prev)) {
+        lastDonePerInv[r.realInvId] = tgl;
+      }
+    }
+
+    if (lastDonePerInv.isEmpty) {
+      return startDate;
+    }
+
+    // Ambil due date paling cepat (unit yang paling dulu jatuh tempo / belum terselesaikan).
+    var earliestNextDue = lastDonePerInv.values
+        .map((lastDone) => _addByFrequency(lastDone, j.jdwFrekuensi))
+        .reduce((a, b) => a.isBefore(b) ? a : b);
+
+    // Jika total unit jadwal lebih besar dari unit yang pernah selesai,
+    // berarti masih ada inventaris yang belum pernah direalisasi sama sekali.
+    final totalUnit = j.jdwTotalUnit;
+    if (totalUnit != null && totalUnit > lastDonePerInv.length) {
+      earliestNextDue =
+          startDate.isBefore(earliestNextDue) ? startDate : earliestNextDue;
+    }
+
+    return earliestNextDue;
   }
 
   IconData _iconForDivisi(String? divisiRaw) {

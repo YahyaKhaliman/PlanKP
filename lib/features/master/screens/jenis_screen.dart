@@ -17,6 +17,17 @@ class _JenisScreenState extends State<JenisScreen> {
   static const _kPageBg = Color(0xFFF8FAFC);
   final _searchCtrl = TextEditingController();
 
+  Future<void> _toggleJenisStatus(JenisModel jenis, bool value) async {
+    final provider = context.read<MasterProvider>();
+    final ok = await provider.toggleJenisAktif(jenis.jenisId, value);
+    if (!ok && mounted) {
+      await AppNotifier.showError(
+        context,
+        provider.error ?? 'Gagal mengubah status jenis',
+      );
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -54,9 +65,9 @@ class _JenisScreenState extends State<JenisScreen> {
       floatingActionButton: FloatingActionButton(
         onPressed: () => _openForm(),
         tooltip: 'Tambah Jenis',
-        child: const Icon(Icons.add),
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.white,
+        child: const Icon(Icons.add),
       ),
       body: Consumer<MasterProvider>(
         builder: (_, p, __) {
@@ -108,10 +119,10 @@ class _JenisScreenState extends State<JenisScreen> {
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(16),
                               border: Border.all(
-                                  color: Colors.black.withOpacity(0.04)),
+                                  color: Colors.black.withValues(alpha: 0.04)),
                               boxShadow: [
                                 BoxShadow(
-                                    color: Colors.black.withOpacity(0.03),
+                                    color: Colors.black.withValues(alpha: 0.03),
                                     blurRadius: 8,
                                     offset: const Offset(0, 2)),
                               ],
@@ -126,32 +137,14 @@ class _JenisScreenState extends State<JenisScreen> {
                                 children: [
                                   Switch(
                                     value: jenis.jenisIsActive,
-                                    onChanged: (value) => context
-                                        .read<MasterProvider>()
-                                        .saveJenis({
-                                      'jenis_is_active': value,
-                                    }, id: jenis.jenisId),
-                                    activeColor: AppColors.primary,
+                                    onChanged: (value) =>
+                                        _toggleJenisStatus(jenis, value),
+                                    activeThumbColor: AppColors.primary,
                                   ),
                                   IconButton(
                                     icon: const Icon(Icons.edit_outlined,
                                         color: AppColors.textSecondary),
                                     onPressed: () => _openForm(jenis),
-                                  ),
-                                  IconButton(
-                                    icon: const Icon(Icons.delete_outline,
-                                        color: AppColors.danger),
-                                    onPressed: () async {
-                                      await AppNotifier.showConfirm(
-                                        context,
-                                        title: 'Hapus Jenis',
-                                        message:
-                                            'Hapus jenis ${jenis.jenisNama}?',
-                                        onConfirm: () => context
-                                            .read<MasterProvider>()
-                                            .deleteJenis(jenis.jenisId),
-                                      );
-                                    },
                                   ),
                                 ],
                               ),
@@ -272,7 +265,7 @@ class _JenisFormState extends State<_JenisForm> {
                 ),
                 const SizedBox(height: 14),
                 DropdownButtonFormField<String>(
-                  value: _kategori,
+                  initialValue: _kategori,
                   decoration: const InputDecoration(
                     labelText: 'Kategori',
                     prefixIcon: Icon(Icons.category_outlined),

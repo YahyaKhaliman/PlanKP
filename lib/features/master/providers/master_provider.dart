@@ -102,7 +102,49 @@ class MasterProvider extends ChangeNotifier {
   Future<bool> toggleInventarisAktif(int id) async {
     try {
       await ApiClient.patch('${ApiConfig.inventaris}/$id/aktif', {});
-      await fetchInventaris();
+      final index = inventarisList.indexWhere((item) => item.invId == id);
+      if (index != -1) {
+        final current = inventarisList[index];
+        inventarisList[index] = InventarisModel(
+          invId: current.invId,
+          invNo: current.invNo,
+          invNama: current.invNama,
+          invKategori: current.invKategori,
+          invJenisId: current.invJenisId,
+          invLokasi: current.invLokasi,
+          invMerk: current.invMerk,
+          invSerialNumber: current.invSerialNumber,
+          invPic: current.invPic,
+          invTglBeli: current.invTglBeli,
+          invKondisi: current.invKondisi,
+          invIsActive: !current.invIsActive,
+          invNotes: current.invNotes,
+        );
+        notifyListeners();
+      }
+      return true;
+    } on ApiException catch (e) {
+      _setError(e.message);
+      return false;
+    }
+  }
+
+  Future<bool> toggleJenisAktif(int id, bool isActive) async {
+    try {
+      await ApiClient.put('${ApiConfig.jenis}/$id', {
+        'jenis_is_active': isActive,
+      });
+      final index = jenisMaster.indexWhere((item) => item.jenisId == id);
+      if (index != -1) {
+        final current = jenisMaster[index];
+        jenisMaster[index] = JenisModel(
+          jenisId: current.jenisId,
+          jenisNama: current.jenisNama,
+          jenisKategori: current.jenisKategori,
+          jenisIsActive: isActive,
+        );
+        notifyListeners();
+      }
       return true;
     } on ApiException catch (e) {
       _setError(e.message);
@@ -346,7 +388,20 @@ class MasterProvider extends ChangeNotifier {
   Future<bool> toggleUserAktif(int id) async {
     try {
       await ApiClient.patch('${ApiConfig.users}/$id/aktif', {});
-      await fetchUsers();
+      final index = userList.indexWhere((u) => u.userId == id);
+      if (index != -1) {
+        final current = userList[index];
+        userList[index] = UserModel(
+          userId: current.userId,
+          userNama: current.userNama,
+          userNik: current.userNik,
+          userJabatan: current.userJabatan,
+          userDivisi: current.userDivisi,
+          userCabang: current.userCabang,
+          userIsActive: !current.userIsActive,
+        );
+        notifyListeners();
+      }
       return true;
     } on ApiException catch (e) {
       _setError(e.message);

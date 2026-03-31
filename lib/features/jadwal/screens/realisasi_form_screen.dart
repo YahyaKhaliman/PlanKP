@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/date_formatter.dart';
@@ -91,10 +90,16 @@ class _RealisasiFormScreenState extends State<RealisasiFormScreen> {
       return;
     }
 
-    final unfinished = _checklistItems.where((item) => item.hasil == 'N/A');
-    if (unfinished.isNotEmpty) {
+    final nkTanpaKondisi = _checklistItems.where((item) =>
+        item.hasil == 'NK' && (item.kondisi == null || item.kondisi!.isEmpty));
+    if (nkTanpaKondisi.isNotEmpty) {
       await AppNotifier.showWarning(
-          context, 'Semua item checklist wajib diisi');
+          context, 'Pilih kondisi untuk setiap item yang tidak sesuai (NK)');
+      return;
+    }
+
+    final ttdData = await _openTtdPopup();
+    if (ttdData == null || !mounted) {
       return;
     }
 
@@ -117,7 +122,10 @@ class _RealisasiFormScreenState extends State<RealisasiFormScreen> {
 
     setState(() => _submitting = true);
     final real = await p.createRealisasi(body);
-    if (real == null || !mounted) {
+    if (!mounted) {
+      return;
+    }
+    if (real == null) {
       setState(() => _submitting = false);
       await AppNotifier.showError(
           context, p.error ?? 'Gagal membuat data realisasi');
@@ -125,29 +133,45 @@ class _RealisasiFormScreenState extends State<RealisasiFormScreen> {
     }
 
     final okChecklist = await p.saveChecklist(real.realId, _checklistItems);
-    if (!okChecklist || !mounted) {
+    if (!mounted) {
+      return;
+    }
+    if (!okChecklist) {
       setState(() => _submitting = false);
       await AppNotifier.showError(
           context, p.error ?? 'Gagal menyimpan checklist realisasi');
       return;
     }
 
-    _openTtdPopup(real.realId);
+    final okTtd = await p.saveTtd(
+      real.realId,
+      ttdData.picNama,
+      'data:image/png;base64,${ttdData.signatureBase64}',
+    );
+    if (!mounted) {
+      return;
+    }
+    if (!okTtd) {
+      setState(() => _submitting = false);
+      await AppNotifier.showError(
+          context, p.error ?? 'Gagal menyimpan tanda tangan');
+      return;
+    }
+
+    setState(() => _submitting = false);
+    await AppNotifier.showSuccess(context, 'Realisasi berhasil diselesaikan');
+    if (!mounted) {
+      return;
+    }
+    Navigator.pop(context);
   }
 
-  void _openTtdPopup(int realId) {
-    showDialog(
+  Future<_TtdSubmitData?> _openTtdPopup() async {
+    return showDialog<_TtdSubmitData>(
       context: context,
       barrierDismissible: false,
       builder: (_) => _TtdDialog(
-        realId: realId,
         defaultPicNama: _invPicNama,
-        onSelesai: () {
-          Navigator.pop(context); // tutup dialog
-          Navigator.pop(context); // kembali ke sebelumnya
-        },
-        onSubmitStart: () => setState(() => _submitting = true),
-        onSubmitEnd: () => setState(() => _submitting = false),
       ),
     );
   }
@@ -376,20 +400,6 @@ class _ChecklistItemCard extends StatefulWidget {
 }
 
 class _ChecklistItemCardState extends State<_ChecklistItemCard> {
-  late TextEditingController _ketCtrl;
-
-  @override
-  void initState() {
-    super.initState();
-    _ketCtrl = TextEditingController(text: widget.item.keterangan);
-  }
-
-  @override
-  void dispose() {
-    _ketCtrl.dispose();
-    super.dispose();
-  }
-
   @override
   Widget build(BuildContext context) {
     final item = widget.item;
@@ -431,15 +441,11 @@ class _ChecklistItemCardState extends State<_ChecklistItemCard> {
           ],
           const SizedBox(height: 12),
 
-          // Pilihan hasil: OK / NK / N/A
+          // Pilihan hasil: OK / NK
           Row(
-              children: ['OK', 'NK', 'N/A'].map((h) {
+              children: ['OK', 'NK'].map((h) {
             final sel = item.hasil == h;
-            final color = h == 'OK'
-                ? AppColors.success
-                : h == 'NK'
-                    ? AppColors.danger
-                    : AppColors.textSecondary;
+            final color = h == 'OK' ? AppColors.success : AppColors.danger;
             return Expanded(
                 child: Padding(
               padding: const EdgeInsets.only(right: 6),
@@ -469,6 +475,17 @@ class _ChecklistItemCardState extends State<_ChecklistItemCard> {
               ),
             ));
           }).toList()),
+
+          if (item.hasil == 'OK') ...[
+            const SizedBox(height: 6),
+            const Row(children: [
+              Icon(Icons.check_circle_outline,
+                  size: 14, color: AppColors.success),
+              SizedBox(width: 4),
+              Text('Sudah diperiksa dan sesuai standar',
+                  style: TextStyle(fontSize: 11, color: AppColors.success)),
+            ]),
+          ],
 
           // Jika NK: pilih kondisi
           if (item.hasil == 'NK') ...[
@@ -508,18 +525,6 @@ class _ChecklistItemCardState extends State<_ChecklistItemCard> {
               );
             }).toList()),
           ],
-
-          // Keterangan per item
-          const SizedBox(height: 10),
-          TextField(
-            controller: _ketCtrl,
-            decoration: const InputDecoration(
-              hintText: 'Keterangan (opsional)...',
-              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            ),
-            style: const TextStyle(fontSize: 13),
-            onChanged: (v) => item.keterangan = v.isEmpty ? null : v,
-          ),
         ]),
       ),
     );
@@ -530,16 +535,8 @@ class _ChecklistItemCardState extends State<_ChecklistItemCard> {
 //  TTD DIALOG
 // ═══════════════════════════════════════════════════════════════
 class _TtdDialog extends StatefulWidget {
-  final int realId;
   final String? defaultPicNama;
-  final VoidCallback onSelesai;
-  final VoidCallback onSubmitStart;
-  final VoidCallback onSubmitEnd;
   const _TtdDialog({
-    required this.realId,
-    required this.onSelesai,
-    required this.onSubmitStart,
-    required this.onSubmitEnd,
     this.defaultPicNama,
   });
   @override
@@ -547,6 +544,7 @@ class _TtdDialog extends StatefulWidget {
 }
 
 class _TtdDialogState extends State<_TtdDialog> {
+  final _formKey = GlobalKey<FormState>();
   final _picCtrl = TextEditingController();
   final _canvasKey = GlobalKey();
   final List<List<Offset?>> _strokes = [];
@@ -591,6 +589,13 @@ class _TtdDialogState extends State<_TtdDialog> {
     });
   }
 
+  void _handleClose() {
+    if (_submitting) {
+      return;
+    }
+    Navigator.pop(context);
+  }
+
   Future<String> _captureBase64() async {
     final recorder = ui.PictureRecorder();
     final canvas = Canvas(recorder);
@@ -633,8 +638,7 @@ class _TtdDialogState extends State<_TtdDialog> {
   }
 
   Future<void> _submit() async {
-    if (_picCtrl.text.trim().isEmpty) {
-      await AppNotifier.showWarning(context, 'Nama PIC wajib diisi');
+    if (!_formKey.currentState!.validate()) {
       return;
     }
     if (!_hasSignature) {
@@ -642,135 +646,157 @@ class _TtdDialogState extends State<_TtdDialog> {
       return;
     }
 
-    widget.onSubmitStart();
     setState(() => _submitting = true);
     final base64 = await _captureBase64();
-    final p = context.read<JadwalProvider>();
-    final namaPic = _picCtrl.text.trim();
-    final ok = await p.saveTtd(
-        widget.realId, namaPic, 'data:image/png;base64,$base64');
-    if (mounted) {
-      widget.onSubmitEnd();
-      setState(() => _submitting = false);
-      if (ok) {
-        await AppNotifier.showSuccess(
-            context, 'Realisasi berhasil diselesaikan');
-        if (!mounted) return;
-        widget.onSelesai();
-      } else {
-        await AppNotifier.showError(
-            context, p.error ?? 'Gagal menyimpan tanda tangan');
-      }
+    if (!mounted) {
+      return;
     }
+    setState(() => _submitting = false);
+    Navigator.pop(
+      context,
+      _TtdSubmitData(
+        picNama: _picCtrl.text.trim(),
+        signatureBase64: base64,
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    return Dialog(
-      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // header
-            Row(children: [
-              const Expanded(
-                  child: Text('Tanda Tangan PIC',
-                      style: TextStyle(
-                          fontSize: 18, fontWeight: FontWeight.w700))),
-              IconButton(
-                icon: const Icon(Icons.close),
-                onPressed: () => Navigator.pop(context),
-              ),
-            ]),
-            const SizedBox(height: 4),
-            const Text(
-                'Isi nama PIC dan tanda tangan untuk menyelesaikan realisasi.',
-                style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
-            const SizedBox(height: 16),
-
-            TextField(
-              controller: _picCtrl,
-              textCapitalization: TextCapitalization.words,
-              decoration: const InputDecoration(
-                labelText: 'Nama PIC',
-                hintText: 'Masukkan nama PIC',
-                prefixIcon: Icon(Icons.person_outline),
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // canvas TTD
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return PopScope(
+      canPop: !_submitting,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop && _submitting) {
+          setState(() => _submitting = false);
+        }
+      },
+      child: Dialog(
+        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Form(
+          key: _formKey,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Area Tanda Tangan',
-                    style:
-                        TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                TextButton.icon(
-                  onPressed: _clearCanvas,
-                  icon: const Icon(Icons.refresh, size: 16),
-                  label: const Text('Ulang', style: TextStyle(fontSize: 12)),
+                // header
+                Row(children: [
+                  const Expanded(
+                      child: Text('Tanda Tangan PIC',
+                          style: TextStyle(
+                              fontSize: 18, fontWeight: FontWeight.w700))),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: _submitting ? null : _handleClose,
+                  ),
+                ]),
+                const SizedBox(height: 4),
+                const Text(
+                    'Isi nama PIC dan tanda tangan untuk menyelesaikan realisasi.',
+                    style: TextStyle(
+                        fontSize: 13, color: AppColors.textSecondary)),
+                const SizedBox(height: 16),
+
+                TextFormField(
+                  controller: _picCtrl,
+                  textCapitalization: TextCapitalization.words,
+                  decoration: const InputDecoration(
+                    labelText: 'Nama PIC *',
+                    hintText: 'Masukkan nama PIC',
+                    prefixIcon: Icon(Icons.person_outline),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Nama PIC wajib diisi';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+
+                // canvas TTD
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Area Tanda Tangan',
+                        style: TextStyle(
+                            fontSize: 13, fontWeight: FontWeight.w600)),
+                    TextButton.icon(
+                      onPressed: _clearCanvas,
+                      icon: const Icon(Icons.refresh, size: 16),
+                      label:
+                          const Text('Ulang', style: TextStyle(fontSize: 12)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+
+                Container(
+                  key: _canvasKey,
+                  width: double.infinity,
+                  height: 160,
+                  decoration: BoxDecoration(
+                    color: AppColors.white,
+                    border: Border.all(color: AppColors.primary, width: 1.5),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: GestureDetector(
+                      onPanStart: _onPanStart,
+                      onPanUpdate: _onPanUpdate,
+                      onPanEnd: _onPanEnd,
+                      child: CustomPaint(
+                        painter: _SignaturePainter(
+                            strokes: _strokes, currentStroke: _currentStroke),
+                      ),
+                    ),
+                  ),
+                ),
+
+                if (!_hasSignature) ...[
+                  const SizedBox(height: 6),
+                  const Center(
+                      child: Text('Tanda tangan di area atas',
+                          style: TextStyle(
+                              fontSize: 12, color: AppColors.textSecondary))),
+                ],
+                const SizedBox(height: 20),
+
+                Consumer<JadwalProvider>(
+                  builder: (_, p, __) => ElevatedButton.icon(
+                    onPressed: p.loading || _submitting ? null : _submit,
+                    style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.success),
+                    icon: p.loading || _submitting
+                        ? const SizedBox(
+                            height: 18,
+                            width: 18,
+                            child: CircularProgressIndicator(
+                                color: Colors.white, strokeWidth: 2))
+                        : const Icon(Icons.check_circle_outline),
+                    label: const Text('Selesaikan Realisasi'),
+                  ),
                 ),
               ],
             ),
-            const SizedBox(height: 6),
-
-            Container(
-              key: _canvasKey,
-              width: double.infinity,
-              height: 160,
-              decoration: BoxDecoration(
-                color: AppColors.white,
-                border: Border.all(color: AppColors.primary, width: 1.5),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: GestureDetector(
-                  onPanStart: _onPanStart,
-                  onPanUpdate: _onPanUpdate,
-                  onPanEnd: _onPanEnd,
-                  child: CustomPaint(
-                    painter: _SignaturePainter(
-                        strokes: _strokes, currentStroke: _currentStroke),
-                  ),
-                ),
-              ),
-            ),
-
-            if (!_hasSignature) ...[
-              const SizedBox(height: 6),
-              const Center(
-                  child: Text('Tanda tangan di area atas',
-                      style: TextStyle(
-                          fontSize: 12, color: AppColors.textSecondary))),
-            ],
-            const SizedBox(height: 20),
-
-            Consumer<JadwalProvider>(
-              builder: (_, p, __) => ElevatedButton.icon(
-                onPressed: p.loading || _submitting ? null : _submit,
-                style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.success),
-                icon: p.loading || _submitting
-                    ? const SizedBox(
-                        height: 18,
-                        width: 18,
-                        child: CircularProgressIndicator(
-                            color: Colors.white, strokeWidth: 2))
-                    : const Icon(Icons.check_circle_outline),
-                label: const Text('Selesaikan Realisasi'),
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
   }
+}
+
+class _TtdSubmitData {
+  final String picNama;
+  final String signatureBase64;
+
+  const _TtdSubmitData({
+    required this.picNama,
+    required this.signatureBase64,
+  });
 }
 
 // ── Custom painter untuk TTD ───────────────────────────────────

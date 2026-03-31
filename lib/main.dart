@@ -35,22 +35,22 @@ class PlanKPApp extends StatelessWidget {
           AppRoutes.login: (_) => const LoginScreen(),
           AppRoutes.register: (_) => const RegisterScreen(),
           AppRoutes.dashboard: (_) => const _ProtectedRoute(
-                child: DashboardScreen(),
                 allowedRoles: ['admin', 'user'],
+                child: DashboardScreen(),
               ),
           AppRoutes.jadwalDetail: (ctx) {
             final args = ModalRoute.of(ctx)!.settings.arguments as int;
             return _ProtectedRoute(
-              child: JadwalDetailScreen(jadwalId: args),
               allowedRoles: const ['admin'],
+              child: JadwalDetailScreen(jadwalId: args),
             );
           },
           AppRoutes.realisasiForm: (ctx) {
             final args =
                 ModalRoute.of(ctx)!.settings.arguments as Map<String, dynamic>;
             return _ProtectedRoute(
-              child: RealisasiFormScreen(args: args),
               allowedRoles: const ['user'],
+              child: RealisasiFormScreen(args: args),
             );
           },
         },

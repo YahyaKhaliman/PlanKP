@@ -14,13 +14,20 @@ class JadwalProvider extends ChangeNotifier {
   List<dynamic> inventarisByJenis = [];
 
   bool _loading = false;
+  bool _loadingDetail = false;
   String? _error;
   bool _lastFetchDivisi = false;
   bool get loading => _loading;
+  bool get loadingDetail => _loadingDetail;
   String? get error => _error;
 
   void _setLoading(bool v) {
     _loading = v;
+    notifyListeners();
+  }
+
+  void _setLoadingDetail(bool v) {
+    _loadingDetail = v;
     notifyListeners();
   }
 
@@ -88,8 +95,13 @@ class JadwalProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> fetchJadwalDetail(int id) async {
-    _setLoading(true);
+  Future<void> fetchJadwalDetail(int id,
+      {bool affectGlobalLoading = true}) async {
+    if (affectGlobalLoading) {
+      _setLoading(true);
+    } else {
+      _setLoadingDetail(true);
+    }
     try {
       final res = await ApiClient.get('${ApiConfig.jadwal}/$id');
       jadwalDetail = JadwalModel.fromJson(res['data']['jadwal']);
@@ -98,16 +110,21 @@ class JadwalProvider extends ChangeNotifier {
     } on ApiException catch (e) {
       _setError(e.message);
     } finally {
-      _setLoading(false);
+      if (affectGlobalLoading) {
+        _setLoading(false);
+      } else {
+        _setLoadingDetail(false);
+      }
     }
   }
 
   Future<bool> saveJadwal(Map<String, dynamic> body, {int? id}) async {
     try {
-      if (id != null)
+      if (id != null) {
         await ApiClient.put('${ApiConfig.jadwal}/$id', body);
-      else
+      } else {
         await ApiClient.post(ApiConfig.jadwal, body);
+      }
       if (_lastFetchDivisi) {
         await fetchJadwalByDivisi();
       } else {
@@ -157,6 +174,25 @@ class JadwalProvider extends ChangeNotifier {
       _setError(e.message);
     } finally {
       _setLoading(false);
+    }
+  }
+
+  /// Fetch realisasi for a specific jadwal WITHOUT modifying [realisasiList].
+  /// Use this when you only need the result temporarily (e.g. inventory picker)
+  /// so that the dashboard's "remaining days" calculation is not disrupted.
+  Future<List<RealisasiModel>> fetchRealisasiByJadwal(int jadwalId,
+      {String? status}) async {
+    try {
+      final query = <String, dynamic>{
+        'jadwal_id': jadwalId,
+        if (status != null) 'status': status,
+      };
+      final res = await ApiClient.get(ApiConfig.realisasi, query: query);
+      return (res['data'] as List)
+          .map((e) => RealisasiModel.fromJson(e))
+          .toList();
+    } on ApiException {
+      return [];
     }
   }
 

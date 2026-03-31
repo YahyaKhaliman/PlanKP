@@ -50,16 +50,6 @@ class _InventarisScreenState extends State<InventarisScreen> {
     );
   }
 
-  Future<void> _confirmDelete(InventarisModel item) async {
-    await AppNotifier.showConfirm(
-      context,
-      title: 'Hapus Inventaris',
-      message: 'Hapus inventaris ${item.invNama}?',
-      onConfirm: () =>
-          context.read<MasterProvider>().deleteInventaris(item.invId),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -68,9 +58,9 @@ class _InventarisScreenState extends State<InventarisScreen> {
       floatingActionButton: FloatingActionButton(
         onPressed: () => _openForm(),
         tooltip: 'Tambah Inventaris',
-        child: const Icon(Icons.add),
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.white,
+        child: const Icon(Icons.add),
       ),
       body: Consumer<MasterProvider>(
         builder: (_, p, __) {
@@ -119,7 +109,6 @@ class _InventarisScreenState extends State<InventarisScreen> {
                       return _InventarisCard(
                         item: item,
                         onEdit: () => _openForm(item),
-                        onDelete: () => _confirmDelete(item),
                         onToggle: () => p.toggleInventarisAktif(item.invId),
                       );
                     },
@@ -137,12 +126,10 @@ class _InventarisScreenState extends State<InventarisScreen> {
 class _InventarisCard extends StatelessWidget {
   final InventarisModel item;
   final VoidCallback onEdit;
-  final VoidCallback onDelete;
   final VoidCallback onToggle;
   const _InventarisCard({
     required this.item,
     required this.onEdit,
-    required this.onDelete,
     required this.onToggle,
   });
 
@@ -242,10 +229,6 @@ class _InventarisCard extends StatelessWidget {
                 icon: const Icon(Icons.edit_outlined,
                     color: AppColors.textSecondary),
                 onPressed: onEdit,
-              ),
-              IconButton(
-                icon: const Icon(Icons.delete_outline, color: AppColors.danger),
-                onPressed: onDelete,
               ),
             ],
           ),

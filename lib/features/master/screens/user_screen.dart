@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/app_notifier.dart';
@@ -15,6 +16,7 @@ class UserScreen extends StatefulWidget {
 class _UserScreenState extends State<UserScreen> {
   static const _kPageBg = Color(0xFFF8FAFC);
   String? _filterDivisi;
+  final Set<int> _togglingUserIds = {};
 
   @override
   void initState() {
@@ -38,15 +40,31 @@ class _UserScreenState extends State<UserScreen> {
     );
   }
 
+  Future<void> _toggleUserStatus(MasterProvider p, UserModel user) async {
+    if (_togglingUserIds.contains(user.userId)) return;
+    setState(() => _togglingUserIds.add(user.userId));
+    final ok = await p.toggleUserAktif(user.userId);
+    if (!ok && mounted) {
+      await AppNotifier.showError(
+        context,
+        p.error ?? 'Gagal mengubah status user',
+      );
+    }
+    if (!mounted) return;
+    setState(() => _togglingUserIds.remove(user.userId));
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: _kPageBg,
       appBar: AppBar(title: const Text('Kelola User')),
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: FloatingActionButton(
         onPressed: () => _openForm(),
-        icon: const Icon(Icons.person_add_outlined),
-        label: const Text('Tambah User'),
+        tooltip: 'Tambah User',
+        backgroundColor: AppColors.primary,
+        foregroundColor: AppColors.white,
+        child: const Icon(Icons.person_add_outlined),
       ),
       body: Column(children: [
         Container(
@@ -78,29 +96,33 @@ class _UserScreenState extends State<UserScreen> {
         Expanded(
           child: Consumer<MasterProvider>(
             builder: (_, p, __) {
-              if (p.loading)
+              if (p.loading) {
                 return const Center(child: CircularProgressIndicator());
-              if (p.userList.isEmpty)
+              }
+              if (p.userList.isEmpty) {
                 return EmptyState(
                   message: 'Belum ada user',
                   actionLabel: 'Tambah',
                   onAction: () => _openForm(),
                 );
+              }
               return ListView.separated(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 80),
                 itemCount: p.userList.length,
                 separatorBuilder: (_, __) => const SizedBox(height: 8),
                 itemBuilder: (_, i) {
                   final user = p.userList[i];
+                  final isToggling = _togglingUserIds.contains(user.userId);
                   return Container(
                     margin: EdgeInsets.zero,
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.black.withOpacity(0.04)),
+                      border: Border.all(
+                          color: Colors.black.withValues(alpha: 0.04)),
                       boxShadow: [
                         BoxShadow(
-                            color: Colors.black.withOpacity(0.03),
+                            color: Colors.black.withValues(alpha: 0.03),
                             blurRadius: 8,
                             offset: const Offset(0, 2)),
                       ],
@@ -109,7 +131,8 @@ class _UserScreenState extends State<UserScreen> {
                       contentPadding: const EdgeInsets.symmetric(
                           horizontal: 16, vertical: 6),
                       leading: CircleAvatar(
-                        backgroundColor: AppColors.primary.withOpacity(0.1),
+                        backgroundColor:
+                            AppColors.primary.withValues(alpha: 0.1),
                         child: Text(user.userNama[0].toUpperCase(),
                             style: const TextStyle(
                                 color: AppColors.primary,
@@ -127,6 +150,8 @@ class _UserScreenState extends State<UserScreen> {
                                     color: AppColors.textSecondary)),
                             Row(children: [
                               _JabatanBadge(user.jabatanLabel),
+                              const SizedBox(width: 6),
+                              _StatusBadge(isActive: user.aktif),
                               if (user.userCabang != null) ...[
                                 const SizedBox(width: 6),
                                 Text(user.userCabang!,
@@ -137,10 +162,11 @@ class _UserScreenState extends State<UserScreen> {
                             ]),
                           ]),
                       trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-                        Switch(
-                            value: user.aktif,
-                            onChanged: (_) => p.toggleUserAktif(user.userId),
-                            activeColor: AppColors.primary),
+                        _MinimalSwitch(
+                          value: user.aktif,
+                          loading: isToggling,
+                          onChanged: () => _toggleUserStatus(p, user),
+                        ),
                         IconButton(
                             icon: const Icon(Icons.edit_outlined, size: 18),
                             onPressed: () => _openForm(user)),
@@ -164,7 +190,7 @@ class _JabatanBadge extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
         decoration: BoxDecoration(
-            color: AppColors.primary.withOpacity(0.1),
+            color: AppColors.primary.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(6)),
         child: Text(label,
             style: const TextStyle(
@@ -172,6 +198,74 @@ class _JabatanBadge extends StatelessWidget {
                 fontWeight: FontWeight.w500,
                 color: AppColors.primary)),
       );
+}
+
+class _StatusBadge extends StatelessWidget {
+  final bool isActive;
+  const _StatusBadge({required this.isActive});
+
+  @override
+  Widget build(BuildContext context) {
+    final bg = isActive
+        ? AppColors.primary.withValues(alpha: 0.08)
+        : const Color(0xFFF1F5F9);
+    final fg = isActive ? AppColors.primary : AppColors.textSecondary;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        isActive ? 'Aktif' : 'Nonaktif',
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w500,
+          color: fg,
+        ),
+      ),
+    );
+  }
+}
+
+class _MinimalSwitch extends StatelessWidget {
+  final bool value;
+  final bool loading;
+  final VoidCallback onChanged;
+
+  const _MinimalSwitch({
+    required this.value,
+    required this.loading,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (loading) {
+      return const SizedBox(
+        width: 46,
+        height: 30,
+        child: Center(
+          child: SizedBox(
+            width: 16,
+            height: 16,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        ),
+      );
+    }
+
+    return Transform.scale(
+      scale: 0.88,
+      child: CupertinoSwitch(
+        value: value,
+        activeTrackColor: AppColors.primary,
+        inactiveTrackColor: const Color(0xFFD9E2EC),
+        thumbColor: Colors.white,
+        onChanged: (_) => onChanged(),
+      ),
+    );
+  }
 }
 
 class _FilterChip extends StatelessWidget {
@@ -329,7 +423,7 @@ class _UserFormState extends State<_UserForm> {
                       : null),
               const SizedBox(height: 14),
               DropdownButtonFormField<String>(
-                  value: _jabatan,
+                  initialValue: _jabatan,
                   decoration: const InputDecoration(
                       labelText: 'Jabatan',
                       prefixIcon: Icon(Icons.work_outline)),
@@ -340,7 +434,7 @@ class _UserFormState extends State<_UserForm> {
                   onChanged: (v) => setState(() => _jabatan = v!)),
               const SizedBox(height: 14),
               DropdownButtonFormField<String>(
-                value: _divisi,
+                initialValue: _divisi,
                 decoration: const InputDecoration(
                     labelText: 'Divisi',
                     prefixIcon: Icon(Icons.account_tree_outlined)),
@@ -376,8 +470,9 @@ class _UserFormState extends State<_UserForm> {
                   validator: isEdit
                       ? null
                       : (v) {
-                          if (v == null || v.isEmpty)
+                          if (v == null || v.isEmpty) {
                             return 'Password wajib diisi';
+                          }
                           if (v.length < 6) return 'Minimal 6 karakter';
                           return null;
                         }),
