@@ -57,7 +57,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (index == 1) {
       _nav(const RealisasiHistoryScreen());
     } else {
-      _nav(jadwal_screen.JadwalScreen(initialIndex: 0));
+      _nav(const jadwal_screen.JadwalScreen(initialIndex: 0));
     }
   }
 
@@ -93,7 +93,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   children: [
                     CircleAvatar(
                       radius: 28,
-                      backgroundColor: Colors.white.withOpacity(0.2),
+                      backgroundColor: Colors.white.withValues(alpha: 0.2),
                       child: Text(_userInitial(auth.user),
                           style: const TextStyle(
                               color: Colors.white,
@@ -105,7 +105,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Halo, ${_userName(auth.user)}',
+                          Text('Selamat Datang',
                               style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 18,
@@ -113,7 +113,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           Text(
                               "${auth.user?['user_jabatan']?.toString().toUpperCase()} - ${auth.user?['user_divisi'] ?? '-'}",
                               style: TextStyle(
-                                  color: Colors.white.withOpacity(0.8),
+                                  color: Colors.white.withValues(alpha: 0.8),
                                   fontSize: 13)),
                         ],
                       ),
@@ -281,7 +281,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         'd': 'Buat Jadwal',
         'i': Icons.event_note,
         'c': Colors.orange,
-        's': jadwal_screen.JadwalScreen()
+        's': const jadwal_screen.JadwalScreen()
       },
       {
         't': '5. Realisasi',
@@ -320,7 +320,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       width: 20,
                       height: 20,
                       decoration: BoxDecoration(
-                        color: AppColors.primary.withOpacity(0.1),
+                        color: AppColors.primary.withValues(alpha: 0.1),
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(
@@ -436,7 +436,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
@@ -460,10 +460,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: (step['c'] as Color).withOpacity(0.1)),
+          border:
+              Border.all(color: (step['c'] as Color).withValues(alpha: 0.1)),
           boxShadow: [
             BoxShadow(
-                color: Colors.black.withOpacity(0.03),
+                color: Colors.black.withValues(alpha: 0.03),
                 blurRadius: 8,
                 offset: const Offset(0, 2))
           ],
@@ -473,7 +474,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           children: [
             CircleAvatar(
               radius: 16,
-              backgroundColor: (step['c'] as Color).withOpacity(0.1),
+              backgroundColor: (step['c'] as Color).withValues(alpha: 0.1),
               child: Icon(step['i'] as IconData,
                   color: step['c'] as Color, size: 18),
             ),
@@ -556,7 +557,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                  color: Colors.black.withOpacity(0.04),
+                  color: Colors.black.withValues(alpha: 0.04),
                   blurRadius: 10,
                   offset: const Offset(0, 4))
             ],
@@ -660,7 +661,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.black.withOpacity(0.04)),
+        border: Border.all(color: Colors.black.withValues(alpha: 0.04)),
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
@@ -674,7 +675,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               children: [
                 CircleAvatar(
                   radius: 18,
-                  backgroundColor: divisiColor.withOpacity(0.14),
+                  backgroundColor: divisiColor.withValues(alpha: 0.14),
                   child: Icon(
                     icon,
                     size: 18,

@@ -730,7 +730,7 @@ class _ChecklistTab extends StatelessWidget {
           ),
           if (filtered.isNotEmpty)
             Container(
-              color: AppColors.bgGray,
+              color: const Color(0xFFF8FAFC),
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
               child: Row(children: [
                 Text('${filtered.length} item',
@@ -782,11 +782,26 @@ class _ChecklistTab extends StatelessWidget {
       final jenisLabel = list.first.ctJenisNama ??
           jenisNameById[jenisId] ??
           'Jenis tidak dikenal';
-      return Card(
+      return Container(
         margin: const EdgeInsets.only(bottom: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.black.withOpacity(0.04)),
+          boxShadow: [
+            BoxShadow(
+                color: Colors.black.withOpacity(0.03),
+                blurRadius: 8,
+                offset: const Offset(0, 2)),
+          ],
+        ),
         child: ExpansionTile(
           key: PageStorageKey('jenis_$jenisId'),
           initiallyExpanded: grouped.length == 1,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          collapsedShape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           maintainState: true,
           title: Row(children: [

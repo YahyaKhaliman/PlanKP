@@ -86,10 +86,11 @@ class MasterProvider extends ChangeNotifier {
 
   Future<bool> saveInventaris(Map<String, dynamic> body, {int? id}) async {
     try {
-      if (id != null)
+      if (id != null) {
         await ApiClient.put('${ApiConfig.inventaris}/$id', body);
-      else
+      } else {
         await ApiClient.post(ApiConfig.inventaris, body);
+      }
       await fetchInventaris();
       return true;
     } on ApiException catch (e) {
@@ -101,6 +102,17 @@ class MasterProvider extends ChangeNotifier {
   Future<bool> toggleInventarisAktif(int id) async {
     try {
       await ApiClient.patch('${ApiConfig.inventaris}/$id/aktif', {});
+      await fetchInventaris();
+      return true;
+    } on ApiException catch (e) {
+      _setError(e.message);
+      return false;
+    }
+  }
+
+  Future<bool> deleteInventaris(int id) async {
+    try {
+      await ApiClient.delete('${ApiConfig.inventaris}/$id');
       await fetchInventaris();
       return true;
     } on ApiException catch (e) {
@@ -257,10 +269,11 @@ class MasterProvider extends ChangeNotifier {
 
   Future<bool> saveChecklist(Map<String, dynamic> body, {int? id}) async {
     try {
-      if (id != null)
+      if (id != null) {
         await ApiClient.put('${ApiConfig.checklistTemplate}/$id', body);
-      else
+      } else {
         await ApiClient.post(ApiConfig.checklistTemplate, body);
+      }
       await fetchChecklist();
       return true;
     } on ApiException catch (e) {
@@ -317,10 +330,11 @@ class MasterProvider extends ChangeNotifier {
 
   Future<bool> saveUser(Map<String, dynamic> body, {int? id}) async {
     try {
-      if (id != null)
+      if (id != null) {
         await ApiClient.put('${ApiConfig.users}/$id', body);
-      else
+      } else {
         await ApiClient.post(ApiConfig.users, body);
+      }
       await fetchUsers();
       return true;
     } on ApiException catch (e) {

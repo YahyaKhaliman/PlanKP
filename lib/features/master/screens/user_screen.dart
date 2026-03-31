@@ -13,6 +13,7 @@ class UserScreen extends StatefulWidget {
 }
 
 class _UserScreenState extends State<UserScreen> {
+  static const _kPageBg = Color(0xFFF8FAFC);
   String? _filterDivisi;
 
   @override
@@ -27,40 +28,51 @@ class _UserScreenState extends State<UserScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => _UserForm(user: user),
+      builder: (_) => Container(
+        decoration: const BoxDecoration(
+          color: _kPageBg,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: _UserForm(user: user),
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: _kPageBg,
       appBar: AppBar(title: const Text('Kelola User')),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _openForm(),
-        child: const Icon(Icons.person_add_outlined),
+        icon: const Icon(Icons.person_add_outlined),
+        label: const Text('Tambah User'),
       ),
       body: Column(children: [
-        SizedBox(
-          height: 48,
-          child: ListView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            children: [
-              _FilterChip(
-                  label: 'Semua',
-                  selected: _filterDivisi == null,
-                  onTap: () {
-                    setState(() => _filterDivisi = null);
-                    context.read<MasterProvider>().fetchUsers();
-                  }),
-              ...UserModel.divisiList.map((div) => _FilterChip(
-                  label: div,
-                  selected: _filterDivisi == div,
-                  onTap: () {
-                    setState(() => _filterDivisi = div);
-                    context.read<MasterProvider>().fetchUsers(divisi: div);
-                  })),
-            ],
+        Container(
+          color: AppColors.white,
+          child: SizedBox(
+            height: 48,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              children: [
+                _FilterChip(
+                    label: 'Semua',
+                    selected: _filterDivisi == null,
+                    onTap: () {
+                      setState(() => _filterDivisi = null);
+                      context.read<MasterProvider>().fetchUsers();
+                    }),
+                ...UserModel.divisiList.map((div) => _FilterChip(
+                    label: div,
+                    selected: _filterDivisi == div,
+                    onTap: () {
+                      setState(() => _filterDivisi = div);
+                      context.read<MasterProvider>().fetchUsers(divisi: div);
+                    })),
+              ],
+            ),
           ),
         ),
         Expanded(
@@ -80,8 +92,19 @@ class _UserScreenState extends State<UserScreen> {
                 separatorBuilder: (_, __) => const SizedBox(height: 8),
                 itemBuilder: (_, i) {
                   final user = p.userList[i];
-                  return Card(
+                  return Container(
                     margin: EdgeInsets.zero,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.black.withOpacity(0.04)),
+                      boxShadow: [
+                        BoxShadow(
+                            color: Colors.black.withOpacity(0.03),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2)),
+                      ],
+                    ),
                     child: ListTile(
                       contentPadding: const EdgeInsets.symmetric(
                           horizontal: 16, vertical: 6),
@@ -162,12 +185,13 @@ class _FilterChip extends StatelessWidget {
         padding: const EdgeInsets.only(right: 8),
         child: GestureDetector(
           onTap: onTap,
-          child: Container(
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
             decoration: BoxDecoration(
-              color: selected ? AppColors.primary : Colors.transparent,
+              color: selected ? AppColors.primary : AppColors.white,
               border: Border.all(
-                  color: selected ? AppColors.primary : Colors.grey[300]!),
+                  color: selected ? AppColors.primary : AppColors.border),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(label,
@@ -262,7 +286,7 @@ class _UserFormState extends State<_UserForm> {
           EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
       child: Container(
         decoration: const BoxDecoration(
-          color: AppColors.bgGray,
+          color: Color(0xFFF8FAFC),
           borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
         ),
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),

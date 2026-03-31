@@ -15,15 +15,8 @@ class InventarisScreen extends StatefulWidget {
 }
 
 class _InventarisScreenState extends State<InventarisScreen> {
+  static const _kPageBg = Color(0xFFF8FAFC);
   final _search = TextEditingController();
-  String? _filterKategori;
-
-  static const _kategoriList = [
-    'Mesin Jahit',
-    'Mesin Umum',
-    'Hardware',
-    'APAR'
-  ];
 
   @override
   void initState() {
@@ -39,94 +32,103 @@ class _InventarisScreenState extends State<InventarisScreen> {
   }
 
   Future<void> _openForm([InventarisModel? item]) async {
-    await context.read<MasterProvider>().fetchJenis(showLoading: false);
-    await context
-        .read<MasterProvider>()
-        .fetchUsers(jabatan: 'user', showLoading: false);
+    final provider = context.read<MasterProvider>();
+    await provider.fetchJenis(showLoading: false);
+    await provider.fetchUsers(jabatan: 'user', showLoading: false);
     if (!mounted) return;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => _InventarisForm(item: item),
+      builder: (_) => Container(
+        decoration: const BoxDecoration(
+          color: _kPageBg,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: _InventarisForm(item: item),
+      ),
+    );
+  }
+
+  Future<void> _confirmDelete(InventarisModel item) async {
+    await AppNotifier.showConfirm(
+      context,
+      title: 'Hapus Inventaris',
+      message: 'Hapus inventaris ${item.invNama}?',
+      onConfirm: () =>
+          context.read<MasterProvider>().deleteInventaris(item.invId),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: _kPageBg,
       appBar: AppBar(title: const Text('Inventaris')),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _openForm(),
+        tooltip: 'Tambah Inventaris',
         child: const Icon(Icons.add),
+        backgroundColor: AppColors.primary,
+        foregroundColor: AppColors.white,
       ),
-      body: Column(
-        children: [
-          // Search + filter
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-            child: Row(children: [
-              Expanded(
-                child: TextField(
-                  controller: _search,
-                  decoration: const InputDecoration(
-                    hintText: 'Cari nama inventaris...',
-                    prefixIcon: Icon(Icons.search, size: 20),
-                    contentPadding: EdgeInsets.symmetric(vertical: 10),
+      body: Consumer<MasterProvider>(
+        builder: (_, p, __) {
+          return Column(
+            children: [
+              // Search + filter
+              Container(
+                color: AppColors.white,
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                child: Row(children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _search,
+                      decoration: const InputDecoration(
+                        hintText: 'Cari nama inventaris...',
+                        prefixIcon: Icon(Icons.search, size: 20),
+                        contentPadding: EdgeInsets.symmetric(vertical: 10),
+                      ),
+                      onChanged: (v) => context
+                          .read<MasterProvider>()
+                          .fetchInventaris(q: v.isEmpty ? null : v),
+                    ),
                   ),
-                  onChanged: (v) => context
-                      .read<MasterProvider>()
-                      .fetchInventaris(q: v.isEmpty ? null : v),
-                ),
+                ]),
               ),
-              const SizedBox(width: 8),
-              DropdownButton<String?>(
-                value: _filterKategori,
-                hint: const Text('Semua'),
-                underline: const SizedBox(),
-                items: [
-                  const DropdownMenuItem(value: null, child: Text('Semua')),
-                  ..._kategoriList
-                      .map((k) => DropdownMenuItem(value: k, child: Text(k))),
-                ],
-                onChanged: (v) {
-                  setState(() => _filterKategori = v);
-                  context.read<MasterProvider>().fetchInventaris(kategori: v);
-                },
-              ),
-            ]),
-          ),
 
-          // List
-          Expanded(
-            child: Consumer<MasterProvider>(
-              builder: (_, p, __) {
-                if (p.loading)
-                  return const Center(child: CircularProgressIndicator());
-                if (p.inventarisList.isEmpty)
-                  return EmptyState(
-                    message: 'Belum ada data inventaris',
-                    actionLabel: 'Tambah',
-                    onAction: () => _openForm(),
-                  );
-
-                return ListView.separated(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 80),
-                  itemCount: p.inventarisList.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 8),
-                  itemBuilder: (_, i) {
-                    final item = p.inventarisList[i];
-                    return _InventarisCard(
-                      item: item,
-                      onTap: () => _openForm(item),
-                      onToggle: () => p.toggleInventarisAktif(item.invId),
+              // List
+              Expanded(
+                child: () {
+                  if (p.loading) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  if (p.inventarisList.isEmpty) {
+                    return EmptyState(
+                      message: 'Belum ada data inventaris',
+                      actionLabel: 'Tambah',
+                      onAction: () => _openForm(),
                     );
-                  },
-                );
-              },
-            ),
-          ),
-        ],
+                  }
+                  return ListView.separated(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
+                    itemCount: p.inventarisList.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 12),
+                    itemBuilder: (_, i) {
+                      final item = p.inventarisList[i];
+                      return _InventarisCard(
+                        item: item,
+                        onEdit: () => _openForm(item),
+                        onDelete: () => _confirmDelete(item),
+                        onToggle: () => p.toggleInventarisAktif(item.invId),
+                      );
+                    },
+                  );
+                }(),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -134,10 +136,15 @@ class _InventarisScreenState extends State<InventarisScreen> {
 
 class _InventarisCard extends StatelessWidget {
   final InventarisModel item;
-  final VoidCallback onTap;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
   final VoidCallback onToggle;
-  const _InventarisCard(
-      {required this.item, required this.onTap, required this.onToggle});
+  const _InventarisCard({
+    required this.item,
+    required this.onEdit,
+    required this.onDelete,
+    required this.onToggle,
+  });
 
   static const _kondisiColor = {
     'Baik': AppColors.success,
@@ -147,83 +154,102 @@ class _InventarisCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+    return Container(
       margin: EdgeInsets.zero,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Row(children: [
-            // Icon kategori
-            Container(
-              width: 42,
-              height: 42,
-              decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.08),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(_kategoriIcon(item.invKategori),
-                  color: AppColors.primary, size: 22),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.black.withValues(alpha: 0.04)),
+        boxShadow: [
+          BoxShadow(
+              color: Colors.black.withValues(alpha: 0.03),
+              blurRadius: 8,
+              offset: const Offset(0, 2)),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Row(children: [
+          // Icon kategori
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(10),
             ),
-            const SizedBox(width: 12),
+            child: Icon(_kategoriIcon(item.invKategori),
+                color: AppColors.primary, size: 22),
+          ),
+          const SizedBox(width: 12),
 
-            // Info
-            Expanded(
-                child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(children: [
-                  Expanded(
-                      child: Text(item.invNama,
-                          style: const TextStyle(
-                              fontWeight: FontWeight.w600, fontSize: 14),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis)),
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                    decoration: BoxDecoration(
-                      color:
-                          (_kondisiColor[item.invKondisi] ?? AppColors.success)
-                              .withOpacity(0.12),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(item.invKondisi,
-                        style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w500,
-                            color: _kondisiColor[item.invKondisi] ??
-                                AppColors.success)),
-                  ),
-                ]),
-                const SizedBox(height: 3),
-                Text('${item.invNo} · ID Jenis ${item.invJenisId}',
-                    style: const TextStyle(
-                        fontSize: 12, color: AppColors.textSecondary)),
-                if (item.invLokasi != null) ...[
-                  const SizedBox(height: 2),
-                  Row(children: [
-                    const Icon(Icons.location_on_outlined,
-                        size: 12, color: AppColors.textSecondary),
-                    const SizedBox(width: 2),
-                    Text(item.invLokasi!,
+          // Info
+          Expanded(
+              child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(children: [
+                Expanded(
+                    child: Text(item.invNama,
                         style: const TextStyle(
-                            fontSize: 11, color: AppColors.textSecondary)),
-                  ]),
-                ],
+                            fontWeight: FontWeight.w600, fontSize: 14),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis)),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: (_kondisiColor[item.invKondisi] ?? AppColors.success)
+                        .withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(item.invKondisi,
+                      style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          color: _kondisiColor[item.invKondisi] ??
+                              AppColors.success)),
+                ),
+              ]),
+              const SizedBox(height: 3),
+              Text('${item.invNo} · ID Jenis ${item.invJenisId}',
+                  style: const TextStyle(
+                      fontSize: 12, color: AppColors.textSecondary)),
+              if (item.invLokasi != null) ...[
+                const SizedBox(height: 2),
+                Row(children: [
+                  const Icon(Icons.location_on_outlined,
+                      size: 12, color: AppColors.textSecondary),
+                  const SizedBox(width: 2),
+                  Text(item.invLokasi!,
+                      style: const TextStyle(
+                          fontSize: 11, color: AppColors.textSecondary)),
+                ]),
               ],
-            )),
-            const SizedBox(width: 8),
+            ],
+          )),
+          const SizedBox(width: 8),
 
-            // Toggle aktif
-            Switch(
-              value: item.aktif,
-              onChanged: (_) => onToggle(),
-              activeColor: AppColors.primary,
-            ),
-          ]),
-        ),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Switch(
+                value: item.aktif,
+                onChanged: (_) => onToggle(),
+                activeThumbColor: AppColors.primary,
+              ),
+              IconButton(
+                icon: const Icon(Icons.edit_outlined,
+                    color: AppColors.textSecondary),
+                onPressed: onEdit,
+              ),
+              IconButton(
+                icon: const Icon(Icons.delete_outline, color: AppColors.danger),
+                onPressed: onDelete,
+              ),
+            ],
+          ),
+        ]),
       ),
     );
   }
@@ -357,8 +383,8 @@ class _InventarisFormState extends State<_InventarisForm> {
       minChildSize: 0.5,
       builder: (_, ctrl) => Container(
         decoration: const BoxDecoration(
-          color: AppColors.bgGray,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          color: Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         ),
         child: Form(
           key: _form,
@@ -403,7 +429,7 @@ class _InventarisFormState extends State<_InventarisForm> {
 
                 // Kondisi
                 DropdownButtonFormField<String>(
-                  value: _kondisi,
+                  initialValue: _kondisi,
                   decoration: const InputDecoration(
                       labelText: 'Kondisi',
                       prefixIcon: Icon(Icons.health_and_safety_outlined)),

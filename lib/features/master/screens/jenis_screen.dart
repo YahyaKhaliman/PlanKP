@@ -15,6 +15,7 @@ class JenisScreen extends StatefulWidget {
 
 class _JenisScreenState extends State<JenisScreen> {
   static const _kPageBg = Color(0xFFF8FAFC);
+  final _searchCtrl = TextEditingController();
 
   @override
   void initState() {
@@ -40,19 +41,34 @@ class _JenisScreenState extends State<JenisScreen> {
   }
 
   @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: _kPageBg,
-      appBar: AppBar(title: const Text('Master Jenis')),
-      floatingActionButton: FloatingActionButton.extended(
+      appBar: AppBar(title: const Text('Jenis')),
+      floatingActionButton: FloatingActionButton(
         onPressed: () => _openForm(),
-        icon: const Icon(Icons.add),
-        label: const Text('Tambah Jenis'),
+        tooltip: 'Tambah Jenis',
+        child: const Icon(Icons.add),
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.white,
       ),
       body: Consumer<MasterProvider>(
         builder: (_, p, __) {
+          final query = _searchCtrl.text.trim().toLowerCase();
+          final filtered = query.isEmpty
+              ? p.jenisMaster
+              : p.jenisMaster.where((j) {
+                  final nama = j.jenisNama.toLowerCase();
+                  final kategori = j.jenisKategori.toLowerCase();
+                  return nama.contains(query) || kategori.contains(query);
+                }).toList();
+
           if (p.loading) {
             return const Center(child: CircularProgressIndicator());
           }
@@ -63,63 +79,88 @@ class _JenisScreenState extends State<JenisScreen> {
               onAction: () => _openForm(),
             );
           }
-          return ListView.builder(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
-            itemCount: p.jenisMaster.length,
-            itemBuilder: (_, i) {
-              final jenis = p.jenisMaster[i];
-              return Container(
-                margin: const EdgeInsets.only(bottom: 12),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.black.withOpacity(0.04)),
-                  boxShadow: [
-                    BoxShadow(
-                        color: Colors.black.withOpacity(0.03),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2)),
-                  ],
+          return Column(
+            children: [
+              Container(
+                color: AppColors.white,
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                child: TextField(
+                  controller: _searchCtrl,
+                  decoration: const InputDecoration(
+                    hintText: 'Cari nama atau kategori jenis...',
+                    prefixIcon: Icon(Icons.search, size: 20),
+                    contentPadding: EdgeInsets.symmetric(vertical: 10),
+                  ),
+                  onChanged: (_) => setState(() {}),
                 ),
-                child: ListTile(
-                  title: Text(jenis.jenisNama,
-                      style: const TextStyle(fontWeight: FontWeight.w600)),
-                  subtitle: Text(jenis.jenisKategori),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Switch(
-                        value: jenis.jenisIsActive,
-                        onChanged: (value) =>
-                            context.read<MasterProvider>().saveJenis({
-                          'jenis_is_active': value,
-                        }, id: jenis.jenisId),
-                        activeColor: AppColors.primary,
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.edit_outlined,
-                            color: AppColors.textSecondary),
-                        onPressed: () => _openForm(jenis),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.delete_outline,
-                            color: AppColors.danger),
-                        onPressed: () async {
-                          await AppNotifier.showConfirm(
-                            context,
-                            title: 'Hapus Jenis',
-                            message: 'Hapus jenis ${jenis.jenisNama}?',
-                            onConfirm: () => context
-                                .read<MasterProvider>()
-                                .deleteJenis(jenis.jenisId),
+              ),
+              Expanded(
+                child: filtered.isEmpty
+                    ? const EmptyState(message: 'Data jenis tidak ditemukan')
+                    : ListView.builder(
+                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
+                        itemCount: filtered.length,
+                        itemBuilder: (_, i) {
+                          final jenis = filtered[i];
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                  color: Colors.black.withOpacity(0.04)),
+                              boxShadow: [
+                                BoxShadow(
+                                    color: Colors.black.withOpacity(0.03),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 2)),
+                              ],
+                            ),
+                            child: ListTile(
+                              title: Text(jenis.jenisNama,
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.w600)),
+                              subtitle: Text(jenis.jenisKategori),
+                              trailing: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Switch(
+                                    value: jenis.jenisIsActive,
+                                    onChanged: (value) => context
+                                        .read<MasterProvider>()
+                                        .saveJenis({
+                                      'jenis_is_active': value,
+                                    }, id: jenis.jenisId),
+                                    activeColor: AppColors.primary,
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.edit_outlined,
+                                        color: AppColors.textSecondary),
+                                    onPressed: () => _openForm(jenis),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.delete_outline,
+                                        color: AppColors.danger),
+                                    onPressed: () async {
+                                      await AppNotifier.showConfirm(
+                                        context,
+                                        title: 'Hapus Jenis',
+                                        message:
+                                            'Hapus jenis ${jenis.jenisNama}?',
+                                        onConfirm: () => context
+                                            .read<MasterProvider>()
+                                            .deleteJenis(jenis.jenisId),
+                                      );
+                                    },
+                                  ),
+                                ],
+                              ),
+                            ),
                           );
                         },
                       ),
-                    ],
-                  ),
-                ),
-              );
-            },
+              ),
+            ],
           );
         },
       ),
