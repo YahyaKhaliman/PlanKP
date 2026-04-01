@@ -40,7 +40,10 @@ class _LoginScreenState extends State<LoginScreen> {
       AppNotifier.showSuccessSnack(context, 'Login berhasil, selamat datang');
       await Future.delayed(const Duration(milliseconds: 700));
       if (!mounted) return;
-      Navigator.pushReplacementNamed(context, AppRoutes.dashboard);
+      Navigator.of(context).pushNamedAndRemoveUntil(
+        AppRoutes.dashboard,
+        (route) => false,
+      );
     } else if (mounted) {
       final error = auth.error ?? 'Tidak dapat login saat ini';
       await AppNotifier.showError(context, error);

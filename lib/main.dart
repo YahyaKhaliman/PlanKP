@@ -36,7 +36,6 @@ class PlanKPApp extends StatelessWidget {
           AppRoutes.login: (_) => const LoginScreen(),
           AppRoutes.register: (_) => const RegisterScreen(),
           AppRoutes.dashboard: (_) => const _ProtectedRoute(
-                allowedRoles: ['admin', 'user'],
                 child: DashboardScreen(),
               ),
           AppRoutes.jadwalDetail: (ctx) {
