@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:awesome_dialog/awesome_dialog.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_theme.dart';
 import '../providers/auth_provider.dart';
@@ -26,6 +27,29 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  Future<void> _showWelcomeDialog(String userName) async {
+    final size = MediaQuery.of(context).size;
+    final dialogWidth = size.width < 600
+        ? size.width * 0.92
+        : (size.width > 900 ? 380.0 : 340.0);
+
+    return await AwesomeDialog(
+      context: context,
+      dialogType: DialogType.success,
+      animType: AnimType.scale,
+      title: 'Login Berhasil!',
+      desc: 'Selamat Datang ${userName.toUpperCase()}',
+      width: dialogWidth,
+      autoHide: const Duration(seconds: 1),
+      onDismissCallback: (dismissType) {
+        Navigator.of(context).pushNamedAndRemoveUntil(
+          AppRoutes.dashboard,
+          (route) => false,
+        );
+      },
+    ).show();
+  }
+
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) {
       await AppNotifier.showWarning(
@@ -37,13 +61,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
     final ok = await auth.login(_usernameCtrl.text.trim(), _passCtrl.text);
     if (ok && mounted) {
-      AppNotifier.showSuccessSnack(context, 'Login berhasil, selamat datang');
-      await Future.delayed(const Duration(milliseconds: 700));
-      if (!mounted) return;
-      Navigator.of(context).pushNamedAndRemoveUntil(
-        AppRoutes.dashboard,
-        (route) => false,
-      );
+      final userName = (auth.user?['user_nama'] as String?) ?? 'User';
+      _showWelcomeDialog(userName);
     } else if (mounted) {
       final error = auth.error ?? 'Tidak dapat login saat ini';
       await AppNotifier.showError(context, error);

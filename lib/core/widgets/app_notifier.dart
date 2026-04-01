@@ -11,10 +11,19 @@ class AppNotifier {
 
   static const Duration _successSnackDuration = Duration(milliseconds: 1200);
 
+  static double _dialogWidth(BuildContext context) {
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    if (screenWidth <= 600) {
+      return screenWidth * 0.92;
+    }
+    return 420;
+  }
+
   static Future<void> showWarning(BuildContext context, String message) async {
     if (!context.mounted) return;
     await AwesomeDialog(
       context: context,
+      width: _dialogWidth(context),
       dialogType: DialogType.warning,
       animType: AnimType.scale,
       title: 'Perhatian',
@@ -29,6 +38,7 @@ class AppNotifier {
     if (!context.mounted) return;
     await AwesomeDialog(
       context: context,
+      width: _dialogWidth(context),
       dialogType: DialogType.error,
       animType: AnimType.scale,
       title: 'Terjadi Kesalahan',
@@ -43,6 +53,7 @@ class AppNotifier {
     if (!context.mounted) return;
     await AwesomeDialog(
       context: context,
+      width: _dialogWidth(context),
       dialogType: DialogType.success,
       animType: AnimType.scale,
       title: 'Berhasil',
@@ -61,6 +72,7 @@ class AppNotifier {
     if (!context.mounted) return;
     AwesomeDialog(
       context: context,
+      width: _dialogWidth(context),
       dialogType: DialogType.success,
       animType: AnimType.scale,
       title: 'Berhasil',
@@ -81,6 +93,7 @@ class AppNotifier {
     if (!context.mounted) return;
     await AwesomeDialog(
       context: context,
+      width: _dialogWidth(context),
       dialogType: DialogType.question,
       animType: AnimType.scale,
       title: title,

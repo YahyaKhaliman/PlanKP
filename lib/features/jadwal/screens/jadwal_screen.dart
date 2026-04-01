@@ -119,13 +119,12 @@ class _JadwalScreenState extends State<JadwalScreen> {
       return;
     }
 
-    _showInventarisPicker(jadwal, inventarisList, terpakaiInvIds);
+    _showInventarisPicker(jadwal, belumSelesaiList);
   }
 
   void _showInventarisPicker(
     JadwalModel jadwal,
     List<Map<String, dynamic>> inventarisList,
-    Set<int> terpakaiInvIds,
   ) {
     showModalBottomSheet(
       context: context,
@@ -167,12 +166,6 @@ class _JadwalScreenState extends State<JadwalScreen> {
                     separatorBuilder: (_, __) => const SizedBox(height: 8),
                     itemBuilder: (_, i) {
                       final inv = inventarisList[i];
-                      final invIdRaw = inv['inv_id'];
-                      final invId = invIdRaw is int
-                          ? invIdRaw
-                          : int.tryParse('$invIdRaw');
-                      final sudahDirealisasi =
-                          invId != null && terpakaiInvIds.contains(invId);
                       return Card(
                         margin: EdgeInsets.zero,
                         child: ListTile(
@@ -180,18 +173,13 @@ class _JadwalScreenState extends State<JadwalScreen> {
                               color: AppColors.primary),
                           title: Text(inv['inv_nama'] ?? '-'),
                           subtitle: Text(
-                              '${inv['inv_no'] ?? '-'} · ${inv['inv_pabrik_kode'] ?? '-'}${sudahDirealisasi ? '\nSudah dipilih di jadwal ini' : '\nBelum dipilih'}'),
-                          trailing: sudahDirealisasi
-                              ? const Icon(Icons.check_circle,
-                                  color: AppColors.success)
-                              : const Icon(Icons.chevron_right),
+                              '${inv['inv_merk'] ?? '-'} · ${inv['inv_pabrik_kode'] ?? '-'}\nBelum dipilih'),
+                          trailing: const Icon(Icons.chevron_right),
                           isThreeLine: true,
-                          onTap: sudahDirealisasi
-                              ? null
-                              : () {
-                                  Navigator.pop(context);
-                                  _openRealisasiFromInventaris(jadwal, inv);
-                                },
+                          onTap: () {
+                            Navigator.pop(context);
+                            _openRealisasiFromInventaris(jadwal, inv);
+                          },
                         ),
                       );
                     },

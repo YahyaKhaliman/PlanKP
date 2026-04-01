@@ -151,13 +151,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
       return;
     }
 
-    _showInventarisPicker(jadwal, inventarisList, selesaiInvIds);
+    _showInventarisPicker(jadwal, belumSelesaiList);
   }
 
   void _showInventarisPicker(
     JadwalModel jadwal,
     List<Map<String, dynamic>> inventarisList,
-    Set<int> selesaiInvIds,
   ) {
     showModalBottomSheet(
       context: context,
@@ -199,12 +198,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     separatorBuilder: (_, __) => const SizedBox(height: 8),
                     itemBuilder: (_, i) {
                       final inv = inventarisList[i];
-                      final invIdRaw = inv['inv_id'];
-                      final invId = invIdRaw is int
-                          ? invIdRaw
-                          : int.tryParse('$invIdRaw');
-                      final sudahDirealisasi =
-                          invId != null && selesaiInvIds.contains(invId);
                       return Card(
                         margin: EdgeInsets.zero,
                         child: ListTile(
@@ -212,19 +205,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               color: AppColors.primary),
                           title: Text(inv['inv_nama'] ?? '-'),
                           subtitle: Text(
-                            '${inv['inv_no'] ?? '-'} · ${inv['inv_lokasi'] ?? '-'}${sudahDirealisasi ? '\nSudah dipilih di jadwal ini' : '\nBelum dipilih'}',
+                            '${(inv['inv_merk'] ?? '-').toString().toUpperCase()} · ${inv['inv_pabrik_kode'] ?? 'inv_pabrik_kode'}\nBelum dipilih',
                           ),
-                          trailing: sudahDirealisasi
-                              ? const Icon(Icons.check_circle,
-                                  color: AppColors.success)
-                              : const Icon(Icons.chevron_right),
+                          trailing: const Icon(Icons.chevron_right),
                           isThreeLine: true,
-                          onTap: sudahDirealisasi
-                              ? null
-                              : () {
-                                  Navigator.pop(context);
-                                  _openRealisasiFromInventaris(jadwal, inv);
-                                },
+                          onTap: () {
+                            Navigator.pop(context);
+                            _openRealisasiFromInventaris(jadwal, inv);
+                          },
                         ),
                       );
                     },
@@ -261,6 +249,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         'invId': invId,
         'invNama': inv['inv_nama'],
         'invNo': inv['inv_no'],
+        'invMerk': inv['inv_merk'],
         'invKondisi': inv['inv_kondisi'],
         'invPicNama': inv['pic_user']?['user_nama'],
         'invPicId': inv['pic_user']?['user_id'],
