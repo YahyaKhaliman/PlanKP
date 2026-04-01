@@ -8,6 +8,7 @@ import 'features/jadwal/providers/jadwal_provider.dart';
 import 'features/auth/screens/login_screen.dart';
 import 'features/auth/screens/register_screen.dart';
 import 'features/dashboard/screens/dashboard_screen.dart';
+import 'features/jadwal/screens/jadwal_detail_screen.dart';
 import 'features/jadwal/screens/jadwal_screen.dart';
 import 'features/jadwal/screens/realisasi_form_screen.dart';
 

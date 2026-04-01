@@ -23,6 +23,22 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   static const _pageBg = Color(0xFFF8FAFC);
+  static const _cardRadius = 16.0;
+
+  BoxDecoration _surfaceCard({Color? borderColor}) => BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(_cardRadius),
+        border: Border.all(
+          color: borderColor ?? Colors.black.withValues(alpha: 0.05),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      );
 
   @override
   void initState() {
@@ -272,46 +288,87 @@ class _DashboardScreenState extends State<DashboardScreen> {
             SliverToBoxAdapter(
               child: Container(
                 padding: const EdgeInsets.fromLTRB(20, 60, 20, 30),
-                decoration: const BoxDecoration(
-                  color: AppColors.primary,
-                  borderRadius:
-                      BorderRadius.vertical(bottom: Radius.circular(32)),
+                decoration: BoxDecoration(
+                  color: _pageBg,
+                  borderRadius: const BorderRadius.vertical(
+                    bottom: Radius.circular(24),
+                  ),
                 ),
-                child: Row(
-                  children: [
-                    CircleAvatar(
-                      radius: 28,
-                      backgroundColor: Colors.white.withValues(alpha: 0.2),
-                      child: Text(_userInitial(auth.user),
+                child: Container(
+                  padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
+                  decoration: _surfaceCard(),
+                  child: Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 24,
+                        backgroundColor:
+                            AppColors.primary.withValues(alpha: 0.12),
+                        child: Text(
+                          _userInitial(auth.user),
                           style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold)),
-                    ),
-                    const SizedBox(width: 15),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('Selamat Datang',
-                              style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold)),
-                          Text(
-                              "${auth.user?['user_nama']?.toString().toUpperCase()} - ${auth.user?['user_divisi'] ?? '-'}",
-                              style: TextStyle(
-                                  color: Colors.white.withValues(alpha: 0.8),
-                                  fontSize: 13)),
-                        ],
+                            color: AppColors.primary,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
-                    ),
-                    IconButton(
-                      icon:
-                          const Icon(Icons.logout_rounded, color: Colors.white),
-                      onPressed: _logout,
-                    ),
-                  ],
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Selamat Datang',
+                              style: TextStyle(
+                                color: AppColors.textSecondary,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              _userName(auth.user).toUpperCase(),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: AppColors.textPrimary,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 3,
+                              ),
+                              decoration: BoxDecoration(
+                                color:
+                                    AppColors.primary.withValues(alpha: 0.08),
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                              child: Text(
+                                '${auth.user?['user_divisi'] ?? '-'}',
+                                style: const TextStyle(
+                                  color: AppColors.primary,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(
+                          Icons.logout_outlined,
+                          color: Color.fromARGB(255, 255, 157, 157),
+                        ),
+                        tooltip: 'Logout',
+                        onPressed: _logout,
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -325,13 +382,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     _buildQuickAction(
                         icon: Icons.calendar_today_rounded,
                         label: "Jadwal",
-                        color: Colors.orange,
+                        color: AppColors.primary,
                         onTap: () => _tabToHistory(0)),
                     const SizedBox(width: 15),
                     _buildQuickAction(
                         icon: Icons.fact_check_rounded,
                         label: "Realisasi",
-                        color: Colors.blue,
+                        color: Colors.green.shade700,
                         onTap: () => _tabToHistory(1)),
                   ],
                 ),
@@ -386,13 +443,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       padding: const EdgeInsets.symmetric(horizontal: 20),
                       child: Container(
                         padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                        ),
+                        decoration: _surfaceCard(),
                         child: const Text(
                           'Belum ada jadwal untuk direncanakan.',
-                          style: TextStyle(color: Colors.grey),
+                          style: TextStyle(color: AppColors.textSecondary),
                         ),
                       ),
                     ),
@@ -740,22 +794,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
         borderRadius: BorderRadius.circular(16),
         child: Container(
           padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.04),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4))
-            ],
+          decoration: _surfaceCard(
+            borderColor: color.withValues(alpha: 0.18),
           ),
           child: Column(children: [
-            Icon(icon, color: color, size: 28),
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: color, size: 24),
+            ),
             const SizedBox(height: 8),
             Text(label,
-                style:
-                    const TextStyle(fontWeight: FontWeight.bold, fontSize: 14))
+                style: const TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 14,
+                  color: AppColors.textPrimary,
+                ))
           ]),
         ),
       ),
@@ -846,11 +904,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       width: width,
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.black.withValues(alpha: 0.04)),
-      ),
+      decoration: _surfaceCard(),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
         onTap: () => _openJadwalDetail(item, closeSheetFirst: closeSheetOnTap),
