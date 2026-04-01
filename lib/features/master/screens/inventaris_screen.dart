@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
@@ -17,6 +19,8 @@ class InventarisScreen extends StatefulWidget {
 class _InventarisScreenState extends State<InventarisScreen> {
   static const _kPageBg = Color(0xFFF8FAFC);
   final _search = TextEditingController();
+  final Set<int> _expandedJenisIds = <int>{};
+  Timer? _searchDebounce;
 
   @override
   void initState() {
@@ -27,8 +31,19 @@ class _InventarisScreenState extends State<InventarisScreen> {
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
     _search.dispose();
     super.dispose();
+  }
+
+  void _onSearchChanged(String value) {
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(const Duration(milliseconds: 280), () {
+      if (!mounted) return;
+      context
+          .read<MasterProvider>()
+          .fetchInventaris(q: value.trim().isEmpty ? null : value.trim());
+    });
   }
 
   Future<void> _openForm([InventarisModel? item]) async {
@@ -93,9 +108,7 @@ class _InventarisScreenState extends State<InventarisScreen> {
                               enabledBorder: InputBorder.none,
                               focusedBorder: InputBorder.none,
                             ),
-                            onChanged: (v) => context
-                                .read<MasterProvider>()
-                                .fetchInventaris(q: v.isEmpty ? null : v),
+                            onChanged: _onSearchChanged,
                           ),
                         ),
                       ),
@@ -112,21 +125,51 @@ class _InventarisScreenState extends State<InventarisScreen> {
                               onAction: () => _openForm(),
                             );
                           }
+                          final grouped = <int, List<InventarisModel>>{};
+                          for (final item in p.inventarisList) {
+                            grouped
+                                .putIfAbsent(
+                                    item.invJenisId, () => <InventarisModel>[])
+                                .add(item);
+                          }
+                          final jenisIds = grouped.keys.toList()..sort();
+
                           return ListView.separated(
+                            physics: const BouncingScrollPhysics(),
                             padding: const EdgeInsets.fromLTRB(16, 12, 16, 80),
-                            itemCount: p.inventarisList.length,
+                            itemCount: jenisIds.length,
                             separatorBuilder: (_, __) =>
                                 const SizedBox(height: 12),
                             itemBuilder: (_, i) {
-                              final item = p.inventarisList[i];
-                              return _InventarisCard(
-                                item: item,
-                                kategoriLabel:
-                                    p.kategoriByJenisId(item.invJenisId) ??
-                                        item.invKategori,
-                                pabrikLabel:
-                                    p.displayPabrik(item.invPabrikKode),
-                                onEdit: () => _openForm(item),
+                              final jenisId = jenisIds[i];
+                              final items = grouped[jenisId]!;
+                              final firstItem = items.first;
+                              final jenisNama =
+                                  p.jenisById(jenisId)?.jenisNama ??
+                                      'Jenis #$jenisId';
+                              final kategoriLabel =
+                                  p.kategoriByJenisId(jenisId) ??
+                                      firstItem.invKategori;
+                              final expanded =
+                                  _expandedJenisIds.contains(jenisId);
+
+                              return _InventarisGroupCard(
+                                jenisId: jenisId,
+                                jenisNama: jenisNama,
+                                kategoriLabel: kategoriLabel,
+                                items: items,
+                                expanded: expanded,
+                                onToggle: () {
+                                  setState(() {
+                                    if (expanded) {
+                                      _expandedJenisIds.remove(jenisId);
+                                    } else {
+                                      _expandedJenisIds.add(jenisId);
+                                    }
+                                  });
+                                },
+                                pabrikLabelBuilder: p.displayPabrik,
+                                onEditItem: _openForm,
                               );
                             },
                           );
@@ -141,6 +184,184 @@ class _InventarisScreenState extends State<InventarisScreen> {
         },
       ),
     );
+  }
+}
+
+class _InventarisGroupCard extends StatelessWidget {
+  final int jenisId;
+  final String jenisNama;
+  final String kategoriLabel;
+  final List<InventarisModel> items;
+  final bool expanded;
+  final VoidCallback onToggle;
+  final String Function(String?) pabrikLabelBuilder;
+  final ValueChanged<InventarisModel> onEditItem;
+
+  const _InventarisGroupCard({
+    required this.jenisId,
+    required this.jenisNama,
+    required this.kategoriLabel,
+    required this.items,
+    required this.expanded,
+    required this.onToggle,
+    required this.pabrikLabelBuilder,
+    required this.onEditItem,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: EdgeInsets.zero,
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: Colors.black.withValues(alpha: 0.05)),
+      ),
+      child: Column(
+        children: [
+          InkWell(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+            onTap: onToggle,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              child: Row(
+                children: [
+                  Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(
+                      _kategoriIcon(kategoriLabel),
+                      color: AppColors.primary,
+                      size: 22,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          jenisNama,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 4),
+                        Wrap(
+                          spacing: 6,
+                          runSpacing: 6,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 3,
+                              ),
+                              decoration: BoxDecoration(
+                                color:
+                                    AppColors.primary.withValues(alpha: 0.08),
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                              child: Text(
+                                kategoriLabel,
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 3,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF1F5F9),
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                              child: Text(
+                                '${items.length} inventaris',
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  color: AppColors.textSecondary,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  AnimatedRotation(
+                    turns: expanded ? 0.5 : 0,
+                    duration: const Duration(milliseconds: 220),
+                    curve: Curves.easeOutCubic,
+                    child: const Icon(
+                      Icons.expand_more,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          ClipRect(
+            child: AnimatedSize(
+              duration: const Duration(milliseconds: 240),
+              curve: Curves.easeOutCubic,
+              alignment: Alignment.topCenter,
+              child: expanded
+                  ? Column(
+                      children: [
+                        const Divider(height: 1),
+                        ListView.separated(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          padding: const EdgeInsets.all(10),
+                          itemCount: items.length,
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(height: 10),
+                          itemBuilder: (_, i) {
+                            final item = items[i];
+                            return _InventarisCard(
+                              item: item,
+                              kategoriLabel: kategoriLabel,
+                              pabrikLabel:
+                                  pabrikLabelBuilder(item.invPabrikKode),
+                              onEdit: () => onEditItem(item),
+                            );
+                          },
+                        ),
+                      ],
+                    )
+                  : const SizedBox.shrink(),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  IconData _kategoriIcon(String k) {
+    switch (k.toUpperCase()) {
+      case 'IT':
+        return Icons.computer_outlined;
+      case 'DRIVER':
+        return Icons.local_shipping_outlined;
+      case 'GA':
+        return Icons.precision_manufacturing_outlined;
+      default:
+        return Icons.inventory_2_outlined;
+    }
   }
 }
 
