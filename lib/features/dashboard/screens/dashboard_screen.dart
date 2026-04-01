@@ -282,198 +282,215 @@ class _DashboardScreenState extends State<DashboardScreen> {
       backgroundColor: _pageBg,
       body: RefreshIndicator(
         onRefresh: _loadData,
-        child: CustomScrollView(
-          slivers: [
-            // 1. Header Section
-            SliverToBoxAdapter(
-              child: Container(
-                padding: const EdgeInsets.fromLTRB(20, 60, 20, 30),
-                decoration: BoxDecoration(
-                  color: _pageBg,
-                  borderRadius: const BorderRadius.vertical(
-                    bottom: Radius.circular(24),
-                  ),
-                ),
-                child: Container(
-                  padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
-                  decoration: _surfaceCard(),
-                  child: Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 24,
-                        backgroundColor:
-                            AppColors.primary.withValues(alpha: 0.12),
-                        child: Text(
-                          _userInitial(auth.user),
-                          style: const TextStyle(
-                            color: AppColors.primary,
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final maxContentWidth =
+                constraints.maxWidth > 1220 ? 1180.0 : constraints.maxWidth;
+            return Center(
+              child: SizedBox(
+                width: maxContentWidth,
+                child: CustomScrollView(
+                  slivers: [
+                    // 1. Header Section
+                    SliverToBoxAdapter(
+                      child: Container(
+                        padding: const EdgeInsets.fromLTRB(20, 60, 20, 30),
+                        decoration: BoxDecoration(
+                          color: _pageBg,
+                          borderRadius: const BorderRadius.vertical(
+                            bottom: Radius.circular(24),
+                          ),
+                        ),
+                        child: Container(
+                          padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
+                          decoration: _surfaceCard(),
+                          child: Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 24,
+                                backgroundColor:
+                                    AppColors.primary.withValues(alpha: 0.12),
+                                child: Text(
+                                  _userInitial(auth.user),
+                                  style: const TextStyle(
+                                    color: AppColors.primary,
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'Selamat Datang',
+                                      style: TextStyle(
+                                        color: AppColors.textSecondary,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      _userName(auth.user).toUpperCase(),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        color: AppColors.textPrimary,
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 3,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.primary
+                                            .withValues(alpha: 0.08),
+                                        borderRadius:
+                                            BorderRadius.circular(999),
+                                      ),
+                                      child: Text(
+                                        '${auth.user?['user_divisi'] ?? '-'}',
+                                        style: const TextStyle(
+                                          color: AppColors.primary,
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.logout_outlined,
+                                  color: Color.fromARGB(255, 255, 157, 157),
+                                ),
+                                tooltip: 'Logout',
+                                onPressed: _logout,
+                              ),
+                            ],
                           ),
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                    ),
+
+                    // 2. Quick Actions Section
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Row(
                           children: [
-                            const Text(
-                              'Selamat Datang',
-                              style: TextStyle(
-                                color: AppColors.textSecondary,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              _userName(auth.user).toUpperCase(),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: AppColors.textPrimary,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 3,
-                              ),
-                              decoration: BoxDecoration(
-                                color:
-                                    AppColors.primary.withValues(alpha: 0.08),
-                                borderRadius: BorderRadius.circular(999),
-                              ),
-                              child: Text(
-                                '${auth.user?['user_divisi'] ?? '-'}',
-                                style: const TextStyle(
-                                  color: AppColors.primary,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
+                            _buildQuickAction(
+                                icon: Icons.event_note,
+                                label: "Jadwal",
+                                color: AppColors.primary,
+                                onTap: () => _tabToHistory(0)),
+                            const SizedBox(width: 15),
+                            _buildQuickAction(
+                                icon: Icons.analytics,
+                                label: "Realisasi",
+                                color: Colors.green.shade700,
+                                onTap: () => _tabToHistory(1)),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    // 3. System Flow Section (Alur Persiapan)
+                    if (isAdmin)
+                      SliverToBoxAdapter(
+                        child: _buildAdaptiveSystemFlow(isDesktop),
+                      ),
+
+                    // 4. Tasks Header Section
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 10, 20, 10),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text("Jadwal Mendatang",
+                                style: TextStyle(
+                                    fontSize: 16, fontWeight: FontWeight.bold)),
+                            TextButton(
+                              onPressed: () {
+                                final p = context.read<JadwalProvider>();
+                                final sorted = [...p.jadwalList]..sort((a, b) =>
+                                    _getRemainingDaysDiff(a)
+                                        .compareTo(_getRemainingDaysDiff(b)));
+                                _showAllPlansBottomSheet(context, sorted, p);
+                              },
+                              child: const Text('Lihat Semua'),
                             ),
                           ],
                         ),
                       ),
-                      IconButton(
-                        icon: const Icon(
-                          Icons.logout_outlined,
-                          color: Color.fromARGB(255, 255, 157, 157),
-                        ),
-                        tooltip: 'Logout',
-                        onPressed: _logout,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
+                    ),
 
-            // 2. Quick Actions Section
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Row(
-                  children: [
-                    _buildQuickAction(
-                        icon: Icons.calendar_today_rounded,
-                        label: "Jadwal",
-                        color: AppColors.primary,
-                        onTap: () => _tabToHistory(0)),
-                    const SizedBox(width: 15),
-                    _buildQuickAction(
-                        icon: Icons.fact_check_rounded,
-                        label: "Realisasi",
-                        color: Colors.green.shade700,
-                        onTap: () => _tabToHistory(1)),
-                  ],
-                ),
-              ),
-            ),
-
-            // 3. System Flow Section (Alur Persiapan)
-            if (isAdmin)
-              SliverToBoxAdapter(
-                child: _buildAdaptiveSystemFlow(isDesktop),
-              ),
-
-            // 4. Tasks Header Section
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 10, 20, 10),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text("Jadwal Mendatang",
-                        style: TextStyle(
-                            fontSize: 16, fontWeight: FontWeight.bold)),
-                    TextButton(
-                      onPressed: () {
-                        final p = context.read<JadwalProvider>();
+                    // 5. Plan Cards Section
+                    Consumer<JadwalProvider>(
+                      builder: (_, p, __) {
                         final sorted = [...p.jadwalList]..sort((a, b) =>
                             _getRemainingDaysDiff(a)
                                 .compareTo(_getRemainingDaysDiff(b)));
-                        _showAllPlansBottomSheet(context, sorted, p);
+                        final list = sorted.take(5).toList();
+                        if (p.loading) {
+                          return const SliverToBoxAdapter(
+                              child:
+                                  Center(child: CircularProgressIndicator()));
+                        }
+                        if (list.isEmpty) {
+                          return SliverToBoxAdapter(
+                            child: Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 20),
+                              child: Container(
+                                padding: const EdgeInsets.all(16),
+                                decoration: _surfaceCard(),
+                                child: const Text(
+                                  'Belum ada jadwal untuk direncanakan.',
+                                  style:
+                                      TextStyle(color: AppColors.textSecondary),
+                                ),
+                              ),
+                            ),
+                          );
+                        }
+                        return SliverToBoxAdapter(
+                          child: SizedBox(
+                            height: 122,
+                            child: ListView.separated(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 20),
+                              scrollDirection: Axis.horizontal,
+                              itemCount: list.length,
+                              separatorBuilder: (_, __) =>
+                                  const SizedBox(width: 12),
+                              itemBuilder: (_, i) => _buildJadwalItem(
+                                list[i],
+                                p,
+                                width: 285,
+                                compact: true,
+                              ),
+                            ),
+                          ),
+                        );
                       },
-                      child: const Text('Lihat Semua'),
                     ),
+
+                    const SliverToBoxAdapter(child: SizedBox(height: 100)),
                   ],
                 ),
               ),
-            ),
-
-            // 5. Plan Cards Section
-            Consumer<JadwalProvider>(
-              builder: (_, p, __) {
-                final sorted = [...p.jadwalList]..sort((a, b) =>
-                    _getRemainingDaysDiff(a)
-                        .compareTo(_getRemainingDaysDiff(b)));
-                final list = sorted.take(5).toList();
-                if (p.loading) {
-                  return const SliverToBoxAdapter(
-                      child: Center(child: CircularProgressIndicator()));
-                }
-                if (list.isEmpty) {
-                  return SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: _surfaceCard(),
-                        child: const Text(
-                          'Belum ada jadwal untuk direncanakan.',
-                          style: TextStyle(color: AppColors.textSecondary),
-                        ),
-                      ),
-                    ),
-                  );
-                }
-                return SliverToBoxAdapter(
-                  child: SizedBox(
-                    height: 122,
-                    child: ListView.separated(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      scrollDirection: Axis.horizontal,
-                      itemCount: list.length,
-                      separatorBuilder: (_, __) => const SizedBox(width: 12),
-                      itemBuilder: (_, i) => _buildJadwalItem(
-                        list[i],
-                        p,
-                        width: 285,
-                        compact: true,
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-
-            const SliverToBoxAdapter(child: SizedBox(height: 100)),
-          ],
+            );
+          },
         ),
       ),
     );
@@ -522,14 +539,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
         't': '4. Jadwal',
         'd': 'Buat Jadwal',
         'i': Icons.event_note,
-        'c': Colors.orange,
+        'c': AppColors.primary,
         's': const jadwal_screen.JadwalScreen()
       },
       {
         't': '5. Realisasi',
         'd': 'Cek Realisasi',
         'i': Icons.analytics,
-        'c': Colors.blue,
+        'c': Colors.green.shade700,
         's': const RealisasiHistoryScreen()
       },
       {
@@ -655,10 +672,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 _flowChip('Input checklist', Colors.redAccent),
                 const Icon(Icons.arrow_forward_rounded,
                     size: 14, color: AppColors.textSecondary),
-                _flowChip('Input jadwal', Colors.orange),
+                _flowChip('Input jadwal', AppColors.primary),
                 const Icon(Icons.arrow_forward_rounded,
                     size: 14, color: AppColors.textSecondary),
-                _flowChip('Lihat realisasi', Colors.blue),
+                _flowChip('Lihat realisasi', Colors.green.shade700),
               ],
             ),
           ],

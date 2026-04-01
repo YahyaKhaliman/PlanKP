@@ -77,126 +77,145 @@ class _UserScreenState extends State<UserScreen> {
         foregroundColor: AppColors.white,
         child: const Icon(Icons.person_add_outlined),
       ),
-      body: Column(children: [
-        Container(
-          color: AppColors.white,
-          padding: const EdgeInsets.all(12),
-          child: TextField(
-            controller: _searchCtrl,
-            decoration: InputDecoration(
-              hintText: 'Cari nama atau NIK...',
-              prefixIcon: const Icon(Icons.search_outlined),
-              suffixIcon: _searchQuery.isNotEmpty
-                  ? IconButton(
-                      icon: const Icon(Icons.clear_outlined),
-                      onPressed: () {
-                        _searchCtrl.clear();
-                        setState(() => _searchQuery = '');
-                      },
-                    )
-                  : null,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: AppColors.border),
-              ),
-              isDense: true,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-            ),
-          ),
-        ),
-        Expanded(
-          child: Consumer<MasterProvider>(
-            builder: (_, p, __) {
-              if (p.loading) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              final filteredUsers = p.userList.where((user) {
-                final q = _searchQuery.toLowerCase();
-                return user.userNama.toLowerCase().contains(q) ||
-                    user.userNik.toLowerCase().contains(q);
-              }).toList();
-              if (filteredUsers.isEmpty) {
-                return EmptyState(
-                  message: _searchQuery.isEmpty
-                      ? 'Belum ada user'
-                      : 'User tidak ditemukan',
-                  actionLabel: 'Tambah',
-                  onAction: () => _openForm(),
-                );
-              }
-              return ListView.separated(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 80),
-                itemCount: filteredUsers.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 8),
-                itemBuilder: (_, i) {
-                  final user = filteredUsers[i];
-                  final isToggling = _togglingUserIds.contains(user.userId);
-                  return Container(
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final maxContentWidth =
+              constraints.maxWidth > 1220 ? 1080.0 : constraints.maxWidth;
+          return Center(
+            child: SizedBox(
+              width: maxContentWidth,
+              child: Column(children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                  child: Card(
                     margin: EdgeInsets.zero,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                          color: Colors.black.withValues(alpha: 0.04)),
-                      boxShadow: [
-                        BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.03),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2)),
-                      ],
-                    ),
-                    child: ListTile(
-                      contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 6),
-                      leading: CircleAvatar(
-                        backgroundColor:
-                            AppColors.primary.withValues(alpha: 0.1),
-                        child: Text(user.userNama[0].toUpperCase(),
-                            style: const TextStyle(
-                                color: AppColors.primary,
-                                fontWeight: FontWeight.w600)),
+                    child: TextField(
+                      controller: _searchCtrl,
+                      decoration: InputDecoration(
+                        hintText: 'Cari nama atau NIK...',
+                        prefixIcon: const Icon(Icons.search, size: 20),
+                        suffixIcon: _searchQuery.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(Icons.clear_outlined),
+                                onPressed: () {
+                                  _searchCtrl.clear();
+                                  setState(() => _searchQuery = '');
+                                },
+                              )
+                            : null,
+                        contentPadding:
+                            const EdgeInsets.symmetric(vertical: 12),
+                        border: InputBorder.none,
+                        enabledBorder: InputBorder.none,
+                        focusedBorder: InputBorder.none,
                       ),
-                      title: Text(user.userNama,
-                          style: const TextStyle(
-                              fontWeight: FontWeight.w600, fontSize: 14)),
-                      subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('NIK: ${user.userNik}',
-                                style: const TextStyle(
-                                    fontSize: 12,
-                                    color: AppColors.textSecondary)),
-                            Row(children: [
-                              _JabatanBadge(user.jabatanLabel),
-                              const SizedBox(width: 6),
-                              _StatusBadge(isActive: user.aktif),
-                              if (user.userCabang != null) ...[
-                                const SizedBox(width: 6),
-                                Text(p.displayPabrik(user.userCabang),
-                                    style: const TextStyle(
-                                        fontSize: 11,
-                                        color: AppColors.textSecondary)),
-                              ],
-                            ]),
-                          ]),
-                      trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-                        _MinimalSwitch(
-                          value: user.aktif,
-                          loading: isToggling,
-                          onChanged: () => _toggleUserStatus(p, user),
-                        ),
-                        IconButton(
-                            icon: const Icon(Icons.edit_outlined, size: 18),
-                            onPressed: () => _openForm(user)),
-                      ]),
                     ),
-                  );
-                },
-              );
-            },
-          ),
-        ),
-      ]),
+                  ),
+                ),
+                Expanded(
+                  child: Consumer<MasterProvider>(
+                    builder: (_, p, __) {
+                      if (p.loading) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
+                      final filteredUsers = p.userList.where((user) {
+                        final q = _searchQuery.toLowerCase();
+                        return user.userNama.toLowerCase().contains(q) ||
+                            user.userNik.toLowerCase().contains(q);
+                      }).toList();
+                      if (filteredUsers.isEmpty) {
+                        return EmptyState(
+                          message: _searchQuery.isEmpty
+                              ? 'Belum ada user'
+                              : 'User tidak ditemukan',
+                          actionLabel: 'Tambah',
+                          onAction: () => _openForm(),
+                        );
+                      }
+                      return ListView.separated(
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 80),
+                        itemCount: filteredUsers.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 8),
+                        itemBuilder: (_, i) {
+                          final user = filteredUsers[i];
+                          final isToggling =
+                              _togglingUserIds.contains(user.userId);
+                          return Container(
+                            margin: EdgeInsets.zero,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                  color: Colors.black.withValues(alpha: 0.04)),
+                              boxShadow: [
+                                BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.03),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 2)),
+                              ],
+                            ),
+                            child: ListTile(
+                              contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 6),
+                              leading: CircleAvatar(
+                                backgroundColor:
+                                    AppColors.primary.withValues(alpha: 0.1),
+                                child: Text(user.userNama[0].toUpperCase(),
+                                    style: const TextStyle(
+                                        color: AppColors.primary,
+                                        fontWeight: FontWeight.w600)),
+                              ),
+                              title: Text(user.userNama,
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 14)),
+                              subtitle: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text('NIK: ${user.userNik}',
+                                        style: const TextStyle(
+                                            fontSize: 12,
+                                            color: AppColors.textSecondary)),
+                                    Row(children: [
+                                      _JabatanBadge(user.jabatanLabel),
+                                      const SizedBox(width: 6),
+                                      _StatusBadge(isActive: user.aktif),
+                                      if (user.userCabang != null) ...[
+                                        const SizedBox(width: 6),
+                                        Text(p.displayPabrik(user.userCabang),
+                                            style: const TextStyle(
+                                                fontSize: 11,
+                                                color:
+                                                    AppColors.textSecondary)),
+                                      ],
+                                    ]),
+                                  ]),
+                              trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    _MinimalSwitch(
+                                      value: user.aktif,
+                                      loading: isToggling,
+                                      onChanged: () =>
+                                          _toggleUserStatus(p, user),
+                                    ),
+                                    IconButton(
+                                        icon: const Icon(Icons.edit_outlined,
+                                            size: 18),
+                                        onPressed: () => _openForm(user)),
+                                  ]),
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ]),
+            ),
+          );
+        },
+      ),
     );
   }
 }
@@ -297,11 +316,13 @@ class _UserFormState extends State<_UserForm> {
   final _form = GlobalKey<FormState>();
   final _namaCtrl = TextEditingController();
   final _nikCtrl = TextEditingController();
+  final _oldPassCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
   String? _cabang;
   String _jabatan = 'user';
   String? _divisi;
-  bool _obscure = true;
+  bool _obscureOld = true;
+  bool _obscureNew = true;
 
   static const _jabatanList = [
     {'value': 'admin', 'label': 'Admin'},
@@ -325,6 +346,7 @@ class _UserFormState extends State<_UserForm> {
   void dispose() {
     _namaCtrl.dispose();
     _nikCtrl.dispose();
+    _oldPassCtrl.dispose();
     _passCtrl.dispose();
     super.dispose();
   }
@@ -344,7 +366,10 @@ class _UserFormState extends State<_UserForm> {
       'user_divisi': _divisi,
       'user_cabang': _cabang,
     };
-    if (_passCtrl.text.isNotEmpty) body['user_password'] = _passCtrl.text;
+    if (_passCtrl.text.isNotEmpty) {
+      body['user_password_lama'] = _oldPassCtrl.text;
+      body['user_password'] = _passCtrl.text;
+    }
     final ok = await p.saveUser(body, id: widget.user?.userId);
     if (ok && mounted) {
       await AppNotifier.showSuccess(context,
@@ -449,22 +474,54 @@ class _UserFormState extends State<_UserForm> {
                 onChanged: (v) => setState(() => _cabang = v),
               ),
               const SizedBox(height: 14),
+              if (isEdit) ...[
+                TextFormField(
+                    controller: _oldPassCtrl,
+                    obscureText: _obscureOld,
+                    decoration: InputDecoration(
+                        labelText: 'Password Lama',
+                        prefixIcon: const Icon(Icons.lock_clock_outlined),
+                        suffixIcon: IconButton(
+                            icon: Icon(_obscureOld
+                                ? Icons.visibility_off_outlined
+                                : Icons.visibility_outlined),
+                            onPressed: () =>
+                                setState(() => _obscureOld = !_obscureOld))),
+                    validator: (v) {
+                      if (_passCtrl.text.isNotEmpty &&
+                          (v == null || v.isEmpty)) {
+                        return 'Password lama wajib diisi';
+                      }
+                      return null;
+                    }),
+                const SizedBox(height: 14),
+              ],
               TextFormField(
                   controller: _passCtrl,
-                  obscureText: _obscure,
+                  obscureText: _obscureNew,
                   decoration: InputDecoration(
                       labelText: isEdit
                           ? 'Password Baru (kosongkan jika tidak diubah)'
                           : 'Password',
                       prefixIcon: const Icon(Icons.lock_outline),
                       suffixIcon: IconButton(
-                          icon: Icon(_obscure
+                          icon: Icon(_obscureNew
                               ? Icons.visibility_off_outlined
                               : Icons.visibility_outlined),
                           onPressed: () =>
-                              setState(() => _obscure = !_obscure))),
+                              setState(() => _obscureNew = !_obscureNew))),
                   validator: isEdit
-                      ? null
+                      ? (v) {
+                          if (v != null && v.isNotEmpty && v.length < 3) {
+                            return 'Minimal 3 karakter';
+                          }
+                          if (v != null &&
+                              v.isNotEmpty &&
+                              _oldPassCtrl.text.isEmpty) {
+                            return 'Isi password lama terlebih dahulu';
+                          }
+                          return null;
+                        }
                       : (v) {
                           if (v == null || v.isEmpty) {
                             return 'Password wajib diisi';

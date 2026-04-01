@@ -64,61 +64,79 @@ class _InventarisScreenState extends State<InventarisScreen> {
       ),
       body: Consumer<MasterProvider>(
         builder: (_, p, __) {
-          return Column(
-            children: [
-              // Search + filter
-              Container(
-                color: AppColors.white,
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                child: Row(children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _search,
-                      decoration: const InputDecoration(
-                        hintText: 'Cari nama inventaris...',
-                        prefixIcon: Icon(Icons.search, size: 20),
-                        contentPadding: EdgeInsets.symmetric(vertical: 10),
-                      ),
-                      onChanged: (v) => context
-                          .read<MasterProvider>()
-                          .fetchInventaris(q: v.isEmpty ? null : v),
-                    ),
-                  ),
-                ]),
-              ),
+          return LayoutBuilder(
+            builder: (context, constraints) {
+              final maxContentWidth = constraints.maxWidth > 1024
+                  ? 980.0
+                  : constraints.maxWidth > 760
+                      ? 760.0
+                      : constraints.maxWidth;
 
-              // List
-              Expanded(
-                child: () {
-                  if (p.loading) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-                  if (p.inventarisList.isEmpty) {
-                    return EmptyState(
-                      message: 'Belum ada data inventaris',
-                      actionLabel: 'Tambah',
-                      onAction: () => _openForm(),
-                    );
-                  }
-                  return ListView.separated(
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
-                    itemCount: p.inventarisList.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 12),
-                    itemBuilder: (_, i) {
-                      final item = p.inventarisList[i];
-                      return _InventarisCard(
-                        item: item,
-                        kategoriLabel: p.kategoriByJenisId(item.invJenisId) ??
-                            item.invKategori,
-                        pabrikLabel: p.displayPabrik(item.invPabrikKode),
-                        onEdit: () => _openForm(item),
-                        onToggle: () => p.toggleInventarisAktif(item.invId),
-                      );
-                    },
-                  );
-                }(),
-              ),
-            ],
+              return Align(
+                alignment: Alignment.topCenter,
+                child: SizedBox(
+                  width: maxContentWidth,
+                  child: Column(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                        child: Card(
+                          margin: EdgeInsets.zero,
+                          child: TextField(
+                            controller: _search,
+                            decoration: const InputDecoration(
+                              hintText: 'Cari nama inventaris...',
+                              prefixIcon: Icon(Icons.search, size: 20),
+                              contentPadding:
+                                  EdgeInsets.symmetric(vertical: 12),
+                              border: InputBorder.none,
+                              enabledBorder: InputBorder.none,
+                              focusedBorder: InputBorder.none,
+                            ),
+                            onChanged: (v) => context
+                                .read<MasterProvider>()
+                                .fetchInventaris(q: v.isEmpty ? null : v),
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: () {
+                          if (p.loading) {
+                            return const Center(
+                                child: CircularProgressIndicator());
+                          }
+                          if (p.inventarisList.isEmpty) {
+                            return EmptyState(
+                              message: 'Belum ada data inventaris',
+                              actionLabel: 'Tambah',
+                              onAction: () => _openForm(),
+                            );
+                          }
+                          return ListView.separated(
+                            padding: const EdgeInsets.fromLTRB(16, 12, 16, 80),
+                            itemCount: p.inventarisList.length,
+                            separatorBuilder: (_, __) =>
+                                const SizedBox(height: 12),
+                            itemBuilder: (_, i) {
+                              final item = p.inventarisList[i];
+                              return _InventarisCard(
+                                item: item,
+                                kategoriLabel:
+                                    p.kategoriByJenisId(item.invJenisId) ??
+                                        item.invKategori,
+                                pabrikLabel:
+                                    p.displayPabrik(item.invPabrikKode),
+                                onEdit: () => _openForm(item),
+                              );
+                            },
+                          );
+                        }(),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
           );
         },
       ),
@@ -131,13 +149,11 @@ class _InventarisCard extends StatelessWidget {
   final String kategoriLabel;
   final String pabrikLabel;
   final VoidCallback onEdit;
-  final VoidCallback onToggle;
   const _InventarisCard({
     required this.item,
     required this.kategoriLabel,
     required this.pabrikLabel,
     required this.onEdit,
-    required this.onToggle,
   });
 
   static const _kondisiColor = {
@@ -148,18 +164,12 @@ class _InventarisCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return Card(
       margin: EdgeInsets.zero,
-      decoration: BoxDecoration(
-        color: Colors.white,
+      elevation: 0,
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.black.withValues(alpha: 0.04)),
-        boxShadow: [
-          BoxShadow(
-              color: Colors.black.withValues(alpha: 0.03),
-              blurRadius: 8,
-              offset: const Offset(0, 2)),
-        ],
+        side: BorderSide(color: Colors.black.withValues(alpha: 0.05)),
       ),
       child: Padding(
         padding: const EdgeInsets.all(14),
@@ -189,7 +199,7 @@ class _InventarisCard extends StatelessWidget {
                 Expanded(
                     child: Text(item.invNama,
                         style: const TextStyle(
-                            fontWeight: FontWeight.w600, fontSize: 14),
+                            fontWeight: FontWeight.w700, fontSize: 14),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis)),
                 Container(
@@ -208,12 +218,45 @@ class _InventarisCard extends StatelessWidget {
                               AppColors.success)),
                 ),
               ]),
-              const SizedBox(height: 3),
-              Text('${item.invNo} · ID Jenis ${item.invJenisId}',
-                  style: const TextStyle(
-                      fontSize: 12, color: AppColors.textSecondary)),
+              const SizedBox(height: 6),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: [
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      kategoriLabel,
+                      style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.primary),
+                    ),
+                  ),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      item.invNo,
+                      style: const TextStyle(
+                          fontSize: 11,
+                          color: AppColors.textSecondary,
+                          fontWeight: FontWeight.w500),
+                    ),
+                  ),
+                ],
+              ),
               if (item.invPabrikKode != null) ...[
-                const SizedBox(height: 2),
+                const SizedBox(height: 6),
                 Row(children: [
                   const Icon(Icons.location_on_outlined,
                       size: 12, color: AppColors.textSecondary),
@@ -227,20 +270,10 @@ class _InventarisCard extends StatelessWidget {
           )),
           const SizedBox(width: 8),
 
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Switch(
-                value: item.aktif,
-                onChanged: (_) => onToggle(),
-                activeThumbColor: AppColors.primary,
-              ),
-              IconButton(
-                icon: const Icon(Icons.edit_outlined,
-                    color: AppColors.textSecondary),
-                onPressed: onEdit,
-              ),
-            ],
+          IconButton(
+            icon:
+                const Icon(Icons.edit_outlined, color: AppColors.textSecondary),
+            onPressed: onEdit,
           ),
         ]),
       ),

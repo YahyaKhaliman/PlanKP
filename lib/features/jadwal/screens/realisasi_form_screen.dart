@@ -203,157 +203,188 @@ class _RealisasiFormScreenState extends State<RealisasiFormScreen> {
 
   Widget _buildForm() {
     final templateError = context.watch<JadwalProvider>().error;
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
-      children: [
-        // ── Info jadwal ─────────────────────────────────────
-        Card(
-          margin: EdgeInsets.zero,
-          child: Padding(
-            padding: const EdgeInsets.all(14),
-            child:
-                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('Info Realisasi',
-                  style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 13,
-                      color: AppColors.textSecondary)),
-              const SizedBox(height: 10),
-              _infoRow('Jenis',
-                  _invJenisNama.isNotEmpty ? _invJenisNama : '$_invJenisId'),
-              if (_invNama.isNotEmpty) _infoRow('Unit', _invNama),
-              if ((_invNo ?? '').isNotEmpty) _infoRow('No Inventaris', _invNo!),
-              if (_invKondisiAwal != null)
-                _infoRow('Kondisi Awal', _invKondisiAwal ?? '-'),
-              _infoRow(
-                  'Tanggal', DateFormatter.toDisplayFromDate(DateTime.now())),
-            ]),
-          ),
-        ),
-        const SizedBox(height: 16),
-
-        // ── Checklist ────────────────────────────────────────
-        const Text('Checklist',
-            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
-        const SizedBox(height: 8),
-
-        if (_checklistItems.isEmpty)
-          Card(
-            margin: EdgeInsets.zero,
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(children: [
-                const Icon(Icons.checklist_outlined,
-                    size: 36, color: AppColors.textSecondary),
-                const SizedBox(height: 8),
-                Text(
-                  (templateError != null && templateError.isNotEmpty)
-                      ? 'Gagal memuat template checklist'
-                      : 'Tidak ada template checklist untuk jenis ini',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(color: AppColors.textSecondary),
-                ),
-                if (templateError != null && templateError.isNotEmpty) ...[
-                  const SizedBox(height: 6),
-                  Text(
-                    templateError,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                        fontSize: 12, color: AppColors.textSecondary),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final maxContentWidth =
+            constraints.maxWidth > 1100 ? 920.0 : constraints.maxWidth;
+        return Center(
+          child: SizedBox(
+            width: maxContentWidth,
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+              children: [
+                // ── Info jadwal ─────────────────────────────────────
+                Card(
+                  margin: EdgeInsets.zero,
+                  child: Padding(
+                    padding: const EdgeInsets.all(14),
+                    child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Info Realisasi',
+                              style: TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 13,
+                                  color: AppColors.textSecondary)),
+                          const SizedBox(height: 10),
+                          _infoRow(
+                              'Jenis',
+                              _invJenisNama.isNotEmpty
+                                  ? _invJenisNama
+                                  : '$_invJenisId'),
+                          if (_invNama.isNotEmpty) _infoRow('Unit', _invNama),
+                          if ((_invNo ?? '').isNotEmpty)
+                            _infoRow('No Inventaris', _invNo!),
+                          if (_invKondisiAwal != null)
+                            _infoRow('Kondisi Awal', _invKondisiAwal ?? '-'),
+                          _infoRow('Tanggal',
+                              DateFormatter.toDisplayFromDate(DateTime.now())),
+                        ]),
                   ),
-                ],
-                const SizedBox(height: 12),
-                OutlinedButton.icon(
-                  onPressed: _loadingTemplate ? null : _retryLoadTemplate,
-                  icon: _loadingTemplate
-                      ? const SizedBox(
-                          height: 14,
-                          width: 14,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.refresh_outlined, size: 16),
-                  label: Text(_loadingTemplate ? 'Memuat...' : 'Muat Ulang'),
                 ),
-              ]),
-            ),
-          ),
+                const SizedBox(height: 16),
 
-        ..._checklistItems.asMap().entries.map((e) => _ChecklistItemCard(
-              item: e.value,
-              index: e.key,
-              onChanged: () => setState(() {}),
-            )),
+                // ── Checklist ────────────────────────────────────────
+                const Text('Checklist',
+                    style:
+                        TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                const SizedBox(height: 8),
 
-        const SizedBox(height: 16),
+                if (_checklistItems.isEmpty)
+                  Card(
+                    margin: EdgeInsets.zero,
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(children: [
+                        const Icon(Icons.checklist_outlined,
+                            size: 36, color: AppColors.textSecondary),
+                        const SizedBox(height: 8),
+                        Text(
+                          (templateError != null && templateError.isNotEmpty)
+                              ? 'Gagal memuat template checklist'
+                              : 'Tidak ada template checklist untuk jenis ini',
+                          textAlign: TextAlign.center,
+                          style:
+                              const TextStyle(color: AppColors.textSecondary),
+                        ),
+                        if (templateError != null &&
+                            templateError.isNotEmpty) ...[
+                          const SizedBox(height: 6),
+                          Text(
+                            templateError,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                                fontSize: 12, color: AppColors.textSecondary),
+                          ),
+                        ],
+                        const SizedBox(height: 12),
+                        OutlinedButton.icon(
+                          onPressed:
+                              _loadingTemplate ? null : _retryLoadTemplate,
+                          icon: _loadingTemplate
+                              ? const SizedBox(
+                                  height: 14,
+                                  width: 14,
+                                  child:
+                                      CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : const Icon(Icons.refresh_outlined, size: 16),
+                          label: Text(
+                              _loadingTemplate ? 'Memuat...' : 'Muat Ulang'),
+                        ),
+                      ]),
+                    ),
+                  ),
 
-        // ── Kondisi akhir ─────────────────────────────────────
-        const Text('Kondisi Akhir',
-            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
-        const SizedBox(height: 8),
-        Row(
-            children: _kondisiList.map((k) {
-          final selected = _kondisi == k;
-          return Expanded(
-              child: Padding(
-            padding: const EdgeInsets.only(right: 6),
-            child: InkWell(
-              onTap: () => setState(() => _kondisi = k),
-              borderRadius: BorderRadius.circular(10),
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                decoration: BoxDecoration(
-                  color: selected
-                      ? _kondisiColor(k)
-                      : _kondisiColor(k).withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                      color: selected ? _kondisiColor(k) : Colors.transparent),
+                ..._checklistItems
+                    .asMap()
+                    .entries
+                    .map((e) => _ChecklistItemCard(
+                          item: e.value,
+                          index: e.key,
+                          onChanged: () => setState(() {}),
+                        )),
+
+                const SizedBox(height: 16),
+
+                // ── Kondisi akhir ─────────────────────────────────────
+                const Text('Kondisi Akhir',
+                    style:
+                        TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                const SizedBox(height: 8),
+                Row(
+                    children: _kondisiList.map((k) {
+                  final selected = _kondisi == k;
+                  return Expanded(
+                      child: Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: InkWell(
+                      onTap: () => setState(() => _kondisi = k),
+                      borderRadius: BorderRadius.circular(10),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        decoration: BoxDecoration(
+                          color: selected
+                              ? _kondisiColor(k)
+                              : _kondisiColor(k).withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                              color: selected
+                                  ? _kondisiColor(k)
+                                  : Colors.transparent),
+                        ),
+                        child: Center(
+                            child: Text(k,
+                                style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: selected
+                                        ? Colors.white
+                                        : _kondisiColor(k)))),
+                      ),
+                    ),
+                  ));
+                }).toList()),
+                const SizedBox(height: 16),
+
+                // ── Keterangan ────────────────────────────────────────
+                const Text('Keterangan',
+                    style:
+                        TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _ketCtrl,
+                  maxLines: 4,
+                  decoration: const InputDecoration(
+                    hintText:
+                        'Tuliskan catatan atau temuan selama maintenance...',
+                    alignLabelWithHint: true,
+                  ),
                 ),
-                child: Center(
-                    child: Text(k,
-                        style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color:
-                                selected ? Colors.white : _kondisiColor(k)))),
-              ),
-            ),
-          ));
-        }).toList()),
-        const SizedBox(height: 16),
+                const SizedBox(height: 24),
 
-        // ── Keterangan ────────────────────────────────────────
-        const Text('Keterangan',
-            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
-        const SizedBox(height: 8),
-        TextField(
-          controller: _ketCtrl,
-          maxLines: 4,
-          decoration: const InputDecoration(
-            hintText: 'Tuliskan catatan atau temuan selama maintenance...',
-            alignLabelWithHint: true,
-          ),
-        ),
-        const SizedBox(height: 24),
-
-        // ── Tombol TTD ────────────────────────────────────────
-        Consumer<JadwalProvider>(
-          builder: (_, p, __) => ElevatedButton.icon(
-            onPressed: p.loading || _submitting ? null : _proceedToTtd,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.success,
+                // ── Tombol TTD ────────────────────────────────────────
+                Consumer<JadwalProvider>(
+                  builder: (_, p, __) => ElevatedButton.icon(
+                    onPressed: p.loading || _submitting ? null : _proceedToTtd,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.success,
+                    ),
+                    icon: p.loading || _submitting
+                        ? const SizedBox(
+                            height: 18,
+                            width: 18,
+                            child: CircularProgressIndicator(
+                                color: Colors.white, strokeWidth: 2))
+                        : const Icon(Icons.draw_outlined),
+                    label: const Text('Lanjut ke Tanda Tangan'),
+                  ),
+                ),
+              ],
             ),
-            icon: p.loading || _submitting
-                ? const SizedBox(
-                    height: 18,
-                    width: 18,
-                    child: CircularProgressIndicator(
-                        color: Colors.white, strokeWidth: 2))
-                : const Icon(Icons.draw_outlined),
-            label: const Text('Lanjut ke Tanda Tangan'),
           ),
-        ),
-      ],
+        );
+      },
     );
   }
 

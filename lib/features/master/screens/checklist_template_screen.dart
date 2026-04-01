@@ -98,13 +98,24 @@ class _ChecklistTemplateScreenState extends State<ChecklistTemplateScreen> {
     return Scaffold(
       backgroundColor: _kPageBg,
       appBar: AppBar(title: const Text('Checklist')),
-      body: _ChecklistTab(
-        searchQuery: _searchCtrl.text,
-        onSearchChanged: (_) => setState(() {}),
-        searchCtrl: _searchCtrl,
-        openBulkForm: _openBulkForm,
-        openSingleForm: _openSingleForm,
-        confirmDelete: _confirmDelete,
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final maxContentWidth =
+              constraints.maxWidth > 1220 ? 1080.0 : constraints.maxWidth;
+          return Center(
+            child: SizedBox(
+              width: maxContentWidth,
+              child: _ChecklistTab(
+                searchQuery: _searchCtrl.text,
+                onSearchChanged: (_) => setState(() {}),
+                searchCtrl: _searchCtrl,
+                openBulkForm: _openBulkForm,
+                openSingleForm: _openSingleForm,
+                confirmDelete: _confirmDelete,
+              ),
+            ),
+          );
+        },
       ),
       floatingActionButton: FloatingActionButton(
         heroTag: 'fab_checklist',
@@ -714,17 +725,22 @@ class _ChecklistTab extends StatelessWidget {
         final jenisCount = filtered.map((e) => e.ctJenisId).toSet().length;
 
         return Column(children: [
-          Container(
-            color: AppColors.white,
+          Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-            child: TextField(
-              controller: searchCtrl,
-              decoration: const InputDecoration(
-                hintText: 'Cari item checklist atau jenis...',
-                prefixIcon: Icon(Icons.search, size: 20),
-                contentPadding: EdgeInsets.symmetric(vertical: 10),
+            child: Card(
+              margin: EdgeInsets.zero,
+              child: TextField(
+                controller: searchCtrl,
+                decoration: const InputDecoration(
+                  hintText: 'Cari item checklist atau jenis...',
+                  prefixIcon: Icon(Icons.search, size: 20),
+                  contentPadding: EdgeInsets.symmetric(vertical: 12),
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                ),
+                onChanged: onSearchChanged,
               ),
-              onChanged: onSearchChanged,
             ),
           ),
           if (filtered.isNotEmpty)

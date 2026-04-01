@@ -18,17 +18,6 @@ class _JenisScreenState extends State<JenisScreen> {
   static const _kPageBg = Color(0xFFF8FAFC);
   final _searchCtrl = TextEditingController();
 
-  Future<void> _toggleJenisStatus(JenisModel jenis, bool value) async {
-    final provider = context.read<MasterProvider>();
-    final ok = await provider.toggleJenisAktif(jenis.jenisId, value);
-    if (!ok && mounted) {
-      await AppNotifier.showError(
-        context,
-        provider.error ?? 'Gagal mengubah status jenis',
-      );
-    }
-  }
-
   @override
   void initState() {
     super.initState();
@@ -91,72 +80,157 @@ class _JenisScreenState extends State<JenisScreen> {
               onAction: () => _openForm(),
             );
           }
-          return Column(
-            children: [
-              Container(
-                color: AppColors.white,
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                child: TextField(
-                  controller: _searchCtrl,
-                  decoration: const InputDecoration(
-                    hintText: 'Cari nama atau kategori jenis...',
-                    prefixIcon: Icon(Icons.search, size: 20),
-                    contentPadding: EdgeInsets.symmetric(vertical: 10),
-                  ),
-                  onChanged: (_) => setState(() {}),
-                ),
-              ),
-              Expanded(
-                child: filtered.isEmpty
-                    ? const EmptyState(message: 'Data jenis tidak ditemukan')
-                    : ListView.builder(
-                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
-                        itemCount: filtered.length,
-                        itemBuilder: (_, i) {
-                          final jenis = filtered[i];
-                          return Container(
-                            margin: const EdgeInsets.only(bottom: 12),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(
-                                  color: Colors.black.withValues(alpha: 0.04)),
-                              boxShadow: [
-                                BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.03),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 2)),
-                              ],
+          return LayoutBuilder(
+            builder: (_, constraints) {
+              final maxWidth =
+                  constraints.maxWidth > 1080 ? 1020.0 : constraints.maxWidth;
+              return Align(
+                alignment: Alignment.topCenter,
+                child: SizedBox(
+                  width: maxWidth,
+                  child: Column(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                        child: Card(
+                          margin: EdgeInsets.zero,
+                          child: TextField(
+                            controller: _searchCtrl,
+                            decoration: const InputDecoration(
+                              hintText: 'Cari nama atau kategori jenis...',
+                              prefixIcon: Icon(Icons.search, size: 20),
+                              contentPadding:
+                                  EdgeInsets.symmetric(vertical: 12),
+                              border: InputBorder.none,
+                              enabledBorder: InputBorder.none,
+                              focusedBorder: InputBorder.none,
                             ),
-                            child: ListTile(
-                              title: Text(jenis.jenisNama,
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.w600)),
-                              subtitle: Text(jenis.jenisKategori),
-                              trailing: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Switch(
-                                    value: jenis.jenisIsActive,
-                                    onChanged: (value) =>
-                                        _toggleJenisStatus(jenis, value),
-                                    activeThumbColor: AppColors.primary,
-                                  ),
-                                  IconButton(
-                                    icon: const Icon(Icons.edit_outlined,
-                                        color: AppColors.textSecondary),
-                                    onPressed: () => _openForm(jenis),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        },
+                            onChanged: (_) => setState(() {}),
+                          ),
+                        ),
                       ),
-              ),
-            ],
+                      Expanded(
+                        child: filtered.isEmpty
+                            ? const EmptyState(
+                                message: 'Data jenis tidak ditemukan')
+                            : ListView.separated(
+                                padding:
+                                    const EdgeInsets.fromLTRB(16, 8, 16, 80),
+                                itemCount: filtered.length,
+                                separatorBuilder: (_, __) =>
+                                    const SizedBox(height: 12),
+                                itemBuilder: (_, i) {
+                                  final jenis = filtered[i];
+                                  return _JenisCard(
+                                    jenis: jenis,
+                                    onEdit: () => _openForm(jenis),
+                                  );
+                                },
+                              ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
           );
         },
+      ),
+    );
+  }
+}
+
+class _JenisCard extends StatelessWidget {
+  final JenisModel jenis;
+  final VoidCallback onEdit;
+
+  const _JenisCard({
+    required this.jenis,
+    required this.onEdit,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final activeColor =
+        jenis.jenisIsActive ? AppColors.success : AppColors.textSecondary;
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Row(
+          children: [
+            Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.category_outlined,
+                  color: AppColors.primary, size: 22),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    jenis.jenisNama,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w700, fontSize: 14),
+                  ),
+                  const SizedBox(height: 4),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 6,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(
+                          jenis.jenisKategori,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: activeColor.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(
+                          jenis.jenisIsActive ? 'Aktif' : 'Nonaktif',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: activeColor,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            IconButton(
+              icon: const Icon(Icons.edit_outlined,
+                  color: AppColors.textSecondary),
+              onPressed: onEdit,
+            ),
+          ],
+        ),
       ),
     );
   }

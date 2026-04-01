@@ -91,8 +91,6 @@ class _JenisLookupSheetState extends State<JenisLookupSheet> {
                             title: Text(jenis.jenisNama,
                                 style: const TextStyle(
                                     fontWeight: FontWeight.w600)),
-                            subtitle: Text(
-                                '${jenis.jenisKategori} · ID ${jenis.jenisId}'),
                             trailing: selected
                                 ? const Icon(Icons.check,
                                     color: AppColors.primary)
