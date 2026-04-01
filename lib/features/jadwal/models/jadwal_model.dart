@@ -16,6 +16,10 @@ class JadwalModel {
   final int? jdwTarget;
   final int? jdwTotalUnit;
   final int? jdwSelesaiUnit;
+  final bool jdwPeriodFulfilled;
+  final String? jdwCurrentPeriodStart;
+  final String? jdwNextDueDate;
+  final int? jdwDaysRemaining;
   final String? jdwNotes;
   final Map<String, dynamic>? assignedUser;
   final Map<String, dynamic>? dibuatUser;
@@ -38,6 +42,10 @@ class JadwalModel {
     this.jdwTarget,
     this.jdwTotalUnit,
     this.jdwSelesaiUnit,
+    this.jdwPeriodFulfilled = false,
+    this.jdwCurrentPeriodStart,
+    this.jdwNextDueDate,
+    this.jdwDaysRemaining,
     this.jdwNotes,
     this.assignedUser,
     this.dibuatUser,
@@ -67,6 +75,12 @@ class JadwalModel {
         jdwSelesaiUnit: j['jdw_selesai_unit'] is int
             ? j['jdw_selesai_unit']
             : int.tryParse('${j['jdw_selesai_unit'] ?? ''}'),
+        jdwPeriodFulfilled: j['jdw_period_fulfilled'] == true,
+        jdwCurrentPeriodStart: j['jdw_current_period_start'],
+        jdwNextDueDate: j['jdw_next_due_date'],
+        jdwDaysRemaining: j['jdw_days_remaining'] is int
+            ? j['jdw_days_remaining']
+            : int.tryParse('${j['jdw_days_remaining'] ?? ''}'),
         jdwNotes: j['jdw_notes'],
         assignedUser:
             (j['assigned_user'] ?? j['jdw_assigned_to_plan_user']) != null

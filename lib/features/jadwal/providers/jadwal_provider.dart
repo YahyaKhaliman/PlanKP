@@ -52,8 +52,9 @@ class JadwalProvider extends ChangeNotifier {
         if (jenis != null) 'jenis': jenis,
       };
       final res = await ApiClient.get(ApiConfig.jadwal, query: query);
-      jadwalList =
-          (res['data'] as List).map((e) => JadwalModel.fromJson(e)).toList();
+      jadwalList = ((res['data']['items'] ?? []) as List)
+          .map((e) => JadwalModel.fromJson(e))
+          .toList();
       _setError(null);
     } on ApiException catch (e) {
       _setError(e.message);
@@ -73,8 +74,9 @@ class JadwalProvider extends ChangeNotifier {
       };
       final res =
           await ApiClient.get('${ApiConfig.jadwal}/divisi', query: query);
-      jadwalList =
-          (res['data'] as List).map((e) => JadwalModel.fromJson(e)).toList();
+      jadwalList = ((res['data']['items'] ?? []) as List)
+          .map((e) => JadwalModel.fromJson(e))
+          .toList();
       _setError(null);
     } on ApiException catch (e) {
       _setError(e.message);
@@ -94,8 +96,9 @@ class JadwalProvider extends ChangeNotifier {
       };
       final res =
           await ApiClient.get('${ApiConfig.jadwal}/assigned', query: query);
-      jadwalList =
-          (res['data'] as List).map((e) => JadwalModel.fromJson(e)).toList();
+      jadwalList = ((res['data']['items'] ?? []) as List)
+          .map((e) => JadwalModel.fromJson(e))
+          .toList();
       _setError(null);
     } on ApiException catch (e) {
       _setError(e.message);
@@ -108,8 +111,9 @@ class JadwalProvider extends ChangeNotifier {
     _setLoading(true);
     try {
       final res = await ApiClient.get('${ApiConfig.jadwal}/hari-ini');
-      jadwalHariIni =
-          (res['data'] as List).map((e) => JadwalModel.fromJson(e)).toList();
+      jadwalHariIni = ((res['data']['items'] ?? []) as List)
+          .map((e) => JadwalModel.fromJson(e))
+          .toList();
       _setError(null);
     } on ApiException catch (e) {
       _setError(e.message);

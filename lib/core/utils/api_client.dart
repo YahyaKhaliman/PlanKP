@@ -23,11 +23,12 @@ class ApiClient {
   static Future<Map<String, dynamic>> get(
     String path, {
     Map<String, dynamic>? query,
+    bool auth = true,
   }) async {
     final uri = Uri.parse('${ApiConfig.baseUrl}$path').replace(
       queryParameters: query?.map((key, value) => MapEntry(key, '$value')),
     );
-    final res = await http.get(uri, headers: await _headers());
+    final res = await http.get(uri, headers: await _headers(auth: auth));
     return _parse(res);
   }
 

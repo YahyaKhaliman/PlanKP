@@ -358,8 +358,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       onPressed: () {
                         final p = context.read<JadwalProvider>();
                         final sorted = [...p.jadwalList]..sort((a, b) =>
-                            _getRemainingDaysDiff(a, p)
-                                .compareTo(_getRemainingDaysDiff(b, p)));
+                            _getRemainingDaysDiff(a)
+                                .compareTo(_getRemainingDaysDiff(b)));
                         _showAllPlansBottomSheet(context, sorted, p);
                       },
                       child: const Text('Lihat Semua'),
@@ -373,8 +373,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
             Consumer<JadwalProvider>(
               builder: (_, p, __) {
                 final sorted = [...p.jadwalList]..sort((a, b) =>
-                    _getRemainingDaysDiff(a, p)
-                        .compareTo(_getRemainingDaysDiff(b, p)));
+                    _getRemainingDaysDiff(a)
+                        .compareTo(_getRemainingDaysDiff(b)));
                 final list = sorted.take(5).toList();
                 if (p.loading) {
                   return const SliverToBoxAdapter(
@@ -835,7 +835,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     bool showDivisi = false,
     bool closeSheetOnTap = false,
   }) {
-    final rem = _getRemainingDays(item, p);
+    final rem = _getRemainingDays(item);
     final divisiColor = _colorForDivisi(item.jdwDivisi);
     final icon = _iconForDivisi(item.jdwDivisi);
     final remColor = rem.contains('Terlewat')
@@ -926,11 +926,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  String _getRemainingDays(JadwalModel j, JadwalProvider p) {
-    final nextDue = _getNextDueDate(j, p);
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final diff = nextDue.difference(today).inDays;
+  String _getRemainingDays(JadwalModel j) {
+    final diff = _getRemainingDaysDiff(j);
 
     if (diff < 0) return 'Terlewat ${-diff} hari';
     if (diff == 0) return 'Hari ini';
@@ -938,11 +935,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return '$diff hari lagi';
   }
 
-  int _getRemainingDaysDiff(JadwalModel j, JadwalProvider p) {
-    final nextDue = _getNextDueDate(j, p);
+  int _getRemainingDaysDiff(JadwalModel j) {
+    if (j.jdwDaysRemaining != null) {
+      return j.jdwDaysRemaining!;
+    }
+
+    final fallbackDate = _parseDateOnly(j.jdwNextDueDate ?? j.jdwTglMulai);
+    if (fallbackDate == null) {
+      return 0;
+    }
+
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    return nextDue.difference(today).inDays;
+    return fallbackDate.difference(today).inDays;
   }
 
   DateTime? _parseDateOnly(String? value) {
@@ -950,64 +955,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final dt = DateTime.tryParse(value);
     if (dt == null) return null;
     return DateTime(dt.year, dt.month, dt.day);
-  }
-
-  DateTime _addByFrequency(DateTime date, String frekuensi) {
-    switch (frekuensi) {
-      case 'Harian':
-        return date.add(const Duration(days: 1));
-      case 'Mingguan':
-        return date.add(const Duration(days: 7));
-      case 'Bulanan':
-        return DateTime(date.year, date.month + 1, date.day);
-      default:
-        return date;
-    }
-  }
-
-  DateTime _getNextDueDate(JadwalModel j, JadwalProvider p) {
-    final startDate = _parseDateOnly(j.jdwTglMulai);
-    if (startDate == null) return DateTime.now();
-
-    final selesaiByJadwal = p.realisasiList
-        .where((r) => r.realJadwalId == j.jdwId && r.selesai)
-        .toList();
-
-    if (selesaiByJadwal.isEmpty) {
-      return startDate;
-    }
-
-    // Track tanggal selesai terakhir per inventaris.
-    final Map<int, DateTime> lastDonePerInv = {};
-    for (final r in selesaiByJadwal) {
-      final tgl = _parseDateOnly(r.realTgl);
-      if (tgl == null) {
-        continue;
-      }
-      final prev = lastDonePerInv[r.realInvId];
-      if (prev == null || tgl.isAfter(prev)) {
-        lastDonePerInv[r.realInvId] = tgl;
-      }
-    }
-
-    if (lastDonePerInv.isEmpty) {
-      return startDate;
-    }
-
-    // Ambil due date paling cepat (unit yang paling dulu jatuh tempo / belum terselesaikan).
-    var earliestNextDue = lastDonePerInv.values
-        .map((lastDone) => _addByFrequency(lastDone, j.jdwFrekuensi))
-        .reduce((a, b) => a.isBefore(b) ? a : b);
-
-    // Jika total unit jadwal lebih besar dari unit yang pernah selesai,
-    // berarti masih ada inventaris yang belum pernah direalisasi sama sekali.
-    final totalUnit = j.jdwTotalUnit;
-    if (totalUnit != null && totalUnit > lastDonePerInv.length) {
-      earliestNextDue =
-          startDate.isBefore(earliestNextDue) ? startDate : earliestNextDue;
-    }
-
-    return earliestNextDue;
   }
 
   IconData _iconForDivisi(String? divisiRaw) {

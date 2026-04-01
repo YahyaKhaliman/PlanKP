@@ -39,14 +39,8 @@ class _JadwalScreenState extends State<JadwalScreen> {
   }
 
   Future<void> _loadData() async {
-    final auth = context.read<AuthProvider>();
-    final isAdmin = auth.user?['user_jabatan'] == 'admin';
     final jadwalProvider = context.read<JadwalProvider>();
-    if (isAdmin) {
-      await jadwalProvider.fetchJadwal();
-    } else {
-      await jadwalProvider.fetchJadwalByUser();
-    }
+    await jadwalProvider.fetchJadwal();
     if (!mounted) return;
     await context.read<MasterProvider>().fetchJenis();
   }
@@ -1060,30 +1054,71 @@ class _JadwalFormState extends State<_JadwalForm> {
     }
   }
 
+  Widget _requiredLabel(String label) {
+    return RichText(
+      text: TextSpan(
+        text: label,
+        style: const TextStyle(
+            fontSize: 13,
+            color: AppColors.textSecondary,
+            fontWeight: FontWeight.w400),
+        children: const [
+          TextSpan(
+            text: ' *',
+            style: TextStyle(color: Colors.red, fontWeight: FontWeight.w700),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _jenisPickerField() {
+    final divisiLabel =
+        (_divisi != null && _divisi!.isNotEmpty) ? _divisi! : '-';
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
-      child: TextFormField(
-        controller: _jenisCtrl,
-        readOnly: true,
-        decoration: InputDecoration(
-          labelText: 'Jenis Inventaris',
-          hintText: 'Cari jenis yang sudah punya inventaris...',
-          prefixIcon: const Icon(Icons.label_outline),
-          suffixIcon: IconButton(
-            icon: const Icon(Icons.search),
-            onPressed: _pickJenis,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          TextFormField(
+            controller: _jenisCtrl,
+            readOnly: true,
+            decoration: InputDecoration(
+              label: _requiredLabel('Jenis Inventaris'),
+              hintText: 'Cari jenis yang sudah punya inventaris...',
+              prefixIcon: const Icon(Icons.label_outline),
+              suffixIcon: IconButton(
+                icon: const Icon(Icons.search),
+                onPressed: _pickJenis,
+              ),
+            ),
+            validator: (_) {
+              if (_jenisId == null) return 'Jenis wajib dipilih';
+              final master = context.read<MasterProvider>();
+              if (!master.hasInventarisForJenis(_jenisId!)) {
+                return 'Jenis belum punya inventaris aktif';
+              }
+              return null;
+            },
+            onTap: _pickJenis,
           ),
-        ),
-        validator: (_) {
-          if (_jenisId == null) return 'Jenis wajib dipilih';
-          final master = context.read<MasterProvider>();
-          if (!master.hasInventarisForJenis(_jenisId!)) {
-            return 'Jenis belum punya inventaris aktif';
-          }
-          return null;
-        },
-        onTap: _pickJenis,
+          if (_divisi != null && _divisi!.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 4, left: 12),
+              child: Row(
+                children: [
+                  const Icon(Icons.account_tree_outlined,
+                      size: 13, color: AppColors.textSecondary),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Divisi Pelaksana: $divisiLabel',
+                    style: const TextStyle(
+                        fontSize: 12, color: AppColors.textSecondary),
+                  ),
+                ],
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -1196,9 +1231,9 @@ class _JadwalFormState extends State<_JadwalForm> {
               const SizedBox(height: 20),
               TextFormField(
                 controller: _judulCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Judul Jadwal',
-                  prefixIcon: Icon(Icons.title_outlined),
+                decoration: InputDecoration(
+                  label: _requiredLabel('Judul Jadwal'),
+                  prefixIcon: const Icon(Icons.title_outlined),
                   hintText: 'Maintenance Mesin Sewing Mingguan...',
                 ),
                 validator: (v) => (v == null || v.trim().isEmpty)
@@ -1210,9 +1245,9 @@ class _JadwalFormState extends State<_JadwalForm> {
               const SizedBox(height: 14),
               DropdownButtonFormField<String>(
                 initialValue: _pabrikKode,
-                decoration: const InputDecoration(
-                  labelText: 'Pabrik / Lokasi',
-                  prefixIcon: Icon(Icons.location_on_outlined),
+                decoration: InputDecoration(
+                  label: _requiredLabel('Pabrik / Lokasi'),
+                  prefixIcon: const Icon(Icons.location_on_outlined),
                 ),
                 items: master.pabrikList
                     .map(
@@ -1225,21 +1260,11 @@ class _JadwalFormState extends State<_JadwalForm> {
                 onChanged: (v) => setState(() => _pabrikKode = v),
               ),
               const SizedBox(height: 14),
-              TextFormField(
-                initialValue: _divisi ?? '',
-                readOnly: true,
-                decoration: const InputDecoration(
-                  labelText: 'Divisi Pelaksana',
-                  prefixIcon: Icon(Icons.account_tree_outlined),
-                  helperText: 'Berdasarkan divisi login Anda',
-                ),
-              ),
-              const SizedBox(height: 14),
               DropdownButtonFormField<int>(
                 initialValue: _assignedToUserId,
-                decoration: const InputDecoration(
-                  labelText: 'Pelaksana / User',
-                  prefixIcon: Icon(Icons.person_outlined),
+                decoration: InputDecoration(
+                  label: _requiredLabel('Pelaksana / User'),
+                  prefixIcon: const Icon(Icons.person_outlined),
                 ),
                 hint: const Text('Pilih pelaksana'),
                 items: master.userList
@@ -1256,9 +1281,9 @@ class _JadwalFormState extends State<_JadwalForm> {
               const SizedBox(height: 14),
               DropdownButtonFormField<String>(
                 initialValue: _frekuensi,
-                decoration: const InputDecoration(
-                  labelText: 'Frekuensi',
-                  prefixIcon: Icon(Icons.repeat_outlined),
+                decoration: InputDecoration(
+                  label: _requiredLabel('Frekuensi'),
+                  prefixIcon: const Icon(Icons.repeat_outlined),
                 ),
                 items: _frekuensiList
                     .map((f) => DropdownMenuItem(value: f, child: Text(f)))
@@ -1277,7 +1302,7 @@ class _JadwalFormState extends State<_JadwalForm> {
                   }
                 },
                 decoration: InputDecoration(
-                  labelText: 'Target Unit per Jadwal',
+                  label: _requiredLabel('Target Unit per Jadwal'),
                   prefixIcon: const Icon(Icons.flag_outlined),
                   hintText: 'Contoh: 6',
                   errorText: _targetLimitError,
@@ -1321,9 +1346,9 @@ class _JadwalFormState extends State<_JadwalForm> {
               InkWell(
                 onTap: () => _pickDate(true),
                 child: InputDecorator(
-                  decoration: const InputDecoration(
-                    labelText: 'Tanggal Mulai',
-                    prefixIcon: Icon(Icons.calendar_today_outlined),
+                  decoration: InputDecoration(
+                    label: _requiredLabel('Tanggal Mulai'),
+                    prefixIcon: const Icon(Icons.calendar_today_outlined),
                   ),
                   child: Text(
                     _tglMulai != null

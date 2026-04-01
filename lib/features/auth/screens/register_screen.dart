@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/api_client.dart';
 import '../providers/auth_provider.dart';
 import '../../../core/widgets/app_notifier.dart';
 
@@ -24,9 +25,35 @@ class _RegisterScreenState extends State<RegisterScreen> {
     'IT',
     'Driver',
   ];
-  final _cabangCtrl = TextEditingController();
+  String? _selectedCabang;
+  List<Map<String, dynamic>> _pabrikList = [];
+  bool _loadingPabrik = true;
   static const _defaultJabatan = 'user';
   bool _obscure = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPabrik();
+  }
+
+  Future<void> _loadPabrik() async {
+    try {
+      final res = await ApiClient.get(ApiConfig.pabrik, auth: false);
+      if (mounted) {
+        setState(() {
+          _pabrikList = List<Map<String, dynamic>>.from(
+              (res['data'] as List).map((e) => e as Map<String, dynamic>));
+          _loadingPabrik = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _loadingPabrik = false);
+        AppNotifier.showError(context, 'Gagal memuat data cabang');
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -34,7 +61,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _passwordCtrl.dispose();
     _nikCtrl.dispose();
     _divisiCtrl.dispose();
-    _cabangCtrl.dispose();
     super.dispose();
   }
 
@@ -44,13 +70,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
           context, 'Lengkapi data registrasi terlebih dahulu');
       return;
     }
+    if (_selectedCabang == null) {
+      await AppNotifier.showWarning(context, 'Pilih cabang terlebih dahulu');
+      return;
+    }
     final auth = context.read<AuthProvider>();
     if (auth.loading) return;
     final ok = await auth.register(
       userNama: _namaCtrl.text.trim(),
       userPassword: _passwordCtrl.text,
       userDivisi: _divisiCtrl.text.trim(),
-      userCabang: _cabangCtrl.text.trim(),
+      userCabang: _selectedCabang!,
       userNik: _nikCtrl.text.trim(),
       userJabatan: _defaultJabatan,
     );
@@ -211,7 +241,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
-              initialValue: _divisiOptions.contains(_divisiCtrl.text)
+              initialValue: _divisiCtrl.text.isNotEmpty &&
+                      _divisiOptions.contains(_divisiCtrl.text)
                   ? _divisiCtrl.text
                   : null,
               decoration: const InputDecoration(
@@ -230,15 +261,36 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   v == null || v.isEmpty ? 'Divisi wajib diisi' : null,
             ),
             const SizedBox(height: 12),
-            TextFormField(
-              controller: _cabangCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Cabang',
-                prefixIcon: Icon(Icons.business_outlined),
-              ),
-              validator: (v) =>
-                  v == null || v.trim().isEmpty ? 'Cabang wajib diisi' : null,
-            ),
+            _loadingPabrik
+                ? const SizedBox(
+                    height: 56,
+                    child: Center(
+                      child: SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    ),
+                  )
+                : DropdownButtonFormField<String>(
+                    initialValue: _selectedCabang,
+                    decoration: const InputDecoration(
+                      labelText: 'Cabang',
+                      prefixIcon: Icon(Icons.business_outlined),
+                    ),
+                    items: _pabrikList
+                        .map((pab) => DropdownMenuItem<String>(
+                              value: pab['pab_kode'] as String,
+                              child: Text(pab['pab_nama'] as String),
+                            ))
+                        .toList(),
+                    onChanged: (val) {
+                      if (val != null) {
+                        setState(() => _selectedCabang = val);
+                      }
+                    },
+                    validator: (v) => v == null ? 'Cabang wajib diisi' : null,
+                  ),
             const SizedBox(height: 12),
             TextFormField(
               controller: _passwordCtrl,

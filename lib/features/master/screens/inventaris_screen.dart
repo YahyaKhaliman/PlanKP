@@ -274,7 +274,6 @@ class _InventarisFormState extends State<_InventarisForm> {
   final _noCtrl = TextEditingController();
   final _namaCtrl = TextEditingController();
   final _jenisCtrl = TextEditingController();
-  final _kategoriCtrl = TextEditingController();
   int? _jenisId;
   String? _pabrikKode;
   final _merkCtrl = TextEditingController();
@@ -304,10 +303,7 @@ class _InventarisFormState extends State<_InventarisForm> {
       final mappedKategori =
           context.read<MasterProvider>().kategoriByJenisId(d.invJenisId);
       _kategori = (mappedKategori ?? d.invKategori).trim();
-      _kategoriCtrl.text = _kategori.isEmpty ? '-' : _kategori;
       _kondisi = d.invKondisi;
-    } else {
-      _kategoriCtrl.text = '-';
     }
   }
 
@@ -316,7 +312,6 @@ class _InventarisFormState extends State<_InventarisForm> {
     _noCtrl.dispose();
     _namaCtrl.dispose();
     _jenisCtrl.dispose();
-    _kategoriCtrl.dispose();
     _merkCtrl.dispose();
     _snCtrl.dispose();
     _picCtrl.dispose();
@@ -400,17 +395,6 @@ class _InventarisFormState extends State<_InventarisForm> {
                 _field(_namaCtrl, 'Nama', Icons.inventory_2_outlined,
                     required: true),
 
-                // Kategori (otomatis dari jenis)
-                TextFormField(
-                  readOnly: true,
-                  controller: _kategoriCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'Kategori (otomatis)',
-                    prefixIcon: Icon(Icons.category_outlined),
-                  ),
-                ),
-                const SizedBox(height: 14),
-
                 _jenisPickerField(),
                 Padding(
                   padding: const EdgeInsets.only(bottom: 14),
@@ -488,20 +472,52 @@ class _InventarisFormState extends State<_InventarisForm> {
   Widget _jenisPickerField() {
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
-      child: TextFormField(
-        controller: _jenisCtrl,
-        readOnly: true,
-        decoration: InputDecoration(
-          labelText: 'Jenis',
-          hintText: 'Cari...',
-          prefixIcon: const Icon(Icons.label_outline),
-          suffixIcon: IconButton(
-            icon: const Icon(Icons.search),
-            onPressed: _pickJenis,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          TextFormField(
+            controller: _jenisCtrl,
+            readOnly: true,
+            decoration: InputDecoration(
+              label: RichText(
+                text: const TextSpan(
+                  text: 'Jenis',
+                  style:
+                      TextStyle(color: AppColors.textSecondary, fontSize: 14),
+                  children: [
+                    TextSpan(
+                        text: ' *',
+                        style: TextStyle(color: Colors.red, fontSize: 14)),
+                  ],
+                ),
+              ),
+              hintText: 'Cari...',
+              prefixIcon: const Icon(Icons.label_outline),
+              suffixIcon: IconButton(
+                icon: const Icon(Icons.search),
+                onPressed: _pickJenis,
+              ),
+            ),
+            validator: (_) => _jenisId == null ? 'Jenis wajib dipilih' : null,
+            onTap: _pickJenis,
           ),
-        ),
-        validator: (_) => _jenisId == null ? 'Jenis wajib dipilih' : null,
-        onTap: _pickJenis,
+          if (_kategori.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 4, left: 12),
+              child: Row(
+                children: [
+                  const Icon(Icons.category_outlined,
+                      size: 13, color: AppColors.textSecondary),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Kategori: $_kategori',
+                    style: const TextStyle(
+                        fontSize: 12, color: AppColors.textSecondary),
+                  ),
+                ],
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -526,7 +542,6 @@ class _InventarisFormState extends State<_InventarisForm> {
         _jenisId = result.jenisId;
         _jenisCtrl.text = result.jenisNama;
         _kategori = result.jenisKategori.trim();
-        _kategoriCtrl.text = _kategori.isEmpty ? '-' : _kategori;
       });
     }
   }
@@ -539,7 +554,21 @@ class _InventarisFormState extends State<_InventarisForm> {
         controller: ctrl,
         maxLines: maxLines,
         decoration: InputDecoration(
-            labelText: label,
+            label: required
+                ? RichText(
+                    text: TextSpan(
+                      text: label,
+                      style: const TextStyle(
+                          color: AppColors.textSecondary, fontSize: 14),
+                      children: const [
+                        TextSpan(
+                            text: ' *',
+                            style: TextStyle(color: Colors.red, fontSize: 14)),
+                      ],
+                    ),
+                  )
+                : null,
+            labelText: required ? null : label,
             hintText: hint,
             prefixIcon: Icon(icon),
             alignLabelWithHint: maxLines > 1),

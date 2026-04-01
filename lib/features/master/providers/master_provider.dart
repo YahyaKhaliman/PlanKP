@@ -149,7 +149,7 @@ class MasterProvider extends ChangeNotifier {
   Future<void> fetchPabrik({bool showLoading = false}) async {
     if (showLoading) _setLoading(true);
     try {
-      final res = await ApiClient.get(ApiConfig.pabrik);
+      final res = await ApiClient.get(ApiConfig.pabrik, auth: false);
       pabrikList =
           (res['data'] as List).map((e) => PabrikModel.fromJson(e)).toList();
       _setError(null);
