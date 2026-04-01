@@ -414,6 +414,13 @@ class _BulkInputFormState extends State<_BulkInputForm> {
   Widget build(BuildContext context) {
     final provider = context.watch<MasterProvider>();
     final allJenis = provider.jenisMaster;
+    final usedJenisIds = provider.checklistList.map((e) => e.ctJenisId).toSet();
+    final keepJenisId =
+        int.tryParse(widget.initialJenis ?? _selectedJenis ?? '');
+    final availableJenis = allJenis.where((j) {
+      if (keepJenisId != null && j.jenisId == keepJenisId) return true;
+      return !usedJenisIds.contains(j.jenisId);
+    }).toList();
 
     return DraggableScrollableSheet(
       initialChildSize: 0.92,
@@ -502,7 +509,7 @@ class _BulkInputFormState extends State<_BulkInputForm> {
                     fillColor: AppColors.white,
                   ),
                   hint: const Text('Pilih jenis inventaris'),
-                  items: allJenis
+                  items: availableJenis
                       .map((j) => DropdownMenuItem(
                           value: '${j.jenisId}', child: Text(j.jenisNama)))
                       .toList(),
@@ -510,6 +517,17 @@ class _BulkInputFormState extends State<_BulkInputForm> {
                       ? null
                       : (v) => setState(() => _selectedJenis = v),
                 ),
+                if (!widget.jenisLocked && availableJenis.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 8),
+                    child: Text(
+                      'Semua jenis sudah memiliki checklist template',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ),
                 const SizedBox(height: 12),
 
                 // label kolom
