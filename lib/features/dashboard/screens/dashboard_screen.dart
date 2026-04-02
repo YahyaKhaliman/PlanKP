@@ -284,9 +284,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     SliverToBoxAdapter(
                       child: Container(
                         padding: const EdgeInsets.fromLTRB(20, 60, 20, 30),
-                        decoration: BoxDecoration(
+                        decoration: const BoxDecoration(
                           color: _pageBg,
-                          borderRadius: const BorderRadius.vertical(
+                          borderRadius: BorderRadius.vertical(
                             bottom: Radius.circular(24),
                           ),
                         ),
