@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/app_notifier.dart';
 import '../../../core/widgets/empty_state.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../models/user_model.dart';
 import '../providers/master_provider.dart';
 
@@ -52,6 +53,15 @@ class _UserScreenState extends State<UserScreen> {
   }
 
   Future<void> _toggleUserStatus(MasterProvider p, UserModel user) async {
+    final authUserId = _currentAuthUserId();
+    if (authUserId != null && authUserId == user.userId) {
+      await AppNotifier.showWarning(
+        context,
+        'Status akun sendiri tidak dapat diubah',
+      );
+      return;
+    }
+
     if (_togglingUserIds.contains(user.userId)) return;
     setState(() => _togglingUserIds.add(user.userId));
     final ok = await p.toggleUserAktif(user.userId);
@@ -63,6 +73,13 @@ class _UserScreenState extends State<UserScreen> {
     }
     if (!mounted) return;
     setState(() => _togglingUserIds.remove(user.userId));
+  }
+
+  int? _currentAuthUserId() {
+    final auth = context.read<AuthProvider>();
+    final rawId = auth.user?['user_id'];
+    if (rawId is int) return rawId;
+    return int.tryParse('$rawId');
   }
 
   @override
@@ -115,6 +132,7 @@ class _UserScreenState extends State<UserScreen> {
                 Expanded(
                   child: Consumer<MasterProvider>(
                     builder: (_, p, __) {
+                      final authUserId = _currentAuthUserId();
                       if (p.loading) {
                         return const Center(child: CircularProgressIndicator());
                       }
@@ -138,6 +156,8 @@ class _UserScreenState extends State<UserScreen> {
                         separatorBuilder: (_, __) => const SizedBox(height: 8),
                         itemBuilder: (_, i) {
                           final user = filteredUsers[i];
+                          final isCurrentUser =
+                              authUserId != null && authUserId == user.userId;
                           final isToggling =
                               _togglingUserIds.contains(user.userId);
                           return Container(
@@ -193,12 +213,13 @@ class _UserScreenState extends State<UserScreen> {
                               trailing: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    _MinimalSwitch(
-                                      value: user.aktif,
-                                      loading: isToggling,
-                                      onChanged: () =>
-                                          _toggleUserStatus(p, user),
-                                    ),
+                                    if (!isCurrentUser)
+                                      _MinimalSwitch(
+                                        value: user.aktif,
+                                        loading: isToggling,
+                                        onChanged: () =>
+                                            _toggleUserStatus(p, user),
+                                      ),
                                     IconButton(
                                         icon: const Icon(Icons.edit_outlined,
                                             size: 18),

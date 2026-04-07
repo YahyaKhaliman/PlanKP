@@ -996,6 +996,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   int _getRemainingDaysDiff(JadwalModel j) {
+    if (!j.jdwPeriodFulfilled &&
+        (j.jdwFrekuensi == 'Mingguan' || j.jdwFrekuensi == 'Bulanan')) {
+      return 0;
+    }
+
     if (j.jdwDaysRemaining != null) {
       return j.jdwDaysRemaining!;
     }

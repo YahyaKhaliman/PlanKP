@@ -714,7 +714,7 @@ class _JadwalCard extends StatelessWidget {
                   if (isUser)
                     _actionBtn(
                       Icons.playlist_add_check_circle_outlined,
-                      'Buka Realisasi',
+                      'Lakukan Realisasi',
                       AppColors.primary,
                       onTap,
                     ),
