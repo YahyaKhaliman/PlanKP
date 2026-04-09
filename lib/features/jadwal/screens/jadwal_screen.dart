@@ -642,7 +642,12 @@ class _JadwalCard extends StatelessWidget {
                   _chip(_formatTgl(jadwal.jdwTglMulai, jadwal.jdwTglSelesai),
                       Icons.calendar_today_outlined),
                   _chip(jadwal.assignedNama, Icons.person_outline),
-                  _chip(jadwal.jdwPabrikKode ?? '-', Icons.factory_outlined),
+                  _chip(
+                    jadwal.jdwPabrikList.isEmpty
+                        ? '-'
+                        : jadwal.jdwPabrikList.join(', '),
+                    Icons.factory_outlined,
+                  ),
                 ],
               ),
               const SizedBox(height: 14),
@@ -815,7 +820,8 @@ class _JadwalFormState extends State<_JadwalForm> {
   final TextEditingController _jenisCtrl = TextEditingController();
   int? _jenisId;
   String? _divisi;
-  String? _pabrikKode;
+  final List<String> _pabrikCodes = [];
+  String? _selectedPabrikValue;
   int? _assignedToUserId;
   String _frekuensi = 'Harian';
   DateTime? _tglMulai;
@@ -836,7 +842,9 @@ class _JadwalFormState extends State<_JadwalForm> {
       _notesCtrl.text = d.jdwNotes ?? '';
       _jenisId = d.jdwJenisId;
       _divisi = d.jdwDivisi;
-      _pabrikKode = d.jdwPabrikKode;
+      _pabrikCodes
+        ..clear()
+        ..addAll(d.jdwPabrikList);
       _assignedToUserId = d.jdwAssignedTo;
       _frekuensi = d.jdwFrekuensi;
       _tglMulai = DateTime.tryParse(d.jdwTglMulai);
@@ -1005,6 +1013,78 @@ class _JadwalFormState extends State<_JadwalForm> {
     );
   }
 
+  Widget _pabrikSelector(MasterProvider master) {
+    String labelForCode(String code) {
+      final match = master.pabrikList.where((p) => p.pabKode == code);
+      if (match.isNotEmpty) return match.first.displayLabel;
+      return code;
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          DropdownButtonFormField<String>(
+            value: _selectedPabrikValue,
+            decoration: InputDecoration(
+              label: _requiredLabel('Pabrik / Lokasi'),
+              prefixIcon: const Icon(Icons.factory_outlined),
+            ),
+            hint: const Text('Pilih pabrik/lokasi'),
+            items: master.pabrikList
+                .map((p) => DropdownMenuItem(
+                      value: p.pabKode,
+                      child: Text(p.displayLabel),
+                    ))
+                .toList(),
+            onChanged: (value) {
+              if (value == null) return;
+              setState(() {
+                if (!_pabrikCodes.contains(value)) {
+                  _pabrikCodes.add(value);
+                }
+                _selectedPabrikValue = null;
+              });
+            },
+            validator: (_) {
+              if (_pabrikCodes.isEmpty) {
+                return 'Pilih minimal satu pabrik';
+              }
+              return null;
+            },
+          ),
+          const SizedBox(height: 10),
+          if (_pabrikCodes.isEmpty)
+            const Padding(
+              padding: EdgeInsets.only(left: 4),
+              child: Text(
+                'Belum ada pabrik yang dipilih',
+                style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+              ),
+            )
+          else
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: _pabrikCodes.map((code) {
+                final label = labelForCode(code);
+                return InputChip(
+                  label: Text(label),
+                  deleteIcon: const Icon(Icons.close, size: 16),
+                  onDeleted: () {
+                    setState(() {
+                      _pabrikCodes.remove(code);
+                    });
+                  },
+                );
+              }).toList(),
+            ),
+        ],
+      ),
+    );
+  }
+
   Widget _jenisPickerField() {
     final divisiLabel =
         (_divisi != null && _divisi!.isNotEmpty) ? _divisi! : '-';
@@ -1082,6 +1162,11 @@ class _JadwalFormState extends State<_JadwalForm> {
       await AppNotifier.showWarning(context, 'Pelaksana wajib dipilih');
       return;
     }
+    if (_pabrikCodes.isEmpty) {
+      await AppNotifier.showWarning(
+          context, 'Pilih minimal satu pabrik/lokasi jadwal');
+      return;
+    }
     final parsedTarget = int.tryParse(_targetCtrl.text.trim());
     if (parsedTarget == null || parsedTarget < 1) {
       await AppNotifier.showWarning(context, 'Target wajib angka minimal 1');
@@ -1100,7 +1185,7 @@ class _JadwalFormState extends State<_JadwalForm> {
       'jdw_jenis_id': _jenisId!,
       'jdw_target': parsedTarget,
       'jdw_divisi': _divisi,
-      'jdw_pabrik_kode': _pabrikKode,
+      'jdw_pabrik_kode': _pabrikCodes.join(','),
       'jdw_assigned_to': _assignedToUserId,
       'jdw_frekuensi': _frekuensi,
       'jdw_tgl_mulai': _fmtDateApi(_tglMulai),
@@ -1176,22 +1261,7 @@ class _JadwalFormState extends State<_JadwalForm> {
               const SizedBox(height: 14),
               _jenisPickerField(),
               const SizedBox(height: 14),
-              DropdownButtonFormField<String>(
-                initialValue: _pabrikKode,
-                decoration: InputDecoration(
-                  label: _requiredLabel('Pabrik / Lokasi'),
-                  prefixIcon: const Icon(Icons.location_on_outlined),
-                ),
-                items: master.pabrikList
-                    .map(
-                      (pabrik) => DropdownMenuItem(
-                        value: pabrik.pabKode,
-                        child: Text(pabrik.displayLabel),
-                      ),
-                    )
-                    .toList(),
-                onChanged: (v) => setState(() => _pabrikKode = v),
-              ),
+              _pabrikSelector(master),
               const SizedBox(height: 14),
               DropdownButtonFormField<int>(
                 initialValue: _assignedToUserId,

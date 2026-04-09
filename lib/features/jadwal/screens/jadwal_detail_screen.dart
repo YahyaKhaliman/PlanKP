@@ -188,7 +188,7 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        '$jenisNama · ${jadwal.jdwFrekuensi} · ${master.displayPabrik(jadwal.jdwPabrikKode)}',
+                        '$jenisNama · ${jadwal.jdwFrekuensi} · ${_displayPabrikList(master, jadwal.jdwPabrikList)}',
                         style: const TextStyle(
                           color: AppColors.textSecondary,
                           fontSize: 12,
@@ -336,7 +336,7 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
           _infoRow('Jenis Inventaris', jenisNama),
           _infoRow('Divisi', jadwal.jdwDivisi),
           _infoRow('Pelaksana', jadwal.assignedNama),
-          _infoRow('Pabrik', master.displayPabrik(jadwal.jdwPabrikKode)),
+          _infoRow('Pabrik', _displayPabrikList(master, jadwal.jdwPabrikList)),
           _infoRow('Awal Periode Jadwal',
               _displayDate(jadwal.jdwCurrentPeriodStart)),
           if (jadwal.jdwTglSelesai != null)
@@ -492,6 +492,11 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
               }).toList(),
             ),
     );
+  }
+
+  String _displayPabrikList(MasterProvider master, List<String> codes) {
+    if (codes.isEmpty) return '-';
+    return codes.map((c) => master.displayPabrik(c)).join(', ');
   }
 
   Widget _sectionCard({

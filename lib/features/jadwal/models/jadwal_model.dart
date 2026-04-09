@@ -11,7 +11,7 @@ class JadwalModel {
   final int? jdwBulan;
   final int jdwTahun;
   final int? jdwAssignedTo;
-  final String? jdwPabrikKode;
+  final List<String> jdwPabrikList;
   final String jdwStatus;
   final int? jdwTarget;
   final int? jdwTotalUnit;
@@ -37,7 +37,7 @@ class JadwalModel {
     this.jdwBulan,
     required this.jdwTahun,
     this.jdwAssignedTo,
-    this.jdwPabrikKode,
+    this.jdwPabrikList = const [],
     required this.jdwStatus,
     this.jdwTarget,
     this.jdwTotalUnit,
@@ -64,7 +64,8 @@ class JadwalModel {
         jdwBulan: j['jdw_bulan'],
         jdwTahun: j['jdw_tahun'] ?? DateTime.now().year,
         jdwAssignedTo: j['jdw_assigned_to'],
-        jdwPabrikKode: j['jdw_pabrik_kode']?.toString(),
+        jdwPabrikList:
+            _parsePabrikList(j['jdw_pabrik_list'] ?? j['jdw_pabrik_kode']),
         jdwStatus: j['jdw_status'] ?? 'Draft',
         jdwTarget: j['jdw_target'] is int
             ? j['jdw_target']
@@ -94,4 +95,24 @@ class JadwalModel {
       );
 
   String get assignedNama => assignedUser?['user_nama'] ?? '-';
+
+  static List<String> _parsePabrikList(dynamic value) {
+    if (value == null) return const [];
+    if (value is List) {
+      return value
+          .map(
+              (e) => e is Map<String, dynamic> ? e['kode'] ?? e['pab_kode'] : e)
+          .map((e) => e?.toString().trim() ?? '')
+          .where((e) => e.isNotEmpty)
+          .toSet()
+          .toList();
+    }
+    return value
+        .toString()
+        .split(RegExp(r"[;,]"))
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toSet()
+        .toList();
+  }
 }

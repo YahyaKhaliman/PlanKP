@@ -198,17 +198,75 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     separatorBuilder: (_, __) => const SizedBox(height: 8),
                     itemBuilder: (_, i) {
                       final inv = inventarisList[i];
+                      final merk =
+                          (inv['inv_merk'] ?? '-').toString().toUpperCase();
+                      final pabrik = inv['inv_pabrik_kode'] ?? '-';
+                      final nomor = inv['inv_no'] ?? '-';
                       return Card(
                         margin: EdgeInsets.zero,
                         child: ListTile(
-                          leading: const Icon(Icons.inventory_2_outlined,
-                              color: AppColors.primary),
-                          title: Text(inv['inv_nama'] ?? '-'),
-                          subtitle: Text(
-                            '${(inv['inv_merk'] ?? '-').toString().toUpperCase()} · ${inv['inv_pabrik_kode'] ?? 'inv_pabrik_kode'}\nBelum dipilih',
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 10),
+                          leading: CircleAvatar(
+                            radius: 20,
+                            backgroundColor:
+                                AppColors.primary.withValues(alpha: 0.12),
+                            child: const Icon(Icons.inventory_2_outlined,
+                                color: AppColors.primary, size: 20),
+                          ),
+                          title: Text(
+                            inv['inv_nama'] ?? '-',
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                          subtitle: Padding(
+                            padding: const EdgeInsets.only(top: 6),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('$merk · Kode: $nomor',
+                                    style: const TextStyle(
+                                        fontSize: 12,
+                                        color: AppColors.textSecondary,
+                                        fontWeight: FontWeight.w600)),
+                                const SizedBox(height: 2),
+                                Row(
+                                  children: [
+                                    const Icon(Icons.factory_outlined,
+                                        size: 14,
+                                        color: AppColors.textSecondary),
+                                    const SizedBox(width: 4),
+                                    Text(pabrik,
+                                        style: const TextStyle(
+                                            fontSize: 12,
+                                            color: AppColors.textSecondary)),
+                                  ],
+                                ),
+                                const SizedBox(height: 4),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color:
+                                        Colors.orange.withValues(alpha: 0.12),
+                                    borderRadius: BorderRadius.circular(999),
+                                  ),
+                                  child: const Text(
+                                    'Belum dipilih',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.orange,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                           trailing: const Icon(Icons.chevron_right),
-                          isThreeLine: true,
                           onTap: () {
                             Navigator.pop(context);
                             _openRealisasiFromInventaris(jadwal, inv);
