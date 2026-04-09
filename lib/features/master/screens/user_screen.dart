@@ -198,6 +198,10 @@ class _UserScreenState extends State<UserScreen> {
                                             color: AppColors.textSecondary)),
                                     Row(children: [
                                       _JabatanBadge(user.jabatanLabel),
+                                      if (isCurrentUser) ...[
+                                        const SizedBox(width: 6),
+                                        const _SelfBadge(),
+                                      ],
                                       const SizedBox(width: 6),
                                       _StatusBadge(isActive: user.aktif),
                                       if (user.userCabang != null) ...[
@@ -255,6 +259,27 @@ class _JabatanBadge extends StatelessWidget {
                 fontSize: 11,
                 fontWeight: FontWeight.w500,
                 color: AppColors.primary)),
+      );
+}
+
+class _SelfBadge extends StatelessWidget {
+  const _SelfBadge();
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+        decoration: BoxDecoration(
+          color: Colors.amber.withValues(alpha: 0.16),
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: const Text(
+          'Akun saya',
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF92400E),
+          ),
+        ),
       );
 }
 
