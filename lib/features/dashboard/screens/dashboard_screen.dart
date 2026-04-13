@@ -6,6 +6,7 @@ import '../../../core/widgets/app_notifier.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../../features/master/providers/master_provider.dart';
 import '../../jadwal/models/jadwal_model.dart';
+import '../../jadwal/models/realisasi_model.dart';
 import '../../jadwal/providers/jadwal_provider.dart';
 import '../../jadwal/screens/jadwal_screen.dart' as jadwal_screen;
 import '../../jadwal/screens/realisasi_history_screen.dart';
@@ -24,6 +25,38 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   static const _pageBg = Color(0xFFF8FAFC);
   static const _cardRadius = 16.0;
+
+  int _isoWeekNumber(DateTime date) {
+    final d = DateTime.utc(date.year, date.month, date.day);
+    final day = d.weekday == 7 ? 7 : d.weekday;
+    final thursday = d.add(Duration(days: 4 - day));
+    final yearStart = DateTime.utc(thursday.year, 1, 1);
+    return ((thursday.difference(yearStart).inDays) / 7).floor() + 1;
+  }
+
+  DateTime _dateOnly(DateTime date) =>
+      DateTime(date.year, date.month, date.day);
+
+  bool _isSameCurrentPeriod(RealisasiModel r, JadwalModel jadwal) {
+    final now = DateTime.now();
+    final frequency = jadwal.jdwFrekuensi;
+
+    if (frequency == 'Harian') {
+      final realDate = DateTime.tryParse(r.realTgl);
+      if (realDate == null) return false;
+      return _dateOnly(realDate) == _dateOnly(now);
+    }
+
+    if (frequency == 'Mingguan') {
+      return r.realTahun == now.year && r.realWeekNumber == _isoWeekNumber(now);
+    }
+
+    if (frequency == 'Bulanan') {
+      return r.realTahun == now.year && r.realBulan == now.month;
+    }
+
+    return false;
+  }
 
   BoxDecoration _surfaceCard({Color? borderColor}) => BoxDecoration(
         color: Colors.white,
@@ -123,7 +156,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (!mounted) {
       return;
     }
-    final selesaiInvIds = jadwalRealisasi.map((r) => r.realInvId).toSet();
+    final selesaiInvIds = jadwalRealisasi
+        .where((r) => _isSameCurrentPeriod(r, jadwal))
+        .map((r) => r.realInvId)
+        .toSet();
     final belumSelesaiList = inventarisList.where((inv) {
       final invIdRaw = inv['inv_id'];
       final invId = invIdRaw is int ? invIdRaw : int.tryParse('$invIdRaw');
@@ -309,7 +345,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         'invNo': inv['inv_no'],
         'invMerk': inv['inv_merk'],
         'invKondisi': inv['inv_kondisi'],
-        'invPicNama': inv['pic_user']?['user_nama'],
+        'invPicNama': inv['pic_user']?['user_nama'] ?? inv['inv_pic'],
         'invPicId': inv['pic_user']?['user_id'],
       },
     );
