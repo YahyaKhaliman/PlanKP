@@ -40,7 +40,7 @@ class _RealisasiHistoryScreenState extends State<RealisasiHistoryScreen> {
       await provider.fetchRealisasi(status: 'Selesai');
     } else {
       await provider.fetchJadwalByUser();
-      await provider.fetchRealisasi(status: 'Selesai', byDivisi: true);
+      await provider.fetchRealisasi(status: 'Selesai');
     }
   }
 

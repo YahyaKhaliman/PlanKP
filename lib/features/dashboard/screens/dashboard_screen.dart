@@ -56,7 +56,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     } else {
       await p.fetchJadwalByUser();
     }
-    await p.fetchRealisasi(status: 'Selesai', byDivisi: true);
+    await p.fetchRealisasi(status: 'Selesai');
     if (!mounted) return;
     await context.read<MasterProvider>().fetchJenis();
   }

@@ -233,180 +233,375 @@ class _JadwalScreenState extends State<JadwalScreen> {
 
   Widget _buildSummaryTable(List<JadwalModel> aktifList) {
     const freqs = ['Harian', 'Mingguan', 'Bulanan'];
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.black.withValues(alpha: 0.05)),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x0A000000),
-            blurRadius: 10,
-            offset: Offset(0, 4),
+
+    final summary = freqs.map((f) {
+      final items = aktifList.where((j) => j.jdwFrekuensi == f).toList();
+      final targetCount = items.fold<int>(
+        0,
+        (sum, j) => sum + (j.jdwTarget ?? j.jdwTotalUnit ?? 0),
+      );
+      final realisasiCount =
+          items.fold<int>(0, (sum, j) => sum + (j.jdwSelesaiUnit ?? 0));
+      final pct =
+          targetCount > 0 ? (realisasiCount / targetCount * 100).round() : 0;
+
+      return {
+        'freq': f,
+        'target': targetCount,
+        'realisasi': realisasiCount,
+        'pct': pct,
+      };
+    }).toList();
+
+    Widget metricMini(String label, String value, {Color? valueColor}) {
+      return Expanded(
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF8FAFC),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: AppColors.border),
           ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 2, vertical: 10),
-            child: Row(children: [
-              Expanded(
-                  flex: 3,
-                  child: Text('Frekuensi',
-                      style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textSecondary))),
-              Expanded(
-                  flex: 2,
-                  child: Text('Target',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textSecondary))),
-              Expanded(
-                  flex: 2,
-                  child: Text('Realisasi',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textSecondary))),
-              Expanded(
-                  flex: 2,
-                  child: Text('%',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textSecondary))),
-              SizedBox(width: 20),
-            ]),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                value,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: valueColor ?? AppColors.textPrimary,
+                ),
+              ),
+            ],
           ),
-          const Divider(height: 1),
-          ...List.generate(freqs.length, (i) {
-            final f = freqs[i];
-            final items = aktifList.where((j) => j.jdwFrekuensi == f).toList();
-            final targetCount = items.fold<int>(
-                0, (sum, j) => sum + (j.jdwTarget ?? j.jdwTotalUnit ?? 0));
-            final realisasiCount =
-                items.fold<int>(0, (sum, j) => sum + (j.jdwSelesaiUnit ?? 0));
-            final pct = targetCount > 0
-                ? (realisasiCount / targetCount * 100).round()
-                : 0;
-            final isSelected = _selectedFrekuensi == f;
-            final isLast = i == freqs.length - 1;
-            return Column(
-              children: [
-                InkWell(
-                  onTap: () => setState(() {
-                    _selectedFrekuensi = isSelected ? null : f;
-                  }),
-                  borderRadius: isLast
-                      ? const BorderRadius.vertical(bottom: Radius.circular(12))
-                      : BorderRadius.zero,
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 160),
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 2, vertical: 11),
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? AppColors.primary.withValues(alpha: 0.07)
-                          : Colors.transparent,
-                      borderRadius: isLast
-                          ? const BorderRadius.vertical(
-                              bottom: Radius.circular(12))
-                          : BorderRadius.zero,
+        ),
+      );
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isCompact = constraints.maxWidth < 700;
+
+        return Container(
+          margin: EdgeInsets.fromLTRB(
+              isCompact ? 12 : 16, 16, isCompact ? 12 : 16, 4),
+          padding: EdgeInsets.all(isCompact ? 12 : 16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: Colors.black.withValues(alpha: 0.05)),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x0A000000),
+                blurRadius: 10,
+                offset: Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      'Ringkasan Realisasi per Frekuensi',
+                      style:
+                          TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
                     ),
-                    child: Row(children: [
+                  ),
+                  if (_selectedFrekuensi != null)
+                    TextButton.icon(
+                      onPressed: () =>
+                          setState(() => _selectedFrekuensi = null),
+                      icon: const Icon(Icons.filter_alt_off_outlined, size: 16),
+                      label: const Text('Reset'),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              if (!isCompact) ...[
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 2, vertical: 10),
+                  child: Row(
+                    children: [
                       Expanded(
                         flex: 3,
-                        child: Row(children: [
-                          Container(
-                            width: 8,
-                            height: 8,
-                            margin: const EdgeInsets.only(right: 8),
-                            decoration: BoxDecoration(
-                              color: isSelected
-                                  ? AppColors.primary
-                                  : AppColors.textSecondary
-                                      .withValues(alpha: 0.35),
-                              shape: BoxShape.circle,
-                            ),
+                        child: Text(
+                          'Frekuensi',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textSecondary,
                           ),
-                          Text(f,
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: isSelected
-                                    ? FontWeight.w700
-                                    : FontWeight.w500,
-                                color: isSelected
-                                    ? AppColors.primary
-                                    : AppColors.textPrimary,
-                              )),
-                        ]),
-                      ),
-                      Expanded(
-                        flex: 2,
-                        child: Text('$targetCount',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: isSelected
-                                    ? AppColors.primary
-                                    : AppColors.textPrimary)),
-                      ),
-                      Expanded(
-                        flex: 2,
-                        child: Text('$realisasiCount',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: isSelected
-                                    ? AppColors.primary
-                                    : AppColors.textPrimary)),
-                      ),
-                      Expanded(
-                        flex: 2,
-                        child: Text('$pct%',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: pct >= 100
-                                    ? AppColors.success
-                                    : (isSelected
-                                        ? AppColors.primary
-                                        : AppColors.textPrimary))),
-                      ),
-                      SizedBox(
-                        width: 20,
-                        child: Icon(
-                          isSelected
-                              ? Icons.keyboard_arrow_up
-                              : Icons.keyboard_arrow_down,
-                          size: 16,
-                          color: isSelected
-                              ? AppColors.primary
-                              : AppColors.textSecondary,
                         ),
                       ),
-                    ]),
+                      Expanded(
+                        flex: 2,
+                        child: Text(
+                          'Target',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        flex: 2,
+                        child: Text(
+                          'Realisasi',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        flex: 2,
+                        child: Text(
+                          '%',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                if (!isLast) const Divider(height: 1),
+                const Divider(height: 1),
+                ...List.generate(summary.length, (i) {
+                  final row = summary[i];
+                  final f = row['freq'] as String;
+                  final target = row['target'] as int;
+                  final realisasi = row['realisasi'] as int;
+                  final pct = row['pct'] as int;
+                  final isSelected = _selectedFrekuensi == f;
+                  final isLast = i == summary.length - 1;
+
+                  return Column(
+                    children: [
+                      InkWell(
+                        onTap: () => setState(
+                            () => _selectedFrekuensi = isSelected ? null : f),
+                        borderRadius: isLast
+                            ? const BorderRadius.vertical(
+                                bottom: Radius.circular(12))
+                            : BorderRadius.zero,
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 160),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 2, vertical: 11),
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? AppColors.primary.withValues(alpha: 0.07)
+                                : Colors.transparent,
+                            borderRadius: isLast
+                                ? const BorderRadius.vertical(
+                                    bottom: Radius.circular(12),
+                                  )
+                                : BorderRadius.zero,
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                flex: 3,
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      width: 8,
+                                      height: 8,
+                                      margin: const EdgeInsets.only(right: 8),
+                                      decoration: BoxDecoration(
+                                        color: isSelected
+                                            ? AppColors.primary
+                                            : AppColors.textSecondary
+                                                .withValues(alpha: 0.35),
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
+                                    Text(
+                                      f,
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: isSelected
+                                            ? FontWeight.w700
+                                            : FontWeight.w500,
+                                        color: isSelected
+                                            ? AppColors.primary
+                                            : AppColors.textPrimary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Expanded(
+                                flex: 2,
+                                child: Text(
+                                  '$target',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: isSelected
+                                        ? AppColors.primary
+                                        : AppColors.textPrimary,
+                                  ),
+                                ),
+                              ),
+                              Expanded(
+                                flex: 2,
+                                child: Text(
+                                  '$realisasi',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: isSelected
+                                        ? AppColors.primary
+                                        : AppColors.textPrimary,
+                                  ),
+                                ),
+                              ),
+                              Expanded(
+                                flex: 2,
+                                child: Text(
+                                  '$pct%',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: pct >= 100
+                                        ? AppColors.success
+                                        : (isSelected
+                                            ? AppColors.primary
+                                            : AppColors.textPrimary),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      if (!isLast) const Divider(height: 1),
+                    ],
+                  );
+                }),
+              ] else ...[
+                ...summary.map((row) {
+                  final f = row['freq'] as String;
+                  final target = row['target'] as int;
+                  final realisasi = row['realisasi'] as int;
+                  final pct = row['pct'] as int;
+                  final isSelected = _selectedFrekuensi == f;
+
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: InkWell(
+                      onTap: () => setState(
+                          () => _selectedFrekuensi = isSelected ? null : f),
+                      borderRadius: BorderRadius.circular(12),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 160),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? AppColors.primary.withValues(alpha: 0.08)
+                              : const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: isSelected
+                                ? AppColors.primary.withValues(alpha: 0.25)
+                                : AppColors.border,
+                          ),
+                        ),
+                        child: Column(
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  width: 8,
+                                  height: 8,
+                                  margin: const EdgeInsets.only(right: 8),
+                                  decoration: BoxDecoration(
+                                    color: isSelected
+                                        ? AppColors.primary
+                                        : AppColors.textSecondary
+                                            .withValues(alpha: 0.35),
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                                Expanded(
+                                  child: Text(
+                                    f,
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: isSelected
+                                          ? FontWeight.w700
+                                          : FontWeight.w600,
+                                      color: isSelected
+                                          ? AppColors.primary
+                                          : AppColors.textPrimary,
+                                    ),
+                                  ),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: (pct >= 100
+                                            ? AppColors.success
+                                            : AppColors.primary)
+                                        .withValues(alpha: 0.12),
+                                    borderRadius: BorderRadius.circular(999),
+                                  ),
+                                  child: Text(
+                                    '$pct%',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w700,
+                                      color: pct >= 100
+                                          ? AppColors.success
+                                          : AppColors.primary,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+                            Row(
+                              children: [
+                                metricMini('Target', '$target'),
+                                const SizedBox(width: 8),
+                                metricMini('Realisasi', '$realisasi'),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                }),
               ],
-            );
-          }),
-        ],
-      ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -1026,6 +1221,7 @@ class _JadwalFormState extends State<_JadwalForm> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           DropdownButtonFormField<String>(
+            // ignore: deprecated_member_use
             value: _selectedPabrikValue,
             decoration: InputDecoration(
               label: _requiredLabel('Pabrik / Lokasi'),
