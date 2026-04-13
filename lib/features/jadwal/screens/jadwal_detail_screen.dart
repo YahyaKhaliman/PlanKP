@@ -148,8 +148,6 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
     required int selesaiUnit,
     required MasterProvider master,
   }) {
-    final statusColor = _statusColor(jadwal.jdwStatus);
-
     return Card(
       margin: EdgeInsets.zero,
       child: Padding(
@@ -195,25 +193,6 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
                         ),
                       ),
                     ],
-                  ),
-                ),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: statusColor.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(999),
-                    border: Border.all(
-                      color: statusColor.withValues(alpha: 0.25),
-                    ),
-                  ),
-                  child: Text(
-                    jadwal.jdwStatus,
-                    style: TextStyle(
-                      color: statusColor,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 12,
-                    ),
                   ),
                 ),
               ],
@@ -465,6 +444,48 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
                               ),
                             ],
                           ),
+                          if (sudahTerealisasi && realisasiItem != null) ...[
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                const Icon(
+                                  Icons.event_outlined,
+                                  size: 14,
+                                  color: AppColors.textSecondary,
+                                ),
+                                const SizedBox(width: 6),
+                                Expanded(
+                                  child: Text(
+                                    'Tanggal realisasi: ${_displayDate(realisasiItem.realTgl)}',
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: AppColors.textSecondary,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Row(
+                              children: [
+                                const Icon(
+                                  Icons.person_outline,
+                                  size: 14,
+                                  color: AppColors.textSecondary,
+                                ),
+                                const SizedBox(width: 6),
+                                Expanded(
+                                  child: Text(
+                                    'Direalisasikan oleh: ${(realisasiItem.teknisi?['user_nama'] ?? '-').toString()}',
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: AppColors.textSecondary,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                           const SizedBox(height: 10),
                           Align(
                             alignment: Alignment.centerRight,
@@ -641,16 +662,5 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
   String _displayDate(String? raw) {
     if (raw == null || raw.trim().isEmpty) return '-';
     return DateFormatter.toDisplay(raw);
-  }
-
-  Color _statusColor(String status) {
-    switch (status) {
-      case 'Selesai':
-        return const Color(0xFF22C55E);
-      case 'Draft':
-        return const Color(0xFF93C5FD);
-      default:
-        return Colors.white;
-    }
   }
 }

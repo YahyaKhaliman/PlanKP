@@ -46,7 +46,7 @@ class _InventarisScreenState extends State<InventarisScreen> {
     });
   }
 
-  Future<void> _openForm([InventarisModel? item]) async {
+  Future<void> _openForm([InventarisModel? item, int? initialJenisId]) async {
     final provider = context.read<MasterProvider>();
     await provider.fetchJenis(showLoading: false);
     await provider.fetchPabrik();
@@ -60,7 +60,7 @@ class _InventarisScreenState extends State<InventarisScreen> {
           color: _kPageBg,
           borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
         ),
-        child: _InventarisForm(item: item),
+        child: _InventarisForm(item: item, initialJenisId: initialJenisId),
       ),
     );
   }
@@ -112,6 +112,24 @@ class _InventarisScreenState extends State<InventarisScreen> {
                           ),
                         ),
                       ),
+                      if (!p.loading && p.inventarisList.isNotEmpty)
+                        Container(
+                          color: const Color(0xFFF8FAFC),
+                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                          child: Row(children: [
+                            Text(
+                              '${p.inventarisList.map((e) => e.invJenisId).toSet().length} jenis · ${p.inventarisList.length} inventaris',
+                              style: const TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.textSecondary),
+                            ),
+                            if (_search.text.isNotEmpty)
+                              const Text(' · hasil pencarian',
+                                  style: TextStyle(
+                                      fontSize: 12,
+                                      color: AppColors.textSecondary)),
+                          ]),
+                        ),
                       Expanded(
                         child: () {
                           if (p.loading) {
@@ -170,6 +188,7 @@ class _InventarisScreenState extends State<InventarisScreen> {
                                 },
                                 pabrikLabelBuilder: p.displayPabrik,
                                 onEditItem: _openForm,
+                                onAddItem: (jId) => _openForm(null, jId),
                               );
                             },
                           );
@@ -187,7 +206,7 @@ class _InventarisScreenState extends State<InventarisScreen> {
   }
 }
 
-class _InventarisGroupCard extends StatelessWidget {
+class _InventarisGroupCard extends StatefulWidget {
   final int jenisId;
   final String jenisNama;
   final String kategoriLabel;
@@ -196,6 +215,7 @@ class _InventarisGroupCard extends StatelessWidget {
   final VoidCallback onToggle;
   final String Function(String?) pabrikLabelBuilder;
   final ValueChanged<InventarisModel> onEditItem;
+  final ValueChanged<int> onAddItem;
 
   const _InventarisGroupCard({
     required this.jenisId,
@@ -206,112 +226,130 @@ class _InventarisGroupCard extends StatelessWidget {
     required this.onToggle,
     required this.pabrikLabelBuilder,
     required this.onEditItem,
+    required this.onAddItem,
   });
 
   @override
+  State<_InventarisGroupCard> createState() => _InventarisGroupCardState();
+}
+
+class _InventarisGroupCardState extends State<_InventarisGroupCard>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _iconTurns;
+
+  static final Animatable<double> _iconTurnTween =
+      Tween<double>(begin: 0.0, end: 0.5)
+          .chain(CurveTween(curve: Curves.easeIn));
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 200),
+      vsync: this,
+    );
+    _iconTurns = _controller.drive(_iconTurnTween);
+    if (widget.expanded) _controller.value = 1.0;
+  }
+
+  @override
+  void didUpdateWidget(_InventarisGroupCard old) {
+    super.didUpdateWidget(old);
+    if (old.expanded != widget.expanded) {
+      widget.expanded ? _controller.forward() : _controller.reverse();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: EdgeInsets.zero,
-      elevation: 0,
-      shape: RoundedRectangleBorder(
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: Colors.black.withValues(alpha: 0.05)),
+        border: Border.all(color: Colors.black.withValues(alpha: 0.04)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         children: [
           InkWell(
             borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-            onTap: onToggle,
+            onTap: widget.onToggle,
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-              child: Row(
-                children: [
-                  Container(
-                    width: 42,
-                    height: 42,
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Icon(
-                      _kategoriIcon(kategoriLabel),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Row(children: [
+                const Icon(Icons.label_outline,
+                    size: 18, color: AppColors.primary),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    widget.jenisNama,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
                       color: AppColors.primary,
-                      size: 22,
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          jenisNama,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 4),
-                        Wrap(
-                          spacing: 6,
-                          runSpacing: 6,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 3,
-                              ),
-                              decoration: BoxDecoration(
-                                color:
-                                    AppColors.primary.withValues(alpha: 0.08),
-                                borderRadius: BorderRadius.circular(999),
-                              ),
-                              child: Text(
-                                kategoriLabel,
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.primary,
-                                ),
-                              ),
-                            ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 3,
-                              ),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF1F5F9),
-                                borderRadius: BorderRadius.circular(999),
-                              ),
-                              child: Text(
-                                '${items.length} inventaris',
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  color: AppColors.textSecondary,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
+                ),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    '${widget.items.length} item',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.primary,
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  AnimatedRotation(
-                    turns: expanded ? 0.5 : 0,
-                    duration: const Duration(milliseconds: 220),
-                    curve: Curves.easeOutCubic,
-                    child: const Icon(
-                      Icons.expand_more,
-                      color: AppColors.textSecondary,
+                ),
+                const SizedBox(width: 8),
+                InkWell(
+                  onTap: () => widget.onAddItem(widget.jenisId),
+                  borderRadius: BorderRadius.circular(20),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(20),
                     ),
+                    child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                      Icon(Icons.add, size: 16, color: AppColors.primary),
+                      SizedBox(width: 4),
+                      Text('Tambah',
+                          style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.primary)),
+                    ]),
                   ),
-                ],
-              ),
+                ),
+                const SizedBox(width: 4),
+                RotationTransition(
+                  turns: _iconTurns,
+                  child: const Icon(
+                    Icons.expand_more,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ]),
             ),
           ),
           ClipRect(
@@ -319,27 +357,17 @@ class _InventarisGroupCard extends StatelessWidget {
               duration: const Duration(milliseconds: 240),
               curve: Curves.easeOutCubic,
               alignment: Alignment.topCenter,
-              child: expanded
+              child: widget.expanded
                   ? Column(
                       children: [
                         const Divider(height: 1),
-                        ListView.separated(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          padding: const EdgeInsets.all(10),
-                          itemCount: items.length,
-                          separatorBuilder: (_, __) =>
-                              const SizedBox(height: 10),
-                          itemBuilder: (_, i) {
-                            final item = items[i];
-                            return _InventarisCard(
-                              item: item,
-                              kategoriLabel: kategoriLabel,
-                              pabrikLabel:
-                                  pabrikLabelBuilder(item.invPabrikKode),
-                              onEdit: () => onEditItem(item),
-                            );
-                          },
+                        ...widget.items.map(
+                          (item) => _InventarisCard(
+                            item: item,
+                            pabrikLabel:
+                                widget.pabrikLabelBuilder(item.invPabrikKode),
+                            onEdit: () => widget.onEditItem(item),
+                          ),
                         ),
                       ],
                     )
@@ -350,29 +378,14 @@ class _InventarisGroupCard extends StatelessWidget {
       ),
     );
   }
-
-  IconData _kategoriIcon(String k) {
-    switch (k.toUpperCase()) {
-      case 'IT':
-        return Icons.computer_outlined;
-      case 'DRIVER':
-        return Icons.local_shipping_outlined;
-      case 'GA':
-        return Icons.precision_manufacturing_outlined;
-      default:
-        return Icons.inventory_2_outlined;
-    }
-  }
 }
 
 class _InventarisCard extends StatelessWidget {
   final InventarisModel item;
-  final String kategoriLabel;
   final String pabrikLabel;
   final VoidCallback onEdit;
   const _InventarisCard({
     required this.item,
-    required this.kategoriLabel,
     required this.pabrikLabel,
     required this.onEdit,
   });
@@ -385,119 +398,48 @@ class _InventarisCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: EdgeInsets.zero,
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: Colors.black.withValues(alpha: 0.05)),
+    final kondisiColor = _kondisiColor[item.invKondisi] ?? AppColors.success;
+    final subtitleParts = [item.invNo];
+    if (item.invPabrikKode != null) subtitleParts.add(pabrikLabel);
+    return ListTile(
+      dense: true,
+      contentPadding:
+          const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      leading: Container(
+        width: 30,
+        height: 30,
+        decoration: BoxDecoration(
+          color: AppColors.bgGray,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Center(
+          child: Icon(_kategoriIcon(item.invKategori),
+              size: 16, color: AppColors.textSecondary),
+        ),
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Row(children: [
-          // Icon kategori
-          Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(
-              _kategoriIcon(kategoriLabel),
-              color: AppColors.primary,
-              size: 22,
-            ),
+      title: Text(item.invNama,
+          style: const TextStyle(fontWeight: FontWeight.w600)),
+      subtitle: Text(subtitleParts.join(' · '),
+          style: const TextStyle(fontSize: 12)),
+      trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+          decoration: BoxDecoration(
+            color: kondisiColor.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(6),
           ),
-          const SizedBox(width: 12),
-
-          // Info
-          Expanded(
-              child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(children: [
-                Expanded(
-                    child: Text(item.invNama,
-                        style: const TextStyle(
-                            fontWeight: FontWeight.w700, fontSize: 14),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis)),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: (_kondisiColor[item.invKondisi] ?? AppColors.success)
-                        .withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(item.invKondisi,
-                      style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
-                          color: _kondisiColor[item.invKondisi] ??
-                              AppColors.success)),
-                ),
-              ]),
-              const SizedBox(height: 6),
-              Wrap(
-                spacing: 6,
-                runSpacing: 6,
-                children: [
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: Text(
-                      kategoriLabel,
-                      style: const TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.primary),
-                    ),
-                  ),
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF1F5F9),
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: Text(
-                      item.invNo,
-                      style: const TextStyle(
-                          fontSize: 11,
-                          color: AppColors.textSecondary,
-                          fontWeight: FontWeight.w500),
-                    ),
-                  ),
-                ],
-              ),
-              if (item.invPabrikKode != null) ...[
-                const SizedBox(height: 6),
-                Row(children: [
-                  const Icon(Icons.location_on_outlined,
-                      size: 12, color: AppColors.textSecondary),
-                  const SizedBox(width: 2),
-                  Text(pabrikLabel,
-                      style: const TextStyle(
-                          fontSize: 11, color: AppColors.textSecondary)),
-                ]),
-              ],
-            ],
-          )),
-          const SizedBox(width: 8),
-
-          IconButton(
-            icon:
-                const Icon(Icons.edit_outlined, color: AppColors.textSecondary),
-            onPressed: onEdit,
-          ),
-        ]),
-      ),
+          child: Text(item.invKondisi,
+              style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                  color: kondisiColor)),
+        ),
+        IconButton(
+          icon: const Icon(Icons.edit_outlined,
+              size: 18, color: AppColors.textSecondary),
+          onPressed: onEdit,
+        ),
+      ]),
     );
   }
 
@@ -518,7 +460,8 @@ class _InventarisCard extends StatelessWidget {
 // ── Form tambah / edit ──────────────────────────────────────────
 class _InventarisForm extends StatefulWidget {
   final InventarisModel? item;
-  const _InventarisForm({this.item});
+  final int? initialJenisId;
+  const _InventarisForm({this.item, this.initialJenisId});
   @override
   State<_InventarisForm> createState() => _InventarisFormState();
 }
@@ -558,6 +501,14 @@ class _InventarisFormState extends State<_InventarisForm> {
           context.read<MasterProvider>().kategoriByJenisId(d.invJenisId);
       _kategori = (mappedKategori ?? d.invKategori).trim();
       _kondisi = d.invKondisi;
+    } else if (widget.initialJenisId != null) {
+      final jenis =
+          context.read<MasterProvider>().jenisById(widget.initialJenisId!);
+      if (jenis != null) {
+        _jenisId = jenis.jenisId;
+        _jenisCtrl.text = jenis.jenisNama;
+        _kategori = jenis.jenisKategori.trim();
+      }
     }
   }
 

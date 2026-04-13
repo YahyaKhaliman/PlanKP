@@ -74,9 +74,9 @@ class _JadwalScreenState extends State<JadwalScreen> {
     final jadwalProvider = context.read<JadwalProvider>();
     final isAdmin = auth.user?['user_jabatan'] == 'admin';
     if (isAdmin) {
-      await jadwalProvider.fetchJadwal();
+      await jadwalProvider.fetchJadwal(status: 'Draft');
     } else {
-      await jadwalProvider.fetchJadwalByUser();
+      await jadwalProvider.fetchJadwalByUser(status: 'Draft');
     }
     if (!mounted) return;
     await context.read<MasterProvider>().fetchJenis();
@@ -96,6 +96,30 @@ class _JadwalScreenState extends State<JadwalScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => _JadwalForm(item: item),
+    );
+  }
+
+  Future<void> _confirmSelesaikanJadwal(JadwalModel item) async {
+    await AppNotifier.showConfirm(
+      context,
+      title: 'Hapus Jadwal',
+      message: '${item.jdwJudul}?',
+      onConfirm: () async {
+        final ok = await context
+            .read<JadwalProvider>()
+            .updateStatusJadwal(item.jdwId, 'Selesai');
+        if (!mounted) return;
+        if (ok) {
+          await AppNotifier.showSuccess(
+            context,
+            'Status jadwal berhasil diubah ke Selesai',
+          );
+        } else {
+          final msg = context.read<JadwalProvider>().error ??
+              'Gagal mengubah status jadwal';
+          await AppNotifier.showError(context, msg);
+        }
+      },
     );
   }
 
@@ -829,6 +853,7 @@ class _JadwalScreenState extends State<JadwalScreen> {
                 isUser: isUser,
               ),
               onEdit: () => _openForm(item),
+              onDelete: () => _confirmSelesaikanJadwal(item),
               onStatusChange: (st) => context
                   .read<JadwalProvider>()
                   .updateStatusJadwal(item.jdwId, st),
@@ -875,6 +900,7 @@ class _JadwalCard extends StatelessWidget {
   final bool isUser;
   final VoidCallback onTap;
   final VoidCallback onEdit;
+  final VoidCallback onDelete;
   final void Function(String) onStatusChange;
   const _JadwalCard({
     required this.jadwal,
@@ -883,17 +909,10 @@ class _JadwalCard extends StatelessWidget {
     required this.isUser,
     required this.onTap,
     required this.onEdit,
+    required this.onDelete,
     required this.onStatusChange,
   });
 
-  static const _statusColor = {
-    'Draft': Color(0xFF2563EB),
-    'Selesai': Color(0xFF16A34A),
-  };
-  static const _statusBg = {
-    'Draft': Color(0xFFDEBFFC),
-    'Selesai': Color(0xFFDCFCE7),
-  };
   static IconData _iconForDivisi(String? divisiRaw) {
     final divisi = (divisiRaw ?? '').toLowerCase();
     if (divisi == 'it') return Icons.support_agent_rounded;
@@ -912,8 +931,6 @@ class _JadwalCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final sc = _statusColor[jadwal.jdwStatus] ?? AppColors.textSecondary;
-    final sb = _statusBg[jadwal.jdwStatus] ?? AppColors.bgGray;
     final targetUnit = jadwal.jdwTarget ?? jadwal.jdwTotalUnit ?? 0;
     final selesaiUnit = jadwal.jdwSelesaiUnit ?? 0;
     final progressPct = targetUnit > 0 ? (selesaiUnit / targetUnit * 100) : 0;
@@ -967,23 +984,6 @@ class _JadwalCard extends StatelessWidget {
                           ),
                         ),
                       ],
-                    ),
-                  ),
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: sb,
-                      borderRadius: BorderRadius.circular(999),
-                      border: Border.all(color: sc.withValues(alpha: 0.18)),
-                    ),
-                    child: Text(
-                      jadwal.jdwStatus,
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: sc,
-                      ),
                     ),
                   ),
                 ],
@@ -1066,9 +1066,15 @@ class _JadwalCard extends StatelessWidget {
               const SizedBox(height: 14),
               Row(
                 children: [
-                  if (isAdmin)
+                  if (isAdmin) ...[
                     _actionBtn(Icons.edit_outlined, 'Edit Jadwal',
-                        AppColors.textSecondary, onEdit),
+                        AppColors.warning, onEdit),
+                    if (jadwal.jdwStatus == 'Draft') ...[
+                      const SizedBox(width: 8),
+                      _actionBtn(Icons.delete_outline, 'Hapus Jadwal',
+                          AppColors.danger, onDelete),
+                    ],
+                  ],
                   if (isAdmin && isUser) const SizedBox(width: 8),
                   if (isUser)
                     _actionBtn(

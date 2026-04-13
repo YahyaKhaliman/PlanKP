@@ -18,6 +18,9 @@ class JadwalProvider extends ChangeNotifier {
   String? _error;
   bool _lastFetchDivisi = false;
   bool _lastFetchUser = false;
+  String? _lastJadwalStatus;
+  String? _lastJadwalJenis;
+  int? _lastJadwalJenisId;
   bool get loading => _loading;
   bool get loadingDetail => _loadingDetail;
   String? get error => _error;
@@ -46,6 +49,10 @@ class JadwalProvider extends ChangeNotifier {
   Future<void> fetchJadwal({String? status, String? jenis}) async {
     _setLoading(true);
     _lastFetchDivisi = false;
+    _lastFetchUser = false;
+    _lastJadwalStatus = status;
+    _lastJadwalJenis = jenis;
+    _lastJadwalJenisId = null;
     try {
       final query = <String, dynamic>{
         if (status != null) 'status': status,
@@ -67,6 +74,9 @@ class JadwalProvider extends ChangeNotifier {
     _setLoading(true);
     _lastFetchDivisi = true;
     _lastFetchUser = false;
+    _lastJadwalStatus = status;
+    _lastJadwalJenis = null;
+    _lastJadwalJenisId = jenisId;
     try {
       final query = <String, dynamic>{
         if (status != null) 'status': status,
@@ -89,6 +99,9 @@ class JadwalProvider extends ChangeNotifier {
     _setLoading(true);
     _lastFetchUser = true;
     _lastFetchDivisi = false;
+    _lastJadwalStatus = status;
+    _lastJadwalJenis = null;
+    _lastJadwalJenisId = jenisId;
     try {
       final query = <String, dynamic>{
         if (status != null) 'status': status,
@@ -153,11 +166,17 @@ class JadwalProvider extends ChangeNotifier {
         await ApiClient.post(ApiConfig.jadwal, body);
       }
       if (_lastFetchUser) {
-        await fetchJadwalByUser();
+        await fetchJadwalByUser(
+          status: _lastJadwalStatus,
+          jenisId: _lastJadwalJenisId,
+        );
       } else if (_lastFetchDivisi) {
-        await fetchJadwalByDivisi();
+        await fetchJadwalByDivisi(
+          status: _lastJadwalStatus,
+          jenisId: _lastJadwalJenisId,
+        );
       } else {
-        await fetchJadwal();
+        await fetchJadwal(status: _lastJadwalStatus, jenis: _lastJadwalJenis);
       }
       return true;
     } on ApiException catch (e) {
@@ -171,11 +190,17 @@ class JadwalProvider extends ChangeNotifier {
       await ApiClient.patch(
           '${ApiConfig.jadwal}/$id/status', {'status': status});
       if (_lastFetchUser) {
-        await fetchJadwalByUser();
+        await fetchJadwalByUser(
+          status: _lastJadwalStatus,
+          jenisId: _lastJadwalJenisId,
+        );
       } else if (_lastFetchDivisi) {
-        await fetchJadwalByDivisi();
+        await fetchJadwalByDivisi(
+          status: _lastJadwalStatus,
+          jenisId: _lastJadwalJenisId,
+        );
       } else {
-        await fetchJadwal();
+        await fetchJadwal(status: _lastJadwalStatus, jenis: _lastJadwalJenis);
       }
       return true;
     } on ApiException catch (e) {
