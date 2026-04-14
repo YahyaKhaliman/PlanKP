@@ -162,7 +162,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           ),
           const SizedBox(height: 18),
           const Text(
-            'Buat Akun User',
+            'Buat Akun',
             style: TextStyle(
               fontSize: 34,
               fontWeight: FontWeight.w800,
@@ -171,14 +171,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
             ),
           ),
           const SizedBox(height: 8),
-          Text(
-            'Daftarkan akun operasional baru agar tim dapat mengakses jadwal dan checklist.',
-            style: TextStyle(
-              fontSize: compact ? 14 : 16,
-              color: Colors.white.withValues(alpha: 0.88),
-              height: 1.45,
-            ),
-          ),
         ],
       ),
     );
@@ -213,11 +205,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ),
             ),
             const SizedBox(height: 8),
-            const Text(
-              'Lengkapi data akun untuk pengguna baru',
-              style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
-            ),
-            const SizedBox(height: 24),
             TextFormField(
               controller: _namaCtrl,
               textCapitalization: TextCapitalization.words,
