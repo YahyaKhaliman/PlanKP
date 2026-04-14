@@ -1,5 +1,8 @@
 class ApiConfig {
-  static const String baseUrl = 'http://localhost:3003/api';
+  static const String baseUrl =
+      'http://103.94.238.252:3005/api'; // Production server
+  // static const String baseUrl =
+  // 'http://localhost:3003/api'; // Local development
   // static const String baseUrl = 'http://10.0.2.2:3003/api'; // Android emulator
   // static const String baseUrl = 'http://127.0.0.1:3003/api';  // iOS simulator
 
