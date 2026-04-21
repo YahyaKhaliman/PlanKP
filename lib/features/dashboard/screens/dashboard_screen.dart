@@ -322,7 +322,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                           crossAxisAlignment:
                                               CrossAxisAlignment.start,
                                           children: [
-                                            Text('$merk · Kode: $nomor',
+                                            Text('$merk · $nomor',
                                                 style: const TextStyle(
                                                     fontSize: 12,
                                                     color:

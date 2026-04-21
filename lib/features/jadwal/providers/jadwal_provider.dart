@@ -34,6 +34,50 @@ class JadwalProvider extends ChangeNotifier {
   String _monthKey(DateTime month) =>
       '${month.year}-${month.month.toString().padLeft(2, '0')}';
 
+  List<dynamic> _extractHolidayItems(dynamic data) {
+    if (data is Map<String, dynamic>) {
+      final items = data['items'];
+      if (items is List) return items;
+      return const [];
+    }
+    if (data is List) return data;
+    return const [];
+  }
+
+  String? _extractHolidayDateString(Map<String, dynamic> item) {
+    const keys = [
+      'tanggal',
+      'hl_tanggal',
+      'hlib_tanggal',
+      'harilibur_tanggal',
+      'tgl',
+      'date',
+    ];
+    for (final key in keys) {
+      final value = item[key]?.toString().trim();
+      if (value != null && value.isNotEmpty) return value;
+    }
+    return null;
+  }
+
+  DateTime? _parseHolidayDate(String raw) {
+    final parsed = DateTime.tryParse(raw);
+    if (parsed != null) return parsed;
+
+    final normalized = raw.replaceAll('/', '-');
+    final parts = normalized.split('-');
+    if (parts.length == 3) {
+      final a = int.tryParse(parts[0]);
+      final b = int.tryParse(parts[1]);
+      final c = int.tryParse(parts[2]);
+      // fallback format: dd-MM-yyyy
+      if (a != null && b != null && c != null && c > 1900) {
+        return DateTime(c, b, a);
+      }
+    }
+    return null;
+  }
+
   void _setLoading(bool v) {
     _loading = v;
     notifyListeners();
@@ -153,12 +197,13 @@ class JadwalProvider extends ChangeNotifier {
         ApiConfig.jadwalHariLibur,
         query: {'year': month.year, 'month': month.month},
       );
-      final items = (res['data']?['items'] as List?) ?? [];
+      final items = _extractHolidayItems(res['data']);
       final days = <int>{};
       for (final item in items) {
-        final tanggal = (item as Map<String, dynamic>)['tanggal']?.toString();
+        if (item is! Map<String, dynamic>) continue;
+        final tanggal = _extractHolidayDateString(item);
         if (tanggal == null || tanggal.isEmpty) continue;
-        final date = DateTime.tryParse(tanggal);
+        final date = _parseHolidayDate(tanggal);
         if (date == null) continue;
         if (date.year == month.year && date.month == month.month) {
           days.add(date.day);
@@ -167,7 +212,9 @@ class JadwalProvider extends ChangeNotifier {
       _holidayDaysByMonth[key] = days;
       notifyListeners();
     } on ApiException {
-      _holidayDaysByMonth[key] = <int>{};
+      // Jangan cache gagal fetch sebagai set kosong,
+      // supaya refresh berikutnya tetap mencoba ambil data.
+      _holidayDaysByMonth.remove(key);
       notifyListeners();
     }
   }
