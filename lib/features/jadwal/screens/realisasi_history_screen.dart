@@ -1,3 +1,5 @@
+// ignore_for_file: prefer_const_constructors, deprecated_member_use, curly_braces_in_flow_control_structures, dead_null_aware_expression, control_flow_in_finally
+
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -888,16 +890,70 @@ class _MonthlyRecapTableCardState extends State<_MonthlyRecapTableCard> {
           const SizedBox(height: 8),
           Row(
             children: [
-              _miniIcon(Icons.flag_outlined, 'Target: ${detail.target}'),
-              const SizedBox(width: 12),
-              _miniIcon(
-                  Icons.check_circle_outline, 'Realisasi: ${detail.realisasi}'),
-              const Spacer(),
-              Text('${detail.totalTargetPerPeriod}/$periodLabel',
-                  style: const TextStyle(
-                      fontSize: 14, color: AppColors.textSecondary)),
+              Expanded(
+                child: _metricBadge(
+                  label: 'Target',
+                  value: '${detail.target}',
+                  color: AppColors.primary,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _metricBadge(
+                  label: 'Realisasi',
+                  value: '${detail.realisasi}',
+                  color: AppColors.success,
+                ),
+              ),
             ],
-          )
+          ),
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerRight,
+            child: Text(
+              'Target per $periodLabel: ${detail.totalTargetPerPeriod}',
+              style: const TextStyle(
+                fontSize: 12,
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _metricBadge({
+    required String label,
+    required String value,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textSecondary,
+            ),
+          ),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+              color: color,
+            ),
+          ),
         ],
       ),
     );
@@ -921,22 +977,10 @@ class _MonthlyRecapTableCardState extends State<_MonthlyRecapTableCard> {
       case 'Mingguan':
         return 'minggu';
       case 'Bulanan':
-        return 'tahun';
+        return 'bulan';
       default:
         return 'periode';
     }
-  }
-
-  Widget _miniIcon(IconData icon, String text) {
-    return Row(
-      children: [
-        Icon(icon, size: 12, color: AppColors.textSecondary),
-        const SizedBox(width: 4),
-        Text(text,
-            style:
-                const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
-      ],
-    );
   }
 }
 
@@ -1002,7 +1046,7 @@ class _SummaryCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Ringkasan $monthLabel',
+                  Text('Capaian $monthLabel',
                       style: const TextStyle(fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
                   _rowMetric('Target', '${metrics.targetCount}',
