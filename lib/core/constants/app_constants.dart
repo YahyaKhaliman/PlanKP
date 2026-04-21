@@ -1,8 +1,8 @@
 class ApiConfig {
-  static const String baseUrl =
-      'http://103.94.238.252:3007/api'; // Production server
   // static const String baseUrl =
-  // 'http://localhost:3003/api'; // Local development
+  //     'http://103.94.238.252:3007/api'; // Production server
+  static const String baseUrl =
+      'http://localhost:3003/api'; // Local development
   // static const String baseUrl = 'http://10.0.2.2:3003/api'; // Android emulator
   // static const String baseUrl = 'http://127.0.0.1:3003/api';  // iOS simulator
 
@@ -15,6 +15,7 @@ class ApiConfig {
   static const String divisi = '/master/divisi';
   static const String users = '/master/users';
   static const String jadwal = '/master/jadwal';
+  static const String jadwalHariLibur = '/master/jadwal/hari-libur';
   static const String realisasi = '/master/realisasi';
   static const String jenis = '/master/jenis';
   static const String pabrik = '/master/pabrik';

@@ -386,7 +386,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                                     BorderRadius.circular(999),
                                               ),
                                               child: const Text(
-                                                'Belum dipilih',
+                                                'Belum realisasi',
                                                 style: TextStyle(
                                                   fontSize: 11,
                                                   fontWeight: FontWeight.w600,

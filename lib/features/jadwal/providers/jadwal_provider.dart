@@ -12,6 +12,7 @@ class JadwalProvider extends ChangeNotifier {
   RealisasiModel? realisasiDetail;
   JadwalModel? jadwalDetail;
   List<dynamic> inventarisByJenis = [];
+  final Map<String, Set<int>> _holidayDaysByMonth = {};
 
   bool _loading = false;
   bool _loadingDetail = false;
@@ -24,6 +25,14 @@ class JadwalProvider extends ChangeNotifier {
   bool get loading => _loading;
   bool get loadingDetail => _loadingDetail;
   String? get error => _error;
+
+  Set<int> getHolidayDaysForMonth(DateTime month) {
+    final key = _monthKey(month);
+    return _holidayDaysByMonth[key] ?? <int>{};
+  }
+
+  String _monthKey(DateTime month) =>
+      '${month.year}-${month.month.toString().padLeft(2, '0')}';
 
   void _setLoading(bool v) {
     _loading = v;
@@ -132,6 +141,34 @@ class JadwalProvider extends ChangeNotifier {
       _setError(e.message);
     } finally {
       _setLoading(false);
+    }
+  }
+
+  Future<void> fetchHariLiburForMonth(DateTime month) async {
+    final key = _monthKey(month);
+    if (_holidayDaysByMonth.containsKey(key)) return;
+
+    try {
+      final res = await ApiClient.get(
+        ApiConfig.jadwalHariLibur,
+        query: {'year': month.year, 'month': month.month},
+      );
+      final items = (res['data']?['items'] as List?) ?? [];
+      final days = <int>{};
+      for (final item in items) {
+        final tanggal = (item as Map<String, dynamic>)['tanggal']?.toString();
+        if (tanggal == null || tanggal.isEmpty) continue;
+        final date = DateTime.tryParse(tanggal);
+        if (date == null) continue;
+        if (date.year == month.year && date.month == month.month) {
+          days.add(date.day);
+        }
+      }
+      _holidayDaysByMonth[key] = days;
+      notifyListeners();
+    } on ApiException {
+      _holidayDaysByMonth[key] = <int>{};
+      notifyListeners();
     }
   }
 

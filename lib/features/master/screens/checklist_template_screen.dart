@@ -60,8 +60,26 @@ class _ChecklistTemplateScreenState extends State<ChecklistTemplateScreen> {
   }
 
   // ── buka form bulk input ───────────────────────────────────
-  void _openBulkForm(
-      [String? jenisLocked, List<ChecklistTemplateModel>? existing]) {
+  Future<void> _openBulkForm(
+      [String? jenisLocked, List<ChecklistTemplateModel>? existing]) async {
+    final provider = context.read<MasterProvider>();
+
+    if (jenisLocked == null) {
+      final usedJenisIds =
+          provider.checklistList.map((e) => e.ctJenisId).toSet();
+      final availableJenis = provider.jenisMaster
+          .where((j) => !usedJenisIds.contains(j.jenisId))
+          .toList();
+
+      if (availableJenis.isEmpty) {
+        await AppNotifier.showWarning(
+          context,
+          'Semua Jenis sudah memiliki checklist.\nKlik tombol Tambah pada jenis terkait untuk menambah item checklist.',
+        );
+        return;
+      }
+    }
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -181,13 +199,15 @@ class _SingleItemFormState extends State<_SingleItemForm> {
     }
     final p = context.read<MasterProvider>();
     final isEdit = widget.item != null;
-    final body = {
+    final Map<String, dynamic> body = {
       'ct_inv_jenis': _selectedJenis!,
       'ct_item': _itemCtrl.text.trim(),
       'ct_keterangan':
           _ketCtrl.text.trim().isEmpty ? null : _ketCtrl.text.trim(),
-      'ct_urutan': int.tryParse(_urutanCtrl.text) ?? 1,
     };
+    if (!isEdit) {
+      body['ct_urutan'] = int.tryParse(_urutanCtrl.text) ?? 1;
+    }
     final ok = await p.saveChecklist(body, id: widget.item?.ctId);
     if (ok && mounted) {
       final message = isEdit
@@ -249,7 +269,8 @@ class _SingleItemFormState extends State<_SingleItemForm> {
                       .map((j) => DropdownMenuItem(
                           value: '${j.jenisId}', child: Text(j.jenisNama)))
                       .toList(),
-                  onChanged: (v) => setState(() => _selectedJenis = v),
+                  onChanged:
+                      isEdit ? null : (v) => setState(() => _selectedJenis = v),
                   validator: (v) => v == null ? 'Jenis wajib dipilih' : null,
                 ),
                 const SizedBox(height: 14),
@@ -276,18 +297,21 @@ class _SingleItemFormState extends State<_SingleItemForm> {
                 ),
                 const SizedBox(height: 14),
 
-                TextFormField(
-                  controller: _urutanCtrl,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    labelText: 'Urutan',
-                    prefixIcon: Icon(Icons.sort_outlined),
+                if (!isEdit) ...[
+                  TextFormField(
+                    controller: _urutanCtrl,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: 'Urutan',
+                      prefixIcon: Icon(Icons.sort_outlined),
+                    ),
+                    validator: (v) => (v == null || int.tryParse(v) == null)
+                        ? 'Urutan harus angka'
+                        : null,
                   ),
-                  validator: (v) => (v == null || int.tryParse(v) == null)
-                      ? 'Urutan harus angka'
-                      : null,
-                ),
-                const SizedBox(height: 24),
+                  const SizedBox(height: 24),
+                ] else
+                  const SizedBox(height: 24),
 
                 _ErrorBox(provider.error),
                 Consumer<MasterProvider>(
@@ -602,7 +626,7 @@ class _BulkInputFormState extends State<_BulkInputForm> {
                       child: TextField(
                         controller: _itemCtrls[i],
                         decoration: InputDecoration(
-                          hintText: 'Item ${i + 1}',
+                          hintText: '...',
                           filled: true,
                           fillColor: AppColors.white,
                           contentPadding: const EdgeInsets.symmetric(
@@ -627,7 +651,7 @@ class _BulkInputFormState extends State<_BulkInputForm> {
                       child: TextField(
                         controller: _ketCtrls[i],
                         decoration: InputDecoration(
-                          hintText: 'Opsional',
+                          hintText: '...',
                           filled: true,
                           fillColor: AppColors.white,
                           contentPadding: const EdgeInsets.symmetric(

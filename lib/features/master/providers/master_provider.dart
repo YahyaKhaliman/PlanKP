@@ -41,10 +41,24 @@ class MasterProvider extends ChangeNotifier {
   List<JenisModel> jenisAvailableForJadwal({int? includeJenisId}) {
     final includeId = includeJenisId;
     return jenisMaster.where((j) {
-      if (includeId != null && j.jenisId == includeId) return true;
-      return hasInventarisForJenis(j.jenisId);
+      if (includeId != null && j.jenisId == includeId) {
+        return j.jenisIsActive && hasInventarisForJenis(j.jenisId);
+      }
+      return j.jenisIsActive && hasInventarisForJenis(j.jenisId);
     }).toList();
   }
+
+  List<JenisModel> jenisAvailableForInventaris({int? includeJenisId}) {
+    final includeId = includeJenisId;
+    return jenisMaster.where((j) {
+      if (includeId != null && j.jenisId == includeId) {
+        return j.jenisIsActive && !hasInventarisForJenis(j.jenisId);
+      }
+      return j.jenisIsActive && !hasInventarisForJenis(j.jenisId);
+    }).toList();
+  }
+
+  bool isJenisActive(int jenisId) => jenisById(jenisId)?.jenisIsActive == true;
 
   JenisModel? jenisById(int jenisId) {
     try {

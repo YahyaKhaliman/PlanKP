@@ -42,6 +42,7 @@ class _RealisasiHistoryScreenState extends State<RealisasiHistoryScreen> {
       await provider.fetchJadwalByUser();
       await provider.fetchRealisasi(status: 'Selesai');
     }
+    await provider.fetchHariLiburForMonth(_selectedMonth);
   }
 
   void _previousMonth() {
@@ -49,6 +50,7 @@ class _RealisasiHistoryScreenState extends State<RealisasiHistoryScreen> {
       _selectedMonth = DateTime(_selectedMonth.year, _selectedMonth.month - 1);
       _selectedDay = null;
     });
+    context.read<JadwalProvider>().fetchHariLiburForMonth(_selectedMonth);
   }
 
   void _nextMonth() {
@@ -56,6 +58,7 @@ class _RealisasiHistoryScreenState extends State<RealisasiHistoryScreen> {
       _selectedMonth = DateTime(_selectedMonth.year, _selectedMonth.month + 1);
       _selectedDay = null;
     });
+    context.read<JadwalProvider>().fetchHariLiburForMonth(_selectedMonth);
   }
 
   void _toggleDayFilter(int day) {
@@ -78,7 +81,7 @@ class _RealisasiHistoryScreenState extends State<RealisasiHistoryScreen> {
     await RealisasiDetailSheet.show(
       context,
       detail: detail,
-      title: 'Detail History Realisasi',
+      title: 'Detail Realisasi',
     );
   }
 
@@ -96,7 +99,7 @@ class _RealisasiHistoryScreenState extends State<RealisasiHistoryScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('History Realisasi'),
+        title: const Text('Realisasi'),
       ),
       body: RefreshIndicator(
         onRefresh: _loadData,
@@ -110,6 +113,7 @@ class _RealisasiHistoryScreenState extends State<RealisasiHistoryScreen> {
               p.realisasiList,
               _selectedMonth,
             );
+            final holidayDays = p.getHolidayDaysForMonth(_selectedMonth);
             final visibleRealisasi = _filterRealisasiBySelectedDay(
               monthRealisasi,
               _selectedDay,
@@ -118,6 +122,7 @@ class _RealisasiHistoryScreenState extends State<RealisasiHistoryScreen> {
               jadwalList: p.jadwalList,
               realisasiList: monthRealisasi,
               month: _selectedMonth,
+              holidayDays: holidayDays,
             );
 
             return Center(
@@ -154,6 +159,7 @@ class _RealisasiHistoryScreenState extends State<RealisasiHistoryScreen> {
                         child: _MonthlyDatePreview(
                           month: _selectedMonth,
                           realisasiList: monthRealisasi,
+                          holidayDays: holidayDays,
                           selectedDay: _selectedDay,
                           onDayTap: _toggleDayFilter,
                         ),
@@ -290,6 +296,7 @@ class _RealisasiHistoryScreenState extends State<RealisasiHistoryScreen> {
     required List<JadwalModel> jadwalList,
     required List<RealisasiModel> realisasiList,
     required DateTime month,
+    required Set<int> holidayDays,
   }) {
     final monthStart = DateTime(month.year, month.month, 1);
     final monthEnd = DateTime(month.year, month.month + 1, 0);
@@ -301,6 +308,7 @@ class _RealisasiHistoryScreenState extends State<RealisasiHistoryScreen> {
         jadwal,
         monthStart,
         monthEnd,
+        holidayDays,
       );
       final perScheduleTarget = (jadwal.jdwTarget ?? 0) > 0
           ? (jadwal.jdwTarget ?? 0)
@@ -319,9 +327,11 @@ class _RealisasiHistoryScreenState extends State<RealisasiHistoryScreen> {
     JadwalModel jadwal,
     DateTime monthStart,
     DateTime monthEnd,
+    Set<int> holidayDays,
   ) {
     final start = DateTime.tryParse(jadwal.jdwTglMulai);
     if (start == null) return 0;
+    final startDate = _dateOnly(start);
 
     final end = (jadwal.jdwTglSelesai == null || jadwal.jdwTglSelesai!.isEmpty)
         ? monthEnd
@@ -332,20 +342,96 @@ class _RealisasiHistoryScreenState extends State<RealisasiHistoryScreen> {
 
     if (rangeEnd.isBefore(rangeStart)) return 0;
 
+    if (jadwal.jdwFrekuensi == 'Bulanan') {
+      final startMonth = DateTime(startDate.year, startDate.month, 1);
+      final currentMonth = DateTime(monthStart.year, monthStart.month, 1);
+      if (currentMonth.isBefore(startMonth)) return 0;
+
+      final daysInMonth =
+          DateTime(monthStart.year, monthStart.month + 1, 0).day;
+      final anchorDay =
+          startDate.day > daysInMonth ? daysInMonth : startDate.day;
+
+      DateTime? effectiveDate;
+
+      for (var day = anchorDay; day <= daysInMonth; day++) {
+        if (holidayDays.contains(day)) continue;
+        effectiveDate = DateTime(monthStart.year, monthStart.month, day);
+        break;
+      }
+
+      if (effectiveDate == null) {
+        for (var day = anchorDay - 1; day >= 1; day--) {
+          if (holidayDays.contains(day)) continue;
+          effectiveDate = DateTime(monthStart.year, monthStart.month, day);
+          break;
+        }
+      }
+
+      if (effectiveDate == null) return 0;
+      if (effectiveDate.isBefore(rangeStart) ||
+          effectiveDate.isAfter(rangeEnd)) {
+        return 0;
+      }
+      return 1;
+    }
+
+    if (jadwal.jdwFrekuensi == 'Mingguan') {
+      int count = 0;
+      var anchor = startDate;
+
+      while (!anchor.isAfter(rangeEnd)) {
+        if (!anchor.isBefore(rangeStart)) {
+          final windowStart = anchor;
+          final windowEnd =
+              _minDate(anchor.add(const Duration(days: 6)), rangeEnd);
+
+          DateTime? effectiveDate;
+
+          if (!holidayDays.contains(anchor.day)) {
+            effectiveDate = anchor;
+          } else {
+            for (var day = 1; day <= 6; day++) {
+              final forward = anchor.add(Duration(days: day));
+              if (!forward.isAfter(windowEnd) &&
+                  !holidayDays.contains(forward.day)) {
+                effectiveDate = forward;
+                break;
+              }
+
+              final backward = anchor.subtract(Duration(days: day));
+              if (!backward.isBefore(windowStart) &&
+                  !holidayDays.contains(backward.day)) {
+                effectiveDate = backward;
+                break;
+              }
+            }
+          }
+
+          if (effectiveDate != null &&
+              !effectiveDate.isBefore(rangeStart) &&
+              !effectiveDate.isAfter(rangeEnd)) {
+            count++;
+          }
+        }
+
+        anchor = anchor.add(const Duration(days: 7));
+      }
+
+      return count;
+    }
+
     int count = 0;
-    final startDate = _dateOnly(start);
     for (var cursor = rangeStart;
         !cursor.isAfter(rangeEnd);
         cursor = cursor.add(const Duration(days: 1))) {
+      if (holidayDays.contains(cursor.day)) continue;
+
       final diff = cursor.difference(startDate).inDays;
       if (diff < 0) continue;
 
       if (jadwal.jdwFrekuensi == 'Harian') {
         count++;
-      } else if (jadwal.jdwFrekuensi == 'Mingguan') {
-        if (diff % 7 == 0) count++;
-      } else if (jadwal.jdwFrekuensi == 'Bulanan') {
-        if (cursor.day == startDate.day) count++;
       }
     }
 
@@ -524,19 +610,19 @@ class _SummaryCard extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _metricLine(
-          label: 'Target Jadwal',
+          label: 'Target',
           value: '${metrics.targetCount}',
           color: AppColors.primary,
         ),
         const SizedBox(height: 8),
         _metricLine(
-          label: 'Realisasi Selesai',
+          label: 'Realisasi',
           value: '${metrics.doneCount}',
           color: AppColors.success,
         ),
         const SizedBox(height: 8),
         _metricLine(
-          label: 'Capaian',
+          label: 'Presentase',
           value: '${completionPercent.toStringAsFixed(1)}%',
           color: AppColors.warning,
         ),
@@ -576,12 +662,14 @@ class _SummaryCard extends StatelessWidget {
 class _MonthlyDatePreview extends StatelessWidget {
   final DateTime month;
   final List<RealisasiModel> realisasiList;
+  final Set<int> holidayDays;
   final int? selectedDay;
   final ValueChanged<int> onDayTap;
 
   const _MonthlyDatePreview({
     required this.month,
     required this.realisasiList,
+    required this.holidayDays,
     required this.selectedDay,
     required this.onDayTap,
   });
@@ -604,12 +692,14 @@ class _MonthlyDatePreview extends StatelessWidget {
       final isToday = _isToday(day, month);
       final isSunday =
           DateTime(month.year, month.month, day).weekday == DateTime.sunday;
+      final isHoliday = holidayDays.contains(day);
       cells.add(_dayCell(
         day: day,
         hasRealisasi: hasRealisasi,
         count: count,
         isToday: isToday,
         isSunday: isSunday,
+        isHoliday: isHoliday,
         isSelected: selectedDay == day,
         onTap: () => onDayTap(day),
       ));
@@ -623,7 +713,7 @@ class _MonthlyDatePreview extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Preview Tanggal Bulan Ini',
+              'Tanggalan Realisasi',
               style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
             ),
             const SizedBox(height: 4),
@@ -632,7 +722,17 @@ class _MonthlyDatePreview extends StatelessWidget {
                 Icon(Icons.circle, color: AppColors.success, size: 10),
                 SizedBox(width: 6),
                 Text(
-                  'Tanggal dengan realisasi',
+                  'Realisasi',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                SizedBox(width: 14),
+                Icon(Icons.circle, color: AppColors.danger, size: 10),
+                SizedBox(width: 6),
+                Text(
+                  'Hari libur',
                   style: TextStyle(
                     fontSize: 12,
                     color: AppColors.textSecondary,
@@ -707,15 +807,17 @@ class _MonthlyDatePreview extends StatelessWidget {
     required int count,
     required bool isToday,
     required bool isSunday,
+    required bool isHoliday,
     required bool isSelected,
     required VoidCallback onTap,
   }) {
-    final bg = isSunday
+    final isHolidayStyle = isSunday || isHoliday;
+    final bg = isHolidayStyle
         ? const Color(0xFFFEE2E2)
         : hasRealisasi
             ? AppColors.success.withValues(alpha: 0.14)
             : Colors.white;
-    final fg = isSunday
+    final fg = isHolidayStyle
         ? AppColors.danger
         : hasRealisasi
             ? AppColors.success
@@ -757,7 +859,8 @@ class _MonthlyDatePreview extends StatelessWidget {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                     decoration: BoxDecoration(
-                      color: isSunday ? AppColors.danger : AppColors.success,
+                      color:
+                          isHolidayStyle ? AppColors.danger : AppColors.success,
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(

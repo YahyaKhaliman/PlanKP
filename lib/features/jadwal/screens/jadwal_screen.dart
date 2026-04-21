@@ -378,7 +378,7 @@ class _JadwalScreenState extends State<JadwalScreen> {
                                                     BorderRadius.circular(999),
                                               ),
                                               child: const Text(
-                                                'Belum dipilih',
+                                                'Belum realisasi',
                                                 style: TextStyle(
                                                   fontSize: 11,
                                                   fontWeight: FontWeight.w600,
@@ -1570,6 +1570,9 @@ class _JadwalFormState extends State<_JadwalForm> {
             validator: (_) {
               if (_jenisId == null) return 'Jenis wajib dipilih';
               final master = context.read<MasterProvider>();
+              if (!master.isJenisActive(_jenisId!)) {
+                return 'Jenis inventaris nonaktif';
+              }
               if (!master.hasInventarisForJenis(_jenisId!)) {
                 return 'Jenis belum punya inventaris aktif';
               }
@@ -1609,6 +1612,13 @@ class _JadwalFormState extends State<_JadwalForm> {
       return;
     }
     final master = context.read<MasterProvider>();
+    if (!master.isJenisActive(_jenisId!)) {
+      await AppNotifier.showWarning(
+        context,
+        'Jenis inventaris nonaktif. Pilih jenis yang aktif.',
+      );
+      return;
+    }
     if (!master.hasInventarisForJenis(_jenisId!)) {
       await AppNotifier.showWarning(
         context,

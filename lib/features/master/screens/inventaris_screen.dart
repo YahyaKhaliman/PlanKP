@@ -49,8 +49,21 @@ class _InventarisScreenState extends State<InventarisScreen> {
   Future<void> _openForm([InventarisModel? item, int? initialJenisId]) async {
     final provider = context.read<MasterProvider>();
     await provider.fetchJenis(showLoading: false);
+    await provider.fetchJenisWithInventaris(showLoading: false);
     await provider.fetchPabrik();
     if (!mounted) return;
+
+    if (item == null && initialJenisId == null) {
+      final availableJenis = provider.jenisAvailableForInventaris();
+      if (availableJenis.isEmpty) {
+        await AppNotifier.showWarning(
+          context,
+          'Semua jenis sudah memiliki inventaris.\nKlik tombol Tambah untuk menambah inventaris.',
+        );
+        return;
+      }
+    }
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -120,8 +133,7 @@ class _InventarisScreenState extends State<InventarisScreen> {
                             Text(
                               '${p.inventarisList.map((e) => e.invJenisId).toSet().length} jenis · ${p.inventarisList.length} inventaris',
                               style: const TextStyle(
-                                  fontSize: 12,
-                                  color: AppColors.textSecondary),
+                                  fontSize: 12, color: AppColors.textSecondary),
                             ),
                             if (_search.text.isNotEmpty)
                               const Text(' · hasil pencarian',
@@ -324,8 +336,8 @@ class _InventarisGroupCardState extends State<_InventarisGroupCard>
                   onTap: () => widget.onAddItem(widget.jenisId),
                   borderRadius: BorderRadius.circular(20),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 6),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     decoration: BoxDecoration(
                       color: AppColors.primary.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(20),
@@ -401,10 +413,11 @@ class _InventarisCard extends StatelessWidget {
     final kondisiColor = _kondisiColor[item.invKondisi] ?? AppColors.success;
     final subtitleParts = [item.invNo];
     if (item.invPabrikKode != null) subtitleParts.add(pabrikLabel);
+    final merk = (item.invMerk ?? '-').trim().isEmpty ? '-' : item.invMerk!;
+    final pic = (item.invPic ?? '-').trim().isEmpty ? '-' : item.invPic!;
     return ListTile(
       dense: true,
-      contentPadding:
-          const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       leading: Container(
         width: 30,
         height: 30,
@@ -419,8 +432,28 @@ class _InventarisCard extends StatelessWidget {
       ),
       title: Text(item.invNama,
           style: const TextStyle(fontWeight: FontWeight.w600)),
-      subtitle: Text(subtitleParts.join(' · '),
-          style: const TextStyle(fontSize: 12)),
+      subtitle: Padding(
+        padding: const EdgeInsets.only(top: 2),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              subtitleParts.join(' · '),
+              style: const TextStyle(fontSize: 12),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              'Merk: $merk · PIC: $pic',
+              style: const TextStyle(
+                fontSize: 11,
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w500,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
+      ),
       trailing: Row(mainAxisSize: MainAxisSize.min, children: [
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
@@ -527,6 +560,18 @@ class _InventarisFormState extends State<_InventarisForm> {
   Future<void> _submit() async {
     if (!_form.currentState!.validate()) {
       await AppNotifier.showWarning(context, 'Lengkapi data inventaris dahulu');
+      return;
+    }
+    if (_jenisId == null) {
+      await AppNotifier.showWarning(context, 'Jenis inventaris wajib dipilih');
+      return;
+    }
+    final master = context.read<MasterProvider>();
+    if (!master.isJenisActive(_jenisId!)) {
+      await AppNotifier.showWarning(
+        context,
+        'Jenis inventaris nonaktif. Pilih jenis yang aktif.',
+      );
       return;
     }
     if (_kategori.trim().isEmpty) {
@@ -703,7 +748,14 @@ class _InventarisFormState extends State<_InventarisForm> {
                 onPressed: _pickJenis,
               ),
             ),
-            validator: (_) => _jenisId == null ? 'Jenis wajib dipilih' : null,
+            validator: (_) {
+              if (_jenisId == null) return 'Jenis wajib dipilih';
+              final master = context.read<MasterProvider>();
+              if (!master.isJenisActive(_jenisId!)) {
+                return 'Jenis inventaris nonaktif';
+              }
+              return null;
+            },
             onTap: _pickJenis,
           ),
           if (_kategori.isNotEmpty)
@@ -732,13 +784,26 @@ class _InventarisFormState extends State<_InventarisForm> {
     if (provider.jenisMaster.isEmpty) {
       await provider.fetchJenis(showLoading: false);
     }
+    await provider.fetchJenisWithInventaris(showLoading: false);
     if (!mounted) return;
+
+    final allowedItems = provider.jenisAvailableForInventaris(
+      includeJenisId: _jenisId ?? widget.initialJenisId,
+    );
+    if (allowedItems.isEmpty) {
+      await AppNotifier.showWarning(
+        context,
+        'Tidak ada jenis yang tersedia untuk dipilih.',
+      );
+      return;
+    }
+
     final result = await showModalBottomSheet<JenisModel>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => JenisLookupSheet(
-        items: provider.jenisMaster,
+        items: allowedItems,
         initialId: _jenisId,
       ),
     );

@@ -211,7 +211,7 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
                     children: [
                       Expanded(
                         child: _heroMetric(
-                          'Target Periode',
+                          'Target',
                           '$targetUnit unit',
                         ),
                       ),
@@ -272,7 +272,7 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
         Expanded(
           child: _statCard(
             icon: Icons.done_all_outlined,
-            label: 'Selesai',
+            label: 'Realisasi',
             value: '$selesaiUnit',
             accent: const Color(0xFF16A34A),
           ),
@@ -281,7 +281,7 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
         Expanded(
           child: _statCard(
             icon: Icons.inventory_2_outlined,
-            label: 'Unit',
+            label: 'Inventaris',
             value: '$totalUnit',
             accent: const Color(0xFF7C3AED),
           ),
@@ -354,6 +354,8 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
                     invIdRaw is int ? invIdRaw : int.tryParse('$invIdRaw');
                 final sudahTerealisasi =
                     invId != null && selesaiInvIds.contains(invId);
+                final merk = (inv['inv_merk'] ?? '-').toString();
+                final pic = (inv['inv_pic'] ?? '-').toString();
                 RealisasiModel? realisasiItem;
 
                 if (invId != null) {
@@ -411,6 +413,22 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
                                         fontSize: 12,
                                         color: AppColors.textSecondary,
                                       ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Wrap(
+                                      spacing: 6,
+                                      runSpacing: 6,
+                                      children: [
+                                        _infoChip(
+                                          icon:
+                                              Icons.branding_watermark_outlined,
+                                          text: 'Merk: $merk',
+                                        ),
+                                        _infoChip(
+                                          icon: Icons.person_outline,
+                                          text: 'PIC: $pic',
+                                        ),
+                                      ],
                                     ),
                                   ],
                                 ),
@@ -652,6 +670,38 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
                 fontWeight: FontWeight.w600,
                 color: AppColors.textPrimary,
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _infoChip({
+    required IconData icon,
+    required String text,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: AppColors.bgGray,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            size: 12,
+            color: AppColors.textSecondary,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            text,
+            style: const TextStyle(
+              fontSize: 11,
+              color: AppColors.textSecondary,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ],
