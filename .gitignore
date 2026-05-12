@@ -12,6 +12,7 @@
 .swiftpm/
 migrate_working_dir/
 /docs
+plan_kp.jks
 
 # IntelliJ related
 *.iml

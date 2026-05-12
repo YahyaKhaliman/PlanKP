@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'core/theme/app_theme.dart';
 import 'core/constants/app_constants.dart';
+import 'core/update/update_checker.dart';
 import 'features/auth/providers/auth_provider.dart';
 import 'features/master/providers/master_provider.dart';
 import 'features/jadwal/providers/jadwal_provider.dart';
@@ -67,11 +69,76 @@ class _AuthGate extends StatefulWidget {
 }
 
 class _AuthGateState extends State<_AuthGate> {
+  final UpdateChecker _updateChecker = UpdateChecker();
+
+  Future<void> _showUpdateDialog(AppUpdateManifest manifest) async {
+    final updateUri = Uri.tryParse(manifest.url);
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: !manifest.mandatory,
+      builder: (dialogContext) {
+        return PopScope(
+          canPop: !manifest.mandatory,
+          child: AlertDialog(
+            title: const Text('Update Tersedia'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                      'Versi terbaru: ${manifest.version} (${manifest.buildNumber})'),
+                  if ((manifest.notes ?? '').trim().isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    const Text('Catatan rilis:'),
+                    const SizedBox(height: 4),
+                    Text(manifest.notes!.trim()),
+                  ],
+                ],
+              ),
+            ),
+            actions: [
+              if (!manifest.mandatory)
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: const Text('Nanti'),
+                ),
+              FilledButton(
+                onPressed: () async {
+                  if (updateUri == null) {
+                    return;
+                  }
+
+                  await launchUrl(
+                    updateUri,
+                    mode: LaunchMode.externalApplication,
+                  );
+
+                  if (!manifest.mandatory && dialogContext.mounted) {
+                    Navigator.of(dialogContext).pop();
+                  }
+                },
+                child: const Text('Update'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final auth = context.read<AuthProvider>();
+
+      final updateResult = await _updateChecker.checkForUpdate();
+      if (mounted && updateResult.hasUpdate && updateResult.manifest != null) {
+        await _showUpdateDialog(updateResult.manifest!);
+      }
+
       await auth.checkSession();
       if (mounted) {
         Navigator.pushReplacementNamed(

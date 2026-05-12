@@ -1,0 +1,150 @@
+name: Flutter Android Release to VPS
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      mandatory:
+        description: "Set true for mandatory update"
+        required: false
+        default: "false"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: flutter-android-release-vps-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-upload:
+    runs-on: ubuntu-latest
+    env:
+      APK_BASENAME: plan_kp
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - name: Setup Flutter (stable)
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Analyze (non-blocking)
+        run: flutter analyze
+        continue-on-error: true
+
+      - name: Test (non-blocking)
+        run: flutter test
+        continue-on-error: true
+
+      - name: Prepare Android signing from secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/app/upload-keystore.jks
+          test -s android/app/upload-keystore.jks
+
+          cat > android/key.properties <<EOF
+          storeFile=app/upload-keystore.jks
+          storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}
+          keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
+          EOF
+
+      - name: Build release APK
+        run: flutter build apk --release
+
+      - name: Prepare release metadata
+        id: meta
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          APP_VERSION=$(grep '^version:' pubspec.yaml | head -n1 | awk '{print $2}')
+          VERSION_NAME="${APP_VERSION%%+*}"
+          BUILD_NUMBER="${APP_VERSION##*+}"
+          if [ "${VERSION_NAME}" = "${APP_VERSION}" ]; then
+            BUILD_NUMBER="0"
+          fi
+
+          SHORT_SHA=$(echo "${GITHUB_SHA}" | cut -c1-7)
+          APK_FILE="${APK_BASENAME}-v${VERSION_NAME}+${BUILD_NUMBER}-${SHORT_SHA}.apk"
+          SHA256=$(sha256sum build/app/outputs/flutter-apk/app-release.apk | awk '{print $1}')
+
+          MANDATORY_INPUT="${{ github.event.inputs.mandatory }}"
+          if [ -z "${MANDATORY_INPUT}" ]; then
+            MANDATORY_INPUT="false"
+          fi
+
+          mkdir -p deploy/out
+          cp build/app/outputs/flutter-apk/app-release.apk "deploy/out/${APK_FILE}"
+
+          cat > deploy/out/latest.json <<EOF
+          {
+            "version": "${VERSION_NAME}",
+            "buildNumber": "${BUILD_NUMBER}",
+            "mandatory": ${MANDATORY_INPUT},
+            "notes": "Build ${GITHUB_RUN_NUMBER} (${SHORT_SHA})",
+            "pub_date": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "url": "${{ secrets.VPS_BASE_DOWNLOAD_URL }}/${APK_FILE}",
+            "sha256": "${SHA256}"
+          }
+          EOF
+
+          echo "apk_file=${APK_FILE}" >> "$GITHUB_OUTPUT"
+
+      - name: Upload APK and manifest to VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          source: "deploy/out/*"
+          target: "${{ secrets.VPS_TARGET_PATH }}/releases/incoming"
+
+      - name: Normalize release files on VPS
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            set -e
+            cd "${{ secrets.VPS_TARGET_PATH }}/releases"
+
+            # Move generated APK/latest.json from incoming tree to releases root.
+            find incoming -type f \( -name "${APK_BASENAME}-v*.apk" -o -name "latest.json" \) -exec mv -f {} . \;
+            rm -rf incoming
+
+      - name: Keep only latest 2 APKs on VPS (retention)
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            set -e
+            cd "${{ secrets.VPS_TARGET_PATH }}/releases"
+
+            ls -1t ${APK_BASENAME}-v*.apk 2>/dev/null | tail -n +3 | xargs -r rm -f
+
+      - name: Publish summary
+        shell: bash
+        run: |
+          echo "APK uploaded: ${{ steps.meta.outputs.apk_file }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "Manifest updated: latest.json" >> "$GITHUB_STEP_SUMMARY"

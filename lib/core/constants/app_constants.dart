@@ -21,6 +21,10 @@ class ApiConfig {
   static const String pabrik = '/master/pabrik';
   static const String metadata = '/master/metadata';
   static const String dashboardSummary = '/master/dashboard/summary';
+
+  // App update manifest endpoint (latest.json)
+  static const String updateManifestUrl =
+      'http://103.94.238.252:8182/releases/latest.json';
 }
 
 class AppRoutes {
