@@ -115,7 +115,7 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           source: "deploy/out/*"
-          target: "${{ secrets.VPS_TARGET_PATH }}/releases/incoming"
+          target: "${{ secrets.VPS_TARGET_PATH }}/incoming"
 
       - name: Normalize release files on VPS
         uses: appleboy/ssh-action@v1.2.0
@@ -125,10 +125,11 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
             set -e
-            cd "${{ secrets.VPS_TARGET_PATH }}/releases"
+            cd "${{ secrets.VPS_TARGET_PATH }}"
 
             # Move generated APK/latest.json from incoming tree to releases root.
-            find incoming -type f \( -name "${APK_BASENAME}-v*.apk" -o -name "latest.json" \) -exec mv -f {} . \;
+            # Do not rely on APK_BASENAME here (remote shell env may not have it).
+            find incoming -type f \( -name "*.apk" -o -name "latest.json" \) -exec mv -f {} . \;
             rm -rf incoming
 
       - name: Keep only latest 2 APKs on VPS (retention)
@@ -139,9 +140,9 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
             set -e
-            cd "${{ secrets.VPS_TARGET_PATH }}/releases"
+            cd "${{ secrets.VPS_TARGET_PATH }}"
 
-            ls -1t ${APK_BASENAME}-v*.apk 2>/dev/null | tail -n +3 | xargs -r rm -f
+            ls -1t *.apk 2>/dev/null | tail -n +3 | xargs -r rm -f
 
       - name: Publish summary
         shell: bash

@@ -24,7 +24,7 @@ class ApiConfig {
 
   // App update manifest endpoint (latest.json)
   static const String updateManifestUrl =
-      'http://103.94.238.252:8182/releases/latest.json';
+      'http://103.94.238.252:8183/releases/latest.json';
 }
 
 class AppRoutes {
