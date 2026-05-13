@@ -187,6 +187,7 @@ class MasterProvider extends ChangeNotifier {
           jenisId: current.jenisId,
           jenisNama: current.jenisNama,
           jenisKategori: current.jenisKategori,
+          jenisGapHari: current.jenisGapHari,
           jenisIsActive: isActive,
         );
         notifyListeners();

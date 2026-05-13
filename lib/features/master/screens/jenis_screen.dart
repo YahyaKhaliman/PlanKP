@@ -247,6 +247,7 @@ class _JenisForm extends StatefulWidget {
 class _JenisFormState extends State<_JenisForm> {
   final _form = GlobalKey<FormState>();
   String _kategori = '';
+  final _gapHariCtrl = TextEditingController(text: '0');
 
   // Edit mode: single field
   final _namaCtrl = TextEditingController();
@@ -262,16 +263,19 @@ class _JenisFormState extends State<_JenisForm> {
     if (_isEdit) {
       _namaCtrl.text = widget.jenis!.jenisNama;
       _kategori = widget.jenis!.jenisKategori;
+      _gapHariCtrl.text = widget.jenis!.jenisGapHari.toString();
     } else {
       _namaCtrls.add(TextEditingController());
       final auth = context.read<AuthProvider>();
       _kategori = (auth.user?['user_divisi'] ?? '').toString();
+      _gapHariCtrl.text = '0';
     }
   }
 
   @override
   void dispose() {
     _namaCtrl.dispose();
+    _gapHariCtrl.dispose();
     for (final c in _namaCtrls) {
       c.dispose();
     }
@@ -289,11 +293,21 @@ class _JenisFormState extends State<_JenisForm> {
 
   Future<void> _submit() async {
     final provider = context.read<MasterProvider>();
+    final gapHari = int.tryParse(_gapHariCtrl.text.trim()) ?? -1;
+    if (gapHari < 0) {
+      await AppNotifier.showWarning(
+          context, 'Gap hari wajib angka bulat minimal 0');
+      return;
+    }
 
     if (_isEdit) {
       if (!_form.currentState!.validate()) return;
       final ok = await provider.saveJenis(
-        {'jenis_nama': _namaCtrl.text.trim(), 'jenis_kategori': _kategori},
+        {
+          'jenis_nama': _namaCtrl.text.trim(),
+          'jenis_kategori': _kategori,
+          'jenis_gap_hari': gapHari,
+        },
         id: widget.jenis!.jenisId,
       );
       if (ok && mounted) {
@@ -318,6 +332,7 @@ class _JenisFormState extends State<_JenisForm> {
       final ok = await provider.saveJenis({
         'jenis_nama': ctrl.text.trim(),
         'jenis_kategori': _kategori,
+        'jenis_gap_hari': gapHari,
       });
       if (ok) count++;
     }
@@ -439,6 +454,23 @@ class _JenisFormState extends State<_JenisForm> {
                     ),
                   ),
                 ],
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _gapHariCtrl,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'Gap Hari Realisasi',
+                    hintText: '0',
+                    prefixIcon: Icon(Icons.calendar_today_outlined),
+                  ),
+                  validator: (v) {
+                    final parsed = int.tryParse((v ?? '').trim());
+                    if (parsed == null || parsed < 0) {
+                      return 'Isi angka bulat minimal 0';
+                    }
+                    return null;
+                  },
+                ),
                 const SizedBox(height: 20),
                 Consumer<MasterProvider>(
                   builder: (_, p, __) => ElevatedButton(
