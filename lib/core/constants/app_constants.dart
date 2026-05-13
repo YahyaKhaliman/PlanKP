@@ -1,8 +1,8 @@
 class ApiConfig {
-  static const String baseUrl =
-      'http://103.94.238.252:3007/api'; // Production server
   // static const String baseUrl =
-  //     'http://localhost:3003/api'; // Local development
+  //     'http://103.94.238.252:3007/api'; // Production server
+  static const String baseUrl =
+      'http://localhost:3003/api'; // Local development
   // static const String baseUrl = 'http://10.0.2.2:3003/api'; // Android emulator
   // static const String baseUrl = 'http://127.0.0.1:3003/api';  // iOS simulator
 
@@ -12,6 +12,8 @@ class ApiConfig {
   static const String changePass = '/auth/change-password';
   static const String checklistTemplate = '/master/checklist-template';
   static const String inventaris = '/master/inv';
+  // Legacy endpoint dipertahankan untuk kompatibilitas modul lama FE.
+  // Jika backend belum menyediakan route ini, konsumsi metadata/divisi perlu dialihkan bertahap.
   static const String divisi = '/master/divisi';
   static const String users = '/master/users';
   static const String jadwal = '/master/jadwal';

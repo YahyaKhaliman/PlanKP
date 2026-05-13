@@ -403,7 +403,8 @@ class _InventarisCard extends StatelessWidget {
   });
 
   static const _kondisiColor = {
-    'Baik': AppColors.success,
+    'Baik (Sering digunakan)': AppColors.success,
+    'Baik (Jarang digunakan)': AppColors.success,
     'Perlu Perhatian': Colors.orange,
     'Rusak': AppColors.danger,
   };
@@ -413,8 +414,10 @@ class _InventarisCard extends StatelessWidget {
     final kondisiColor = _kondisiColor[item.invKondisi] ?? AppColors.success;
     final subtitleParts = [item.invNo];
     if (item.invPabrikKode != null) subtitleParts.add(pabrikLabel);
-    final merk = (item.invMerk ?? '-').trim().isEmpty ? '-' : item.invMerk!;
-    final pic = (item.invPic ?? '-').trim().isEmpty ? '-' : item.invPic!;
+    final merkRaw = item.invMerk?.trim() ?? '';
+    final picRaw = item.invPic?.trim() ?? '';
+    final merk = merkRaw.isEmpty ? '-' : merkRaw;
+    final pic = picRaw.isEmpty ? '-' : picRaw;
     return ListTile(
       dense: true,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -511,9 +514,14 @@ class _InventarisFormState extends State<_InventarisForm> {
   final _picCtrl = TextEditingController();
   final _notesCtrl = TextEditingController();
   String _kategori = '';
-  String _kondisi = 'Baik';
+  String _kondisi = 'Baik (Sering digunakan)';
 
-  static const _kondisiList = ['Baik', 'Perlu Perhatian', 'Rusak'];
+  static const _kondisiList = [
+    'Baik (Sering digunakan)',
+    'Baik (Jarang digunakan)',
+    'Perlu Perhatian',
+    'Rusak'
+  ];
 
   @override
   void initState() {
@@ -613,6 +621,13 @@ class _InventarisFormState extends State<_InventarisForm> {
   Widget build(BuildContext context) {
     final isEdit = widget.item != null;
     final master = context.watch<MasterProvider>();
+    final pabrikCodes = master.pabrikList.map((e) => e.pabKode).toSet();
+    final safePabrikKode =
+        (_pabrikKode != null && pabrikCodes.contains(_pabrikKode))
+            ? _pabrikKode
+            : null;
+    final safeKondisi =
+        _kondisiList.contains(_kondisi) ? _kondisi : _kondisiList.first;
     return DraggableScrollableSheet(
       initialChildSize: 0.92,
       maxChildSize: 0.95,
@@ -649,7 +664,7 @@ class _InventarisFormState extends State<_InventarisForm> {
                 Padding(
                   padding: const EdgeInsets.only(bottom: 14),
                   child: DropdownButtonFormField<String>(
-                    initialValue: _pabrikKode,
+                    initialValue: safePabrikKode,
                     decoration: const InputDecoration(
                       labelText: 'Lokasi / Pabrik',
                       prefixIcon: Icon(Icons.location_on_outlined),
@@ -672,7 +687,7 @@ class _InventarisFormState extends State<_InventarisForm> {
 
                 // Kondisi
                 DropdownButtonFormField<String>(
-                  initialValue: _kondisi,
+                  initialValue: safeKondisi,
                   decoration: const InputDecoration(
                       labelText: 'Kondisi',
                       prefixIcon: Icon(Icons.health_and_safety_outlined)),
