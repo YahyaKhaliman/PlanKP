@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:awesome_dialog/awesome_dialog.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/update/update_checker.dart';
 import '../providers/auth_provider.dart';
 import '../../../core/widgets/app_notifier.dart';
 
@@ -18,7 +20,60 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _usernameCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
+  final UpdateChecker _updateChecker = UpdateChecker();
   bool _obscure = true;
+  String _appVersionLabel = 'Versi -';
+  String _updateStatusLabel = 'Memeriksa pembaruan aplikasi...';
+  Color _updateStatusColor = AppColors.textSecondary;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadVersionAndUpdateStatus();
+  }
+
+  Future<void> _loadVersionAndUpdateStatus() async {
+    try {
+      final packageInfo = await PackageInfo.fromPlatform();
+      if (mounted) {
+        setState(() {
+          _appVersionLabel =
+              'Versi ${packageInfo.version} (build ${packageInfo.buildNumber})';
+        });
+      }
+    } catch (_) {}
+
+    try {
+      final result = await _updateChecker.checkForUpdate();
+      if (!mounted) return;
+
+      setState(() {
+        switch (result.status) {
+          case AppUpdateStatus.updateAvailable:
+            final latest = result.manifest;
+            _updateStatusLabel = latest == null
+                ? 'Update tersedia'
+                : 'Update tersedia • Versi ${latest.version} (build ${latest.buildNumber})';
+            _updateStatusColor = const Color(0xFFB45309);
+            break;
+          case AppUpdateStatus.failedCheck:
+            _updateStatusLabel = 'Gagal memeriksa pembaruan';
+            _updateStatusColor = AppColors.danger;
+            break;
+          case AppUpdateStatus.upToDate:
+            _updateStatusLabel = 'Aplikasi sudah versi terbaru';
+            _updateStatusColor = AppColors.textSecondary;
+            break;
+        }
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _updateStatusLabel = 'Gagal memeriksa pembaruan';
+        _updateStatusColor = AppColors.danger;
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -253,6 +308,24 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
             const SizedBox(height: 16),
+            Text(
+              _appVersionLabel,
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 12,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              _updateStatusLabel,
+              style: TextStyle(
+                color: _updateStatusColor,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+              textAlign: TextAlign.center,
+            ),
           ],
         ),
       ),

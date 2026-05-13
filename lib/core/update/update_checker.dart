@@ -8,6 +8,7 @@ import '../constants/app_constants.dart';
 enum AppUpdateStatus {
   upToDate,
   updateAvailable,
+  failedCheck,
 }
 
 class AppUpdateManifest {
@@ -30,18 +31,22 @@ class AppUpdateManifest {
   });
 
   factory AppUpdateManifest.fromJson(Map<String, dynamic> json) {
-    final rawBuild = json['buildNumber'];
+    final rawBuild = json['buildNumber'] ?? json['versionCode'];
     final parsedBuild = rawBuild is int
         ? rawBuild
         : int.tryParse(rawBuild?.toString() ?? '') ?? 0;
 
+    final versionValue =
+        (json['version'] ?? json['versionName'] ?? '').toString();
+    final urlValue = (json['url'] ?? json['apkUrl'] ?? '').toString();
+
     return AppUpdateManifest(
-      version: (json['version'] ?? '').toString(),
+      version: versionValue,
       buildNumber: parsedBuild,
       mandatory: json['mandatory'] == true,
       notes: json['notes']?.toString(),
-      pubDate: json['pub_date']?.toString(),
-      url: (json['url'] ?? '').toString(),
+      pubDate: (json['pub_date'] ?? json['releaseDate'])?.toString(),
+      url: urlValue,
       sha256: json['sha256']?.toString(),
     );
   }
@@ -120,7 +125,7 @@ class UpdateChecker {
       );
     } catch (_) {
       return AppUpdateCheckResult(
-        status: AppUpdateStatus.upToDate,
+        status: AppUpdateStatus.failedCheck,
         currentVersion: packageInfo.version,
         currentBuildNumber: currentBuild,
       );
