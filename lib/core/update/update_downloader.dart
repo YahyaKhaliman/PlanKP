@@ -31,10 +31,13 @@ class UpdateDownloader {
     try {
       Directory? baseDir;
       if (Platform.isAndroid) {
-        final dirs = await getExternalStorageDirectories(
-            type: StorageDirectory.downloads);
-        if (dirs != null && dirs.isNotEmpty) {
-          baseDir = dirs.first;
+        baseDir = Directory('/storage/emulated/0/Download');
+        if (!baseDir.existsSync()) {
+          try {
+            baseDir.createSync(recursive: true);
+          } catch (_) {
+            baseDir = null; // fallback
+          }
         }
       }
       baseDir ??= await getExternalStorageDirectory() ??
