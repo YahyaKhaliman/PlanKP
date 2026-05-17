@@ -1,7 +1,7 @@
 name: plankp
 description: PlanKP - Sistem Penjadwalan Maintenance Kencana Print
 publish_to: "none"
-version: 1.0.8+8 # Format: major.minor.patch+build
+version: 1.0.12+12 # Format: major.minor.patch+build
 
 environment:
   sdk: ">=3.0.0 <4.0.0"

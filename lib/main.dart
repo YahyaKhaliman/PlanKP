@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:awesome_dialog/awesome_dialog.dart';
 import 'package:provider/provider.dart';
 import 'core/theme/app_theme.dart';
 import 'core/constants/app_constants.dart';
@@ -80,196 +81,148 @@ class _AuthGateState extends State<_AuthGate> {
     var isDownloading = false;
     var progress = 0;
 
-    await showDialog<void>(
+    await AwesomeDialog(
       context: context,
-      barrierDismissible: !manifest.mandatory,
-      builder: (dialogContext) {
-        return PopScope(
-          canPop: !manifest.mandatory,
-          child: StatefulBuilder(
-            builder: (context, setState) {
-              return Dialog(
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(24)),
-                elevation: 0,
-                backgroundColor: Colors.transparent,
-                child: Container(
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.rectangle,
-                    borderRadius: BorderRadius.circular(24),
-                    boxShadow: const [
-                      BoxShadow(
-                          color: Colors.black26,
-                          blurRadius: 16,
-                          offset: Offset(0, 8)),
-                    ],
+      dialogType: DialogType.info,
+      animType: AnimType.scale,
+      dismissOnTouchOutside: !manifest.mandatory,
+      dismissOnBackKeyPress: !manifest.mandatory,
+      body: StatefulBuilder(
+        builder: (context, setState) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Pembaruan Tersedia!',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimary,
                   ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(18),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.1),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(Icons.system_update_rounded,
-                            size: 48, color: AppColors.primary),
-                      ),
-                      const SizedBox(height: 20),
-                      const Text(
-                        'Pembaruan Tersedia!',
-                        style: TextStyle(
-                            fontSize: 22, fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Versi terbaru ${manifest.version} siap diunduh.',
-                        style: const TextStyle(
-                            fontSize: 14, color: Colors.black54),
-                        textAlign: TextAlign.center,
-                      ),
-                      if ((manifest.notes ?? '').trim().isNotEmpty) ...[
-                        const SizedBox(height: 16),
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade100,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Colors.grey.shade200),
-                          ),
-                          child: Text(
-                            manifest.notes!.trim(),
-                            style: const TextStyle(
-                                fontSize: 13, color: Colors.black87),
-                            textAlign: TextAlign.left,
-                          ),
-                        ),
-                      ],
-                      if (isDownloading) ...[
-                        const SizedBox(height: 24),
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: LinearProgressIndicator(
-                            value: progress / 100,
-                            minHeight: 10,
-                            backgroundColor: Colors.grey.shade200,
-                            valueColor: const AlwaysStoppedAnimation<Color>(
-                                AppColors.primary),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Mengunduh... $progress%',
-                          style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.primary),
-                        ),
-                      ],
-                      const SizedBox(height: 28),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          if (!manifest.mandatory && !isDownloading)
-                            Expanded(
-                              child: OutlinedButton(
-                                style: OutlinedButton.styleFrom(
-                                  padding:
-                                      const EdgeInsets.symmetric(vertical: 14),
-                                  shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12)),
-                                  side:
-                                      const BorderSide(color: Colors.grey),
-                                ),
-                                onPressed: () =>
-                                    Navigator.of(dialogContext).pop(),
-                                child: const Text('Nanti Saja',
-                                    style: TextStyle(color: Colors.grey)),
-                              ),
-                            ),
-                          if (!manifest.mandatory && !isDownloading)
-                            const SizedBox(width: 12),
-                          Expanded(
-                            child: ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.primary,
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 14),
-                                shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12)),
-                                elevation: 0,
-                              ),
-                              onPressed: isDownloading
-                                  ? null
-                                  : () async {
-                                      setState(() {
-                                        isDownloading = true;
-                                        progress = 0;
-                                      });
-
-                                      final result = await _updateDownloader
-                                          .downloadAndOpenInstaller(
-                                        downloadUrl: manifest.url,
-                                        versionName: manifest.version,
-                                        onProgress: (value) {
-                                          setState(() => progress = value);
-                                        },
-                                      );
-
-                                      if (!dialogContext.mounted) return;
-                                      setState(() {
-                                        isDownloading = false;
-                                      });
-
-                                      if (result.status ==
-                                          AppUpdateDownloadStatus
-                                              .downloadedOpenedFolder) {
-                                        Navigator.of(dialogContext).pop();
-                                        _showManualInstallDialog(
-                                            result.filePath ?? '');
-                                      } else if (result.status ==
-                                          AppUpdateDownloadStatus
-                                              .failedNetwork) {
-                                        AppNotifier.showError(
-                                            dialogContext,
-                                            'Gagal mengunduh: Periksa jaringan Anda.');
-                                      } else if (result.status ==
-                                          AppUpdateDownloadStatus.failedOther) {
-                                        AppNotifier.showError(
-                                            dialogContext,
-                                            'Gagal memproses pembaruan.');
-                                      } else {
-                                        // Success
-                                        if (!manifest.mandatory &&
-                                            dialogContext.mounted) {
-                                          Navigator.of(dialogContext).pop();
-                                        }
-                                      }
-                                    },
-                              child: Text(
-                                isDownloading
-                                    ? 'Mengunduh...'
-                                    : 'Update Sekarang',
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
+                  textAlign: TextAlign.center,
                 ),
-              );
-            },
-          ),
-        );
-      },
-    );
+                const SizedBox(height: 8),
+                Text(
+                  'Versi terbaru ${manifest.version} siap diunduh.',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: AppColors.textSecondary,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                if ((manifest.notes ?? '').trim().isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade50,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: Text(
+                      manifest.notes!.trim(),
+                      style: const TextStyle(
+                          fontSize: 13, color: AppColors.textPrimary),
+                      textAlign: TextAlign.left,
+                    ),
+                  ),
+                ],
+                if (isDownloading) ...[
+                  const SizedBox(height: 24),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: LinearProgressIndicator(
+                      value: progress / 100,
+                      minHeight: 10,
+                      backgroundColor: Colors.grey.shade200,
+                      valueColor: const AlwaysStoppedAnimation<Color>(
+                          AppColors.primary),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Mengunduh... $progress%',
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold, color: AppColors.primary),
+                  ),
+                ],
+                const SizedBox(height: 24),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    if (!manifest.mandatory && !isDownloading) ...[
+                      Expanded(
+                        child: AnimatedButton(
+                          text: 'Nanti Saja',
+                          color: Colors.grey.shade300,
+                          pressEvent: () => Navigator.of(context).pop(),
+                          isFixedHeight: false,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                    ],
+                    Expanded(
+                      child: AnimatedButton(
+                        text: isDownloading ? 'Mengunduh...' : 'Update',
+                        color: isDownloading
+                            ? Colors.grey.shade400
+                            : AppColors.primary,
+                        pressEvent: isDownloading
+                            ? () {}
+                            : () async {
+                                setState(() {
+                                  isDownloading = true;
+                                  progress = 0;
+                                });
+
+                                final result = await _updateDownloader
+                                    .downloadAndOpenInstaller(
+                                  downloadUrl: manifest.url,
+                                  versionName: manifest.version,
+                                  onProgress: (value) {
+                                    setState(() => progress = value);
+                                  },
+                                );
+
+                                if (!context.mounted) return;
+                                setState(() {
+                                  isDownloading = false;
+                                });
+
+                                if (result.status ==
+                                    AppUpdateDownloadStatus
+                                        .downloadedOpenedFolder) {
+                                  Navigator.of(context).pop();
+                                  _showManualInstallDialog(
+                                      result.filePath ?? '');
+                                } else if (result.status ==
+                                    AppUpdateDownloadStatus.failedNetwork) {
+                                  AppNotifier.showError(context,
+                                      'Gagal mengunduh: Periksa jaringan Anda.');
+                                } else if (result.status ==
+                                    AppUpdateDownloadStatus.failedOther) {
+                                  AppNotifier.showError(context,
+                                      'Gagal memproses pembaruan.');
+                                } else {
+                                  if (!manifest.mandatory && context.mounted) {
+                                    Navigator.of(context).pop();
+                                  }
+                                }
+                              },
+                        isFixedHeight: false,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    ).show();
   }
 
   void _showManualInstallDialog(String filePath) {
