@@ -205,7 +205,7 @@ class _AuthGateState extends State<_AuthGate> {
                                 } else if (result.status ==
                                     AppUpdateDownloadStatus.failedOther) {
                                   AppNotifier.showError(context,
-                                      'Gagal memproses pembaruan.');
+                                      'Gagal memproses pembaruan:\n${result.filePath ?? "Unknown Error"}');
                                 } else {
                                   if (!manifest.mandatory && context.mounted) {
                                     Navigator.of(context).pop();

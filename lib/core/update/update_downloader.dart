@@ -102,9 +102,10 @@ class UpdateDownloader {
             ? AppUpdateDownloadStatus.failedNetwork
             : AppUpdateDownloadStatus.failedOther,
       );
-    } catch (_) {
-      return const AppUpdateDownloadResult(
+    } catch (e) {
+      return AppUpdateDownloadResult(
         status: AppUpdateDownloadStatus.failedOther,
+        filePath: e.toString(),
       );
     }
   }
