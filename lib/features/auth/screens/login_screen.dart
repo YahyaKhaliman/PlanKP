@@ -196,17 +196,11 @@ class _LoginScreenState extends State<LoginScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 52,
-            height: 52,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.18),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: const Icon(
-              Icons.space_dashboard_rounded,
-              color: Colors.white,
-              size: 28,
+          SizedBox(
+            height: compact ? 56 : 64,
+            child: Image.asset(
+              'assets/images/logo.png',
+              fit: BoxFit.contain,
             ),
           ),
           const SizedBox(height: 18),
@@ -217,15 +211,6 @@ class _LoginScreenState extends State<LoginScreen> {
               fontWeight: FontWeight.w800,
               color: Colors.white,
               letterSpacing: -1,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Kencana Print',
-            style: TextStyle(
-              fontSize: compact ? 14 : 16,
-              color: Colors.white.withValues(alpha: 0.88),
-              height: 1.45,
             ),
           ),
         ],

@@ -885,6 +885,25 @@ class _JadwalFormState extends State<_JadwalForm> {
   String _fmtDateDisplay(DateTime? d) =>
       DateFormatter.toDisplayFromDate(d, fallback: '');
 
+  bool _isDateAllowedForFrekuensi(DateTime date) {
+    if (_frekuensi == 'Mingguan') return date.weekday == DateTime.monday;
+    if (_frekuensi == 'Bulanan') return date.day == 1;
+    return true;
+  }
+
+  DateTime _nextAllowedDate(DateTime from) {
+    final base = DateTime(from.year, from.month, from.day);
+    if (_frekuensi == 'Mingguan') {
+      final diff = (DateTime.monday - base.weekday + 7) % 7;
+      return base.add(Duration(days: diff));
+    }
+    if (_frekuensi == 'Bulanan') {
+      if (base.day == 1) return base;
+      return DateTime(base.year, base.month + 1, 1);
+    }
+    return base;
+  }
+
   int get _currentTargetValue => int.tryParse(_targetCtrl.text.trim()) ?? 1;
 
   void _setTargetValue(int value) {
@@ -945,13 +964,22 @@ class _JadwalFormState extends State<_JadwalForm> {
   }
 
   Future<void> _pickDate(bool isMulai) async {
+    final now = DateTime.now();
+    final firstDate = DateTime(2024);
+    final lastDate = DateTime(2030);
+    final initialRaw =
+        isMulai ? (_tglMulai ?? now) : (_tglSelesai ?? _tglMulai ?? now);
+    final initialDate = isMulai && !_isDateAllowedForFrekuensi(initialRaw)
+        ? _nextAllowedDate(initialRaw)
+        : initialRaw;
+
     final picked = await showDatePicker(
       context: context,
-      initialDate: isMulai
-          ? (_tglMulai ?? DateTime.now())
-          : (_tglSelesai ?? DateTime.now()),
-      firstDate: DateTime(2024),
-      lastDate: DateTime(2030),
+      initialDate: initialDate,
+      firstDate: firstDate,
+      lastDate: lastDate,
+      selectableDayPredicate:
+          isMulai ? (day) => _isDateAllowedForFrekuensi(day) : null,
     );
     if (picked != null) {
       setState(() {
@@ -1175,6 +1203,15 @@ class _JadwalFormState extends State<_JadwalForm> {
       await AppNotifier.showWarning(context, 'Tanggal mulai wajib dipilih');
       return;
     }
+    if (!_isDateAllowedForFrekuensi(_tglMulai!)) {
+      final msg = _frekuensi == 'Mingguan'
+          ? 'Tanggal mulai untuk frekuensi Mingguan harus hari Senin'
+          : _frekuensi == 'Bulanan'
+              ? 'Tanggal mulai untuk frekuensi Bulanan harus tanggal 1'
+              : 'Tanggal mulai tidak valid untuk frekuensi yang dipilih';
+      await AppNotifier.showWarning(context, msg);
+      return;
+    }
     if (_assignedToUserId == null) {
       await AppNotifier.showWarning(context, 'Pelaksana wajib dipilih');
       return;
@@ -1308,7 +1345,16 @@ class _JadwalFormState extends State<_JadwalForm> {
                 items: _frekuensiList
                     .map((f) => DropdownMenuItem(value: f, child: Text(f)))
                     .toList(),
-                onChanged: (v) => setState(() => _frekuensi = v!),
+                onChanged: (v) {
+                  if (v == null) return;
+                  setState(() {
+                    _frekuensi = v;
+                    if (_tglMulai != null &&
+                        !_isDateAllowedForFrekuensi(_tglMulai!)) {
+                      _tglMulai = _nextAllowedDate(_tglMulai!);
+                    }
+                  });
+                },
               ),
               const SizedBox(height: 14),
               TextFormField(
