@@ -108,7 +108,8 @@ class AuthProvider extends ChangeNotifier {
 
   Future<void> logout() async {
     _user = null;
-    await _storage.deleteAll();
+    await _storage.delete(key: StorageKeys.token);
+    await _storage.delete(key: StorageKeys.userData);
     notifyListeners();
   }
 }

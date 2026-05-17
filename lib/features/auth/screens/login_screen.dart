@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:awesome_dialog/awesome_dialog.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/update/update_checker.dart';
@@ -22,7 +22,6 @@ class _LoginScreenState extends State<LoginScreen> {
   final _usernameCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
   final UpdateChecker _updateChecker = UpdateChecker();
-  final _storage = const FlutterSecureStorage();
   bool _rememberMe = false;
   bool _obscure = true;
   String _appVersionLabel = 'Versi -';
@@ -38,13 +37,12 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _loadSavedCredentials() async {
     try {
-      final savedUser = await _storage.read(key: 'saved_username');
-      final savedPass = await _storage.read(key: 'saved_password');
-      if (savedUser != null && savedPass != null) {
+      final prefs = await SharedPreferences.getInstance();
+      final savedUser = prefs.getString('saved_username');
+      if (savedUser != null && savedUser.isNotEmpty) {
         if (mounted) {
           setState(() {
             _usernameCtrl.text = savedUser;
-            _passCtrl.text = savedPass;
             _rememberMe = true;
           });
         }
@@ -136,13 +134,15 @@ class _LoginScreenState extends State<LoginScreen> {
 
     final ok = await auth.login(_usernameCtrl.text.trim(), _passCtrl.text);
     if (ok && mounted) {
-      if (_rememberMe) {
-        await _storage.write(key: 'saved_username', value: _usernameCtrl.text.trim());
-        await _storage.write(key: 'saved_password', value: _passCtrl.text);
-      } else {
-        await _storage.delete(key: 'saved_username');
-        await _storage.delete(key: 'saved_password');
-      }
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        if (_rememberMe) {
+          await prefs.setString('saved_username', _usernameCtrl.text.trim());
+        } else {
+          await prefs.remove('saved_username');
+        }
+      } catch (_) {}
+      
       final userName = (auth.user?['user_nama'] as String?) ?? 'User';
       _showWelcomeDialog(userName);
     } else if (mounted) {
