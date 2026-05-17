@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:awesome_dialog/awesome_dialog.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/update/update_checker.dart';
@@ -21,6 +22,8 @@ class _LoginScreenState extends State<LoginScreen> {
   final _usernameCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
   final UpdateChecker _updateChecker = UpdateChecker();
+  final _storage = const FlutterSecureStorage();
+  bool _rememberMe = false;
   bool _obscure = true;
   String _appVersionLabel = 'Versi -';
   String _updateStatusLabel = 'Memeriksa pembaruan aplikasi...';
@@ -30,6 +33,23 @@ class _LoginScreenState extends State<LoginScreen> {
   void initState() {
     super.initState();
     _loadVersionAndUpdateStatus();
+    _loadSavedCredentials();
+  }
+
+  Future<void> _loadSavedCredentials() async {
+    try {
+      final savedUser = await _storage.read(key: 'saved_username');
+      final savedPass = await _storage.read(key: 'saved_password');
+      if (savedUser != null && savedPass != null) {
+        if (mounted) {
+          setState(() {
+            _usernameCtrl.text = savedUser;
+            _passCtrl.text = savedPass;
+            _rememberMe = true;
+          });
+        }
+      }
+    } catch (_) {}
   }
 
   Future<void> _loadVersionAndUpdateStatus() async {
@@ -116,6 +136,13 @@ class _LoginScreenState extends State<LoginScreen> {
 
     final ok = await auth.login(_usernameCtrl.text.trim(), _passCtrl.text);
     if (ok && mounted) {
+      if (_rememberMe) {
+        await _storage.write(key: 'saved_username', value: _usernameCtrl.text.trim());
+        await _storage.write(key: 'saved_password', value: _passCtrl.text);
+      } else {
+        await _storage.delete(key: 'saved_username');
+        await _storage.delete(key: 'saved_password');
+      }
       final userName = (auth.user?['user_nama'] as String?) ?? 'User';
       _showWelcomeDialog(userName);
     } else if (mounted) {
@@ -266,7 +293,45 @@ class _LoginScreenState extends State<LoginScreen> {
               validator: (v) =>
                   (v == null || v.isEmpty) ? 'Password wajib diisi' : null,
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                SizedBox(
+                  height: 24,
+                  width: 24,
+                  child: Checkbox(
+                    value: _rememberMe,
+                    onChanged: (val) {
+                      setState(() {
+                        _rememberMe = val ?? false;
+                      });
+                    },
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    activeColor: AppColors.primary,
+                    side: const BorderSide(
+                        color: AppColors.textSecondary, width: 1.5),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _rememberMe = !_rememberMe;
+                    });
+                  },
+                  child: const Text(
+                    'Ingat Saya',
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
             Consumer<AuthProvider>(
               builder: (_, auth, __) => ElevatedButton(
                 onPressed: auth.loading ? null : _submit,
