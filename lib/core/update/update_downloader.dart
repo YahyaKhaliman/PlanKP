@@ -29,8 +29,16 @@ class UpdateDownloader {
     void Function(int percent)? onProgress,
   }) async {
     try {
-      final dir = await getExternalStorageDirectory();
-      final baseDir = dir ?? await getApplicationDocumentsDirectory();
+      Directory? baseDir;
+      if (Platform.isAndroid) {
+        final dirs = await getExternalStorageDirectories(
+            type: StorageDirectory.downloads);
+        if (dirs != null && dirs.isNotEmpty) {
+          baseDir = dirs.first;
+        }
+      }
+      baseDir ??= await getExternalStorageDirectory() ??
+          await getApplicationDocumentsDirectory();
 
       final fileName = _resolveFileName(downloadUrl, versionName);
       final file = File('${baseDir.path}/$fileName');

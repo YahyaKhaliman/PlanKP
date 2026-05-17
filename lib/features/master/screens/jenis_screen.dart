@@ -459,8 +459,11 @@ class _JenisFormState extends State<_JenisForm> {
                   controller: _gapHariCtrl,
                   keyboardType: TextInputType.number,
                   decoration: const InputDecoration(
-                    labelText: 'Gap Hari Realisasi',
+                    labelText: 'Gap Hari Realisasi per Inventaris',
                     hintText: '0',
+                    helperText:
+                        'Isi 0 untuk jadwal Harian & Mingguan. Isi untuk jadwal Bulanan.',
+                    helperMaxLines: 2,
                     prefixIcon: Icon(Icons.calendar_today_outlined),
                   ),
                   validator: (v) {
