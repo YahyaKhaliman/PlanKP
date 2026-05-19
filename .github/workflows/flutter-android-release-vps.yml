@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+
   workflow_dispatch:
     inputs:
       mandatory:
@@ -26,9 +27,15 @@ jobs:
       APK_BASENAME: plan_kp
 
     steps:
+      # =========================================
+      # Checkout source
+      # =========================================
       - name: Checkout
         uses: actions/checkout@v4
 
+      # =========================================
+      # Setup Java
+      # =========================================
       - name: Setup Java 17
         uses: actions/setup-java@v4
         with:
@@ -36,6 +43,9 @@ jobs:
           java-version: "17"
           cache: gradle
 
+      # =========================================
+      # Setup Flutter
+      # =========================================
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
@@ -45,17 +55,29 @@ jobs:
       - name: Flutter version
         run: flutter --version
 
+      # =========================================
+      # Install dependencies
+      # =========================================
       - name: Install dependencies
         run: flutter pub get
 
+      # =========================================
+      # Analyze
+      # =========================================
       - name: Analyze (non-blocking)
         run: flutter analyze
         continue-on-error: true
 
+      # =========================================
+      # Test
+      # =========================================
       - name: Test (non-blocking)
         run: flutter test
         continue-on-error: true
 
+      # =========================================
+      # Prepare Android signing
+      # =========================================
       - name: Prepare Android signing
         shell: bash
         run: |
@@ -74,6 +96,9 @@ jobs:
           keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
           EOF
 
+      # =========================================
+      # Verify keystore
+      # =========================================
       - name: Verify keystore exists
         run: |
           ls -lah android/app/
@@ -85,13 +110,22 @@ jobs:
             -keystore android/app/upload-keystore.jks \
             -storepass "${{ secrets.ANDROID_KEYSTORE_PASSWORD }}"
 
+      # =========================================
+      # Build APK
+      # =========================================
       - name: Build release APK
         run: flutter build apk --release
 
+      # =========================================
+      # Verify APK signature
+      # =========================================
       - name: Verify APK signature
         run: |
           jarsigner -verify -verbose -certs build/app/outputs/flutter-apk/app-release.apk
 
+      # =========================================
+      # Prepare metadata
+      # =========================================
       - name: Prepare release metadata
         id: meta
         shell: bash
@@ -137,6 +171,9 @@ jobs:
 
           echo "apk_file=${APK_FILE}" >> "$GITHUB_OUTPUT"
 
+      # =========================================
+      # Upload to VPS
+      # =========================================
       - name: Upload APK and manifest to VPS
         uses: appleboy/scp-action@v0.1.7
         with:
@@ -146,6 +183,9 @@ jobs:
           source: "deploy/out/*"
           target: "${{ secrets.VPS_TARGET_PATH }}/incoming"
 
+      # =========================================
+      # Normalize files
+      # =========================================
       - name: Normalize release files on VPS
         uses: appleboy/ssh-action@v1.2.0
         with:
@@ -161,6 +201,9 @@ jobs:
 
             rm -rf incoming
 
+      # =========================================
+      # Keep latest 2 APKs
+      # =========================================
       - name: Keep only latest 2 APKs on VPS
         uses: appleboy/ssh-action@v1.2.0
         with:
@@ -174,6 +217,9 @@ jobs:
 
             ls -1t *.apk 2>/dev/null | tail -n +3 | xargs -r rm -f
 
+      # =========================================
+      # Publish summary
+      # =========================================
       - name: Publish summary
         run: |
           echo "APK uploaded: ${{ steps.meta.outputs.apk_file }}" >> "$GITHUB_STEP_SUMMARY"
