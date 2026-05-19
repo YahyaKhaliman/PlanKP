@@ -31,17 +31,9 @@ class UpdateDownloader {
     try {
       Directory? baseDir;
       if (Platform.isAndroid) {
-        baseDir = Directory('/storage/emulated/0/Download');
-        if (!baseDir.existsSync()) {
-          try {
-            baseDir.createSync(recursive: true);
-          } catch (_) {
-            baseDir = null; // fallback
-          }
-        }
+        baseDir = await getExternalStorageDirectory();
       }
-      baseDir ??= await getExternalStorageDirectory() ??
-          await getApplicationDocumentsDirectory();
+      baseDir ??= await getTemporaryDirectory();
 
       final fileName = _resolveFileName(downloadUrl, versionName);
       final file = File('${baseDir.path}/$fileName');
