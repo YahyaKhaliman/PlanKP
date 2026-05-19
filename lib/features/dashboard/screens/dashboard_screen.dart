@@ -640,8 +640,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 decoration: _surfaceCard(),
                                 child: const Text(
                                   'Belum ada jadwal terdaftar',
-                                  style:
-                                      TextStyle(color: AppColors.textSecondary),
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color: AppColors.textSecondary,
+                                  ),
                                 ),
                               ),
                             ),
@@ -1068,6 +1070,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ? const Center(
                       child: Text(
                         'Belum ada jadwal terdaftar',
+                        textAlign: TextAlign.center,
                         style: TextStyle(color: Colors.grey),
                       ),
                     )
