@@ -230,11 +230,14 @@ class _JadwalScreenState extends State<JadwalScreen> {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.black.withOpacity(0.05)),
-        boxShadow: const [
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.border.withValues(alpha: 0.6)),
+        boxShadow: [
           BoxShadow(
-              color: Color(0x0A000000), blurRadius: 8, offset: Offset(0, 2))
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
         ],
       ),
       child: Column(
@@ -243,18 +246,28 @@ class _JadwalScreenState extends State<JadwalScreen> {
           Row(
             children: [
               const Expanded(
-                  child: Text('Ringkasan Realisasi per Frekuensi',
-                      style: TextStyle(
-                          fontSize: 12, fontWeight: FontWeight.w700))),
+                child: Text(
+                  'Ringkasan Realisasi per Frekuensi',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ),
               if (_selectedFrekuensi != null)
                 TextButton.icon(
                   onPressed: () => setState(() => _selectedFrekuensi = null),
-                  icon: const Icon(Icons.filter_alt_off_outlined, size: 12),
-                  label: const Text('Reset', style: TextStyle(fontSize: 12)),
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppColors.primary,
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  ),
+                  icon: const Icon(Icons.filter_alt_off_rounded, size: 14),
+                  label: const Text('Reset', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
                 ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           ...summary.map((row) {
             final f = row['freq'] as String;
             final isSelected = _selectedFrekuensi == f;
@@ -263,47 +276,58 @@ class _JadwalScreenState extends State<JadwalScreen> {
               child: InkWell(
                 onTap: () =>
                     setState(() => _selectedFrekuensi = isSelected ? null : f),
+                borderRadius: BorderRadius.circular(12),
                 child: Container(
-                  padding: const EdgeInsets.all(10),
+                  padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     color: isSelected
-                        ? AppColors.primary.withOpacity(0.08)
+                        ? AppColors.primary.withValues(alpha: 0.08)
                         : const Color(0xFFF8FAFC),
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                        color: isSelected
-                            ? AppColors.primary.withOpacity(0.2)
-                            : AppColors.border),
+                      color: isSelected
+                          ? AppColors.primary.withValues(alpha: 0.2)
+                          : AppColors.border.withValues(alpha: 0.6),
+                    ),
                   ),
                   child: Row(
                     children: [
                       Container(
-                          width: 8,
-                          height: 8,
-                          decoration: BoxDecoration(
-                              color: isSelected
-                                  ? AppColors.primary
-                                  : Colors.grey[300],
-                              shape: BoxShape.circle)),
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: isSelected ? AppColors.primary : Colors.grey[300],
+                          shape: BoxShape.circle,
+                        ),
+                      ),
                       const SizedBox(width: 10),
                       Expanded(
-                          child: Text(f,
-                              style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: isSelected
-                                      ? FontWeight.bold
-                                      : FontWeight.w500))),
-                      Text('${row['realisasi']}/${row['target']}',
-                          style: const TextStyle(
-                              fontSize: 11, fontWeight: FontWeight.w600)),
-                      const SizedBox(width: 10),
-                      Text('${row['pct']}%',
+                        child: Text(
+                          f,
                           style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              color: isSelected
-                                  ? AppColors.primary
-                                  : AppColors.textPrimary)),
+                            fontSize: 13,
+                            fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                      ),
+                      Text(
+                        '${row['realisasi']}/${row['target']}',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        '${row['pct']}%',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                          color: isSelected ? AppColors.primary : AppColors.textPrimary,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -523,9 +547,24 @@ class _InventarisPickerSheetState extends State<_InventarisPickerSheet> {
               ),
               const SizedBox(height: 10),
               TextField(
-                decoration: const InputDecoration(
-                  hintText: 'Cari no inventaris, nama, atau PIC',
-                  prefixIcon: Icon(Icons.search),
+                decoration: InputDecoration(
+                  hintText: 'Cari no inventaris, nama, atau PIC...',
+                  prefixIcon: const Icon(Icons.search, size: 20, color: AppColors.textSecondary),
+                  filled: true,
+                  fillColor: Colors.white,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide.none,
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide.none,
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+                  ),
                 ),
                 onChanged: (value) {
                   setState(() => searchQuery = value);
@@ -694,100 +733,154 @@ class _JadwalCard extends StatelessWidget {
     final selesai = jadwal.jdwSelesaiUnit ?? 0;
     final pct = target > 0 ? (selesai / target * 100) : 0;
 
-    return Card(
-      margin: EdgeInsets.zero,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      elevation: 4,
-      shadowColor: Colors.black.withValues(alpha: 0.12),
-      surfaceTintColor: Colors.white,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                        color: AppColors.primary.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12)),
-                    child: const Icon(Icons.event_note,
-                        color: AppColors.primary, size: 20),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(jadwal.jdwJudul,
-                            style: const TextStyle(
-                                fontWeight: FontWeight.bold, fontSize: 15)),
-                        Text('$jenisNama · ${jadwal.jdwFrekuensi}',
-                            style: const TextStyle(
-                                fontSize: 12, color: AppColors.textSecondary)),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              LinearProgressIndicator(
-                  value: target > 0 ? (selesai / target).clamp(0.0, 1.0) : 0,
-                  minHeight: 6,
-                  borderRadius: BorderRadius.circular(10)),
-              const SizedBox(height: 8),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text('$selesai/$target Unit',
-                      style: const TextStyle(
-                          fontSize: 11, fontWeight: FontWeight.bold)),
-                  Text('${pct.round()}% Capaian',
-                      style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: pct >= 100
-                              ? AppColors.success
-                              : AppColors.primary)),
-                ],
-              ),
-              if (isUser) ...[
-                const SizedBox(height: 10),
-                _actionBtn(
-                  Icons.playlist_add_check_circle_outlined,
-                  'Lakukan Realisasi',
-                  AppColors.primary,
-                  onTap,
-                ),
-              ],
-              if (isAdmin) ...[
-                const Divider(height: 24),
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.border.withValues(alpha: 0.6)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(20),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    TextButton.icon(
-                        onPressed: onEdit,
-                        icon: const Icon(Icons.edit,
-                            size: 14, color: AppColors.warning),
-                        label: const Text('Edit',
-                            style: TextStyle(
-                                fontSize: 12, color: AppColors.warning))),
-                    TextButton.icon(
-                        onPressed: onDelete,
-                        icon: const Icon(Icons.delete,
-                            size: 14, color: AppColors.danger),
-                        label: const Text('Hapus',
-                            style: TextStyle(
-                                fontSize: 12, color: AppColors.danger))),
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(Icons.event_note_rounded,
+                          color: AppColors.primary, size: 20),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            jadwal.jdwJudul,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 15,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '$jenisNama · ${jadwal.jdwFrekuensi}',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: AppColors.textSecondary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ],
-                )
-              ]
-            ],
+                ),
+                const SizedBox(height: 14),
+                LinearProgressIndicator(
+                  value: target > 0 ? (selesai / target).clamp(0.0, 1.0) : 0,
+                  minHeight: 8,
+                  backgroundColor: AppColors.primary.withValues(alpha: 0.08),
+                  color: pct >= 100 ? AppColors.success : AppColors.primary,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      '$selesai/$target Unit',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    Text(
+                      '${pct.round()}% Capaian',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        color: pct >= 100
+                            ? AppColors.success
+                            : AppColors.primary,
+                      ),
+                    ),
+                  ],
+                ),
+                if (isUser) ...[
+                  const SizedBox(height: 14),
+                  _actionBtn(
+                    Icons.playlist_add_check_circle_outlined,
+                    'Lakukan Realisasi',
+                    AppColors.primary,
+                    onTap,
+                  ),
+                ],
+                if (isAdmin) ...[
+                  const Padding(
+                    padding: EdgeInsets.only(top: 12),
+                    child: Divider(height: 1, color: AppColors.border),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton.icon(
+                        onPressed: onEdit,
+                        style: TextButton.styleFrom(
+                          foregroundColor: AppColors.warning,
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        icon: const Icon(Icons.edit_rounded, size: 14),
+                        label: const Text(
+                          'Edit',
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      TextButton.icon(
+                        onPressed: onDelete,
+                        style: TextButton.styleFrom(
+                          foregroundColor: AppColors.danger,
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        icon: const Icon(Icons.delete_rounded, size: 14),
+                        label: const Text(
+                          'Hapus',
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                    ],
+                  )
+                ]
+              ],
+            ),
           ),
         ),
       ),
@@ -800,23 +893,24 @@ class _JadwalCard extends StatelessWidget {
       width: double.infinity,
       child: FilledButton.icon(
         onPressed: onPressed,
-        icon: Icon(icon, size: 18),
+        icon: Icon(icon, size: 16),
         label: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
               label,
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800),
             ),
-            const SizedBox(width: 6),
-            const Icon(Icons.arrow_forward_rounded, size: 16),
+            const SizedBox(width: 4),
+            const Icon(Icons.arrow_forward_rounded, size: 14),
           ],
         ),
         style: FilledButton.styleFrom(
           backgroundColor: color,
           foregroundColor: Colors.white,
-          minimumSize: const Size.fromHeight(42),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          elevation: 0,
+          minimumSize: const Size.fromHeight(40),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),

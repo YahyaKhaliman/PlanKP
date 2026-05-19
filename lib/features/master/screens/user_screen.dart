@@ -104,28 +104,48 @@ class _UserScreenState extends State<UserScreen> {
               width: maxContentWidth,
               child: Column(children: [
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                  child: Card(
-                    margin: EdgeInsets.zero,
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.02),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
                     child: TextField(
                       controller: _searchCtrl,
                       decoration: InputDecoration(
                         hintText: 'Cari nama atau NIK...',
-                        prefixIcon: const Icon(Icons.search, size: 20),
+                        prefixIcon: const Icon(Icons.search, size: 20, color: AppColors.textSecondary),
                         suffixIcon: _searchQuery.isNotEmpty
                             ? IconButton(
-                                icon: const Icon(Icons.clear_outlined),
+                                icon: const Icon(Icons.clear_rounded, color: AppColors.textSecondary),
                                 onPressed: () {
                                   _searchCtrl.clear();
                                   setState(() => _searchQuery = '');
                                 },
                               )
                             : null,
-                        contentPadding:
-                            const EdgeInsets.symmetric(vertical: 12),
-                        border: InputBorder.none,
-                        enabledBorder: InputBorder.none,
-                        focusedBorder: InputBorder.none,
+                        filled: true,
+                        fillColor: Colors.white,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: const BorderSide(color: AppColors.border),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: const BorderSide(color: AppColors.border),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+                        ),
                       ),
                     ),
                   ),
@@ -178,55 +198,82 @@ class _UserScreenState extends State<UserScreen> {
                             margin: EdgeInsets.zero,
                             decoration: BoxDecoration(
                               color: Colors.white,
-                              borderRadius: BorderRadius.circular(16),
+                              borderRadius: BorderRadius.circular(20),
                               border: Border.all(
-                                  color: Colors.black.withValues(alpha: 0.04)),
+                                  color: AppColors.border.withValues(alpha: 0.6)),
                               boxShadow: [
                                 BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.03),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 2)),
+                                    color: Colors.black.withValues(alpha: 0.02),
+                                    blurRadius: 12,
+                                    offset: const Offset(0, 4)),
                               ],
                             ),
                             child: ListTile(
                               contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 6),
-                              leading: CircleAvatar(
-                                backgroundColor:
-                                    AppColors.primary.withValues(alpha: 0.1),
-                                child: Text(user.userNama[0].toUpperCase(),
+                                  horizontal: 16, vertical: 8),
+                              leading: Container(
+                                width: 44,
+                                height: 44,
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary.withValues(alpha: 0.08),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    user.userNama.isNotEmpty
+                                        ? user.userNama[0].toUpperCase()
+                                        : 'U',
                                     style: const TextStyle(
-                                        color: AppColors.primary,
-                                        fontWeight: FontWeight.w600)),
+                                      color: AppColors.primary,
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                ),
                               ),
-                              title: Text(user.userNama,
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 14)),
+                              title: Text(
+                                user.userNama,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 14.5,
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
                               subtitle: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text('NIK: ${user.userNik}',
-                                        style: const TextStyle(
-                                            fontSize: 12,
-                                            color: AppColors.textSecondary)),
-                                    Row(children: [
-                                      _JabatanBadge(user.jabatanLabel),
-                                      if (isCurrentUser) ...[
-                                        const SizedBox(width: 6),
-                                        const _SelfBadge(),
-                                      ],
-                                      const SizedBox(width: 6),
-                                      _StatusBadge(isActive: user.aktif),
-                                      if (user.userCabang != null) ...[
-                                        const SizedBox(width: 6),
-                                        Text(p.displayPabrik(user.userCabang),
-                                            style: const TextStyle(
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      'NIK: ${user.userNik}',
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: AppColors.textSecondary,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Wrap(
+                                      spacing: 6,
+                                      runSpacing: 4,
+                                      crossAxisAlignment: WrapCrossAlignment.center,
+                                      children: [
+                                        _JabatanBadge(user.jabatanLabel),
+                                        if (isCurrentUser) const _SelfBadge(),
+                                        _StatusBadge(isActive: user.aktif),
+                                        if (user.userCabang != null)
+                                          Padding(
+                                            padding: const EdgeInsets.only(left: 2),
+                                            child: Text(
+                                              p.displayPabrik(user.userCabang),
+                                              style: const TextStyle(
                                                 fontSize: 11,
-                                                color:
-                                                    AppColors.textSecondary)),
+                                                fontWeight: FontWeight.w700,
+                                                color: AppColors.textSecondary,
+                                              ),
+                                            ),
+                                          ),
                                       ],
-                                    ]),
+                                    ),
                                   ]),
                               trailing: Row(
                                   mainAxisSize: MainAxisSize.min,
@@ -238,10 +285,19 @@ class _UserScreenState extends State<UserScreen> {
                                         onChanged: () =>
                                             _toggleUserStatus(p, user),
                                       ),
+                                    const SizedBox(width: 4),
                                     IconButton(
-                                        icon: const Icon(Icons.edit_outlined,
-                                            size: 18),
-                                        onPressed: () => _openForm(user)),
+                                      icon: const Icon(Icons.edit_rounded,
+                                          size: 18, color: AppColors.warning),
+                                      onPressed: () => _openForm(user),
+                                      style: IconButton.styleFrom(
+                                        backgroundColor: AppColors.warning.withValues(alpha: 0.08),
+                                        padding: const EdgeInsets.all(8),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(10),
+                                        ),
+                                      ),
+                                    ),
                                   ]),
                             ),
                           );
@@ -266,12 +322,12 @@ class _JabatanBadge extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
         decoration: BoxDecoration(
-            color: AppColors.primary.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(6)),
+            color: AppColors.primary.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(8)),
         child: Text(label,
             style: const TextStyle(
                 fontSize: 11,
-                fontWeight: FontWeight.w500,
+                fontWeight: FontWeight.w700,
                 color: AppColors.primary)),
       );
 }
@@ -283,15 +339,15 @@ class _SelfBadge extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
         decoration: BoxDecoration(
-          color: Colors.amber.withValues(alpha: 0.16),
-          borderRadius: BorderRadius.circular(6),
+          color: Colors.amber.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(8),
         ),
         child: const Text(
           'Akun saya',
           style: TextStyle(
             fontSize: 11,
-            fontWeight: FontWeight.w600,
-            color: Color(0xFF92400E),
+            fontWeight: FontWeight.w700,
+            color: Color(0xFFB45309),
           ),
         ),
       );
@@ -311,13 +367,13 @@ class _StatusBadge extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
       decoration: BoxDecoration(
         color: bg,
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Text(
         isActive ? 'Aktif' : 'Nonaktif',
         style: TextStyle(
           fontSize: 11,
-          fontWeight: FontWeight.w500,
+          fontWeight: FontWeight.w700,
           color: fg,
         ),
       ),
