@@ -119,9 +119,13 @@ class _MainAppWrapperState extends State<MainAppWrapper> with WidgetsBindingObse
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    // Pemicu 1: Cek saat startup pertama kali
+    // Pemicu 1: Cek saat startup pertama kali (dengan delay 1.5s agar tidak bentrok dengan redirect _AuthGate)
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _triggerUpdateCheck();
+      Future.delayed(const Duration(milliseconds: 1500), () {
+        if (mounted) {
+          _triggerUpdateCheck();
+        }
+      });
     });
   }
 
