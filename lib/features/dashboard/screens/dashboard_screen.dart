@@ -737,7 +737,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final steps = [
       {
         't': '1. Jenis',
-        'd': 'Input Jenis Aset',
+        'd': 'Input Jenis Inv',
         'i': Icons.category,
         'c': Colors.teal,
         's': const JenisScreen()
@@ -858,74 +858,192 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void _showSystemFlowInfoDialog(BuildContext context) {
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        titlePadding: const EdgeInsets.fromLTRB(20, 18, 20, 8),
-        contentPadding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
-        title: const Text(
-          'Panduan Cepat',
-          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Alur penggunaan sistem:',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textSecondary,
+      builder: (_) => Dialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        elevation: 0,
+        child: Container(
+          width: 380,
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.auto_awesome_rounded,
+                      color: AppColors.primary,
+                      size: 22,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  const Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Panduan Cepat',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      Text(
+                        'Alur Penggunaan Sistem PlanKP',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
-            ),
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 6,
-              runSpacing: 8,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                _flowChip('Input jenis', Colors.teal),
-                const Icon(Icons.arrow_forward_rounded,
-                    size: 14, color: AppColors.textSecondary),
-                _flowChip('Input inventaris', Colors.purple),
-                const Icon(Icons.arrow_forward_rounded,
-                    size: 14, color: AppColors.textSecondary),
-                _flowChip('Input checklist', Colors.redAccent),
-                const Icon(Icons.arrow_forward_rounded,
-                    size: 14, color: AppColors.textSecondary),
-                _flowChip('Input jadwal', AppColors.primary),
-                const Icon(Icons.arrow_forward_rounded,
-                    size: 14, color: AppColors.textSecondary),
-                _flowChip('Lihat realisasi', Colors.green.shade700),
-              ],
-            ),
-          ],
-        ),
-        actionsPadding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Mengerti'),
+              const SizedBox(height: 24),
+              _buildTimelineStep(
+                '01',
+                'Input Jenis',
+                'Daftarkan jenis inventaris.',
+                Colors.teal,
+                isLast: false,
+              ),
+              _buildTimelineStep(
+                '02',
+                'Input Inventaris',
+                'Tambahkan unit inventaris pada jenis inventaris.',
+                Colors.purple,
+                isLast: false,
+              ),
+              _buildTimelineStep(
+                '03',
+                'Buat Template Checklist',
+                'Tentukan poin pemeriksaan setiap jenis inventaris.',
+                Colors.redAccent,
+                isLast: false,
+              ),
+              _buildTimelineStep(
+                '04',
+                'Buat Jadwal Maintenance',
+                'Atur frekuensi & jenis inventaris untuk di maintenance.',
+                AppColors.primary,
+                isLast: false,
+              ),
+              _buildTimelineStep(
+                '05',
+                'Realisasi',
+                'Pantau performa Realisasi Maintenance.',
+                Colors.green.shade700,
+                isLast: true,
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  child: const Text(
+                    'Saya Mengerti',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
 
-  Widget _flowChip(String text, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-          color: color,
-        ),
+  Widget _buildTimelineStep(
+    String number,
+    String title,
+    String description,
+    Color color, {
+    required bool isLast,
+  }) {
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Column(
+            children: [
+              Container(
+                width: 24,
+                height: 24,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.08),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                      color: color.withValues(alpha: 0.4), width: 1.5),
+                ),
+                child: Center(
+                  child: Text(
+                    number,
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w900,
+                      color: color,
+                    ),
+                  ),
+                ),
+              ),
+              if (!isLast)
+                Expanded(
+                  child: Container(
+                    width: 2,
+                    margin: const EdgeInsets.symmetric(vertical: 4),
+                    color: AppColors.border.withValues(alpha: 0.8),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  description,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
