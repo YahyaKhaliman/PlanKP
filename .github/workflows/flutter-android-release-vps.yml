@@ -21,9 +21,10 @@ concurrency:
 jobs:
   build-and-upload:
     runs-on: ubuntu-latest
+
     env:
       APK_BASENAME: plan_kp
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -35,11 +36,14 @@ jobs:
           java-version: "17"
           cache: gradle
 
-      - name: Setup Flutter (stable)
+      - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: stable
           cache: true
+
+      - name: Flutter version
+        run: flutter --version
 
       - name: Install dependencies
         run: flutter pub get
@@ -52,12 +56,15 @@ jobs:
         run: flutter test
         continue-on-error: true
 
-      - name: Prepare Android signing from secrets
+      - name: Prepare Android signing
         shell: bash
         run: |
           set -euo pipefail
 
+          mkdir -p android/app
+
           echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/app/upload-keystore.jks
+
           test -s android/app/upload-keystore.jks
 
           cat > android/key.properties <<EOF
@@ -67,12 +74,23 @@ jobs:
           keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
           EOF
 
+      - name: Verify keystore exists
+        run: |
+          ls -lah android/app/
+          file android/app/upload-keystore.jks
+
+      - name: Verify keystore content
+        run: |
+          keytool -list -v \
+            -keystore android/app/upload-keystore.jks \
+            -storepass "${{ secrets.ANDROID_KEYSTORE_PASSWORD }}"
+
       - name: Build release APK
         run: flutter build apk --release
 
       - name: Verify APK signature
         run: |
-          keytool -printcert -jarfile build/app/outputs/flutter-apk/app-release.apk
+          jarsigner -verify -verbose -certs build/app/outputs/flutter-apk/app-release.apk
 
       - name: Prepare release metadata
         id: meta
@@ -81,22 +99,28 @@ jobs:
           set -euo pipefail
 
           APP_VERSION=$(grep '^version:' pubspec.yaml | head -n1 | awk '{print $2}')
+
           VERSION_NAME="${APP_VERSION%%+*}"
           BUILD_NUMBER="${APP_VERSION##*+}"
+
           if [ "${VERSION_NAME}" = "${APP_VERSION}" ]; then
             BUILD_NUMBER="0"
           fi
 
           SHORT_SHA=$(echo "${GITHUB_SHA}" | cut -c1-7)
+
           APK_FILE="${APK_BASENAME}-v${VERSION_NAME}+${BUILD_NUMBER}-${SHORT_SHA}.apk"
+
           SHA256=$(sha256sum build/app/outputs/flutter-apk/app-release.apk | awk '{print $1}')
 
           MANDATORY_INPUT="${{ github.event.inputs.mandatory }}"
+
           if [ -z "${MANDATORY_INPUT}" ]; then
             MANDATORY_INPUT="false"
           fi
 
           mkdir -p deploy/out
+
           cp build/app/outputs/flutter-apk/app-release.apk "deploy/out/${APK_FILE}"
 
           cat > deploy/out/latest.json <<EOF
@@ -130,14 +154,14 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
             set -e
+
             cd "${{ secrets.VPS_TARGET_PATH }}"
 
-            # Move generated APK/latest.json from incoming tree to releases root.
-            # Do not rely on APK_BASENAME here (remote shell env may not have it).
             find incoming -type f \( -name "*.apk" -o -name "latest.json" \) -exec mv -f {} . \;
+
             rm -rf incoming
 
-      - name: Keep only latest 2 APKs on VPS (retention)
+      - name: Keep only latest 2 APKs on VPS
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.VPS_HOST }}
@@ -145,12 +169,12 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
             set -e
+
             cd "${{ secrets.VPS_TARGET_PATH }}"
 
             ls -1t *.apk 2>/dev/null | tail -n +3 | xargs -r rm -f
 
       - name: Publish summary
-        shell: bash
         run: |
           echo "APK uploaded: ${{ steps.meta.outputs.apk_file }}" >> "$GITHUB_STEP_SUMMARY"
           echo "Manifest updated: latest.json" >> "$GITHUB_STEP_SUMMARY"
