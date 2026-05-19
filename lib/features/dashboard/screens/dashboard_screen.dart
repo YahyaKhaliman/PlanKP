@@ -635,7 +635,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text("Jadwal Mendatang",
+                            const Text("Daftar Jadwal",
                                 style: TextStyle(
                                     fontSize: 16, fontWeight: FontWeight.bold)),
                             TextButton(
