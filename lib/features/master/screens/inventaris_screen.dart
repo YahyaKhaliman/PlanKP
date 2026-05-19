@@ -107,19 +107,39 @@ class _InventarisScreenState extends State<InventarisScreen> {
                   child: Column(
                     children: [
                       Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                        child: Card(
-                          margin: EdgeInsets.zero,
+                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.02),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
                           child: TextField(
                             controller: _search,
-                            decoration: const InputDecoration(
+                            decoration: InputDecoration(
                               hintText: 'Cari nama inventaris...',
-                              prefixIcon: Icon(Icons.search, size: 20),
-                              contentPadding:
-                                  EdgeInsets.symmetric(vertical: 12),
-                              border: InputBorder.none,
-                              enabledBorder: InputBorder.none,
-                              focusedBorder: InputBorder.none,
+                              prefixIcon: const Icon(Icons.search, size: 20, color: AppColors.textSecondary),
+                              filled: true,
+                              fillColor: Colors.white,
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                borderSide: const BorderSide(color: AppColors.border),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                borderSide: const BorderSide(color: AppColors.border),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+                              ),
                             ),
                             onChanged: _onSearchChanged,
                           ),
@@ -284,84 +304,114 @@ class _InventarisGroupCardState extends State<_InventarisGroupCard>
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.black.withValues(alpha: 0.04)),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.border.withValues(alpha: 0.6)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
       child: Column(
         children: [
           InkWell(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+            borderRadius: BorderRadius.circular(20),
             onTap: widget.onToggle,
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: Row(children: [
-                const Icon(Icons.label_outline,
-                    size: 18, color: AppColors.primary),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    widget.jenisNama,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 15,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                ),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Text(
-                    '${widget.items.length} item',
-                    style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w500,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                InkWell(
-                  onTap: () => widget.onAddItem(widget.jenisId),
-                  borderRadius: BorderRadius.circular(20),
-                  child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              padding: const EdgeInsets.all(14),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(20),
+                      color: AppColors.primary.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Row(mainAxisSize: MainAxisSize.min, children: [
-                      Icon(Icons.add, size: 16, color: AppColors.primary),
-                      SizedBox(width: 4),
-                      Text('Tambah',
-                          style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.primary)),
-                    ]),
+                    child: const Icon(Icons.folder_open_rounded,
+                        size: 20, color: AppColors.primary),
                   ),
-                ),
-                const SizedBox(width: 4),
-                RotationTransition(
-                  turns: _iconTurns,
-                  child: const Icon(
-                    Icons.expand_more,
-                    color: AppColors.textSecondary,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          widget.jenisNama,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 15,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          widget.kategoriLabel.toUpperCase(),
+                          style: const TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.textSecondary,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ]),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppColors.primarySoft,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      '${widget.items.length} item',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  InkWell(
+                    onTap: () => widget.onAddItem(widget.jenisId),
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.add, size: 14, color: Colors.white),
+                          SizedBox(width: 4),
+                          Text(
+                            'Tambah',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  RotationTransition(
+                    turns: _iconTurns,
+                    child: const Icon(
+                      Icons.expand_more_rounded,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
           ClipRect(
@@ -372,7 +422,8 @@ class _InventarisGroupCardState extends State<_InventarisGroupCard>
               child: widget.expanded
                   ? Column(
                       children: [
-                        const Divider(height: 1),
+                        const Divider(height: 1, color: AppColors.border),
+                        const SizedBox(height: 4),
                         ...widget.items.map(
                           (item) => _InventarisCard(
                             item: item,
@@ -381,6 +432,7 @@ class _InventarisGroupCardState extends State<_InventarisGroupCard>
                             onEdit: () => widget.onEditItem(item),
                           ),
                         ),
+                        const SizedBox(height: 12),
                       ],
                     )
                   : const SizedBox.shrink(),
@@ -402,80 +454,137 @@ class _InventarisCard extends StatelessWidget {
     required this.onEdit,
   });
 
-  static const _kondisiColor = {
-    'Baik (Sering digunakan)': AppColors.success,
-    'Baik (Jarang digunakan)': AppColors.success,
-    'Perlu Perhatian': Colors.orange,
-    'Rusak': AppColors.danger,
-  };
+
+
+  Color _kategoriColor(String k) {
+    switch (k.toUpperCase()) {
+      case 'IT':
+        return const Color(0xFF10B981);
+      case 'DRIVER':
+        return const Color(0xFF3B82F6);
+      case 'GA':
+        return const Color(0xFFF59E0B);
+      default:
+        return const Color(0xFF8B5CF6);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final kondisiColor = _kondisiColor[item.invKondisi] ?? AppColors.success;
-    final subtitleParts = [item.invNo];
-    if (item.invPabrikKode != null) subtitleParts.add(pabrikLabel);
     final merkRaw = item.invMerk?.trim() ?? '';
     final picRaw = item.invPic?.trim() ?? '';
     final merk = merkRaw.isEmpty ? '-' : merkRaw;
     final pic = picRaw.isEmpty ? '-' : picRaw;
-    return ListTile(
-      dense: true,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      leading: Container(
-        width: 30,
-        height: 30,
-        decoration: BoxDecoration(
-          color: AppColors.bgGray,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Center(
-          child: Icon(_kategoriIcon(item.invKategori),
-              size: 16, color: AppColors.textSecondary),
-        ),
+
+    Color badgeBg;
+    Color badgeText;
+    if (item.invKondisi.contains('Rusak')) {
+      badgeBg = AppColors.danger.withValues(alpha: 0.08);
+      badgeText = AppColors.danger;
+    } else if (item.invKondisi.contains('Perhatian')) {
+      badgeBg = AppColors.warning.withValues(alpha: 0.08);
+      badgeText = AppColors.warning;
+    } else {
+      badgeBg = AppColors.success.withValues(alpha: 0.08);
+      badgeText = AppColors.success;
+    }
+
+    final categoryIcon = _kategoriIcon(item.invKategori);
+    final categoryColor = _kategoriColor(item.invKategori);
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.border.withValues(alpha: 0.5)),
       ),
-      title: Text(item.invNama,
-          style: const TextStyle(fontWeight: FontWeight.w600)),
-      subtitle: Padding(
-        padding: const EdgeInsets.only(top: 2),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              subtitleParts.join(' · '),
-              style: const TextStyle(fontSize: 12),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: categoryColor.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(10),
             ),
-            const SizedBox(height: 2),
-            Text(
-              'Merk: $merk · PIC: $pic',
-              style: const TextStyle(
-                fontSize: 11,
-                color: AppColors.textSecondary,
-                fontWeight: FontWeight.w500,
-              ),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-        ),
-      ),
-      trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-          decoration: BoxDecoration(
-            color: kondisiColor.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(6),
+            child: Icon(categoryIcon, size: 20, color: categoryColor),
           ),
-          child: Text(item.invKondisi,
-              style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w500,
-                  color: kondisiColor)),
-        ),
-        IconButton(
-          icon: const Icon(Icons.edit_outlined,
-              size: 18, color: AppColors.textSecondary),
-          onPressed: onEdit,
-        ),
-      ]),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  item.invNama,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 14,
+                    color: AppColors.textPrimary,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  'No: ${item.invNo}${item.invPabrikKode != null ? ' · $pabrikLabel' : ''}',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Row(
+                  children: [
+                    Icon(Icons.info_outline, size: 12, color: AppColors.textSecondary.withValues(alpha: 0.7)),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        'Merk: $merk · PIC: $pic',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: AppColors.textSecondary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: badgeBg,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  item.invKondisi.contains('Sering') ? 'Baik (Sering)' : (item.invKondisi.contains('Jarang') ? 'Baik (Jarang)' : item.invKondisi),
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    color: badgeText,
+                  ),
+                ),
+              ),
+              IconButton(
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                icon: const Icon(Icons.edit_outlined, size: 18, color: AppColors.textSecondary),
+                onPressed: onEdit,
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 

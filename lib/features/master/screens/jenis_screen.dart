@@ -91,19 +91,39 @@ class _JenisScreenState extends State<JenisScreen> {
                   child: Column(
                     children: [
                       Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                        child: Card(
-                          margin: EdgeInsets.zero,
+                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.02),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
                           child: TextField(
                             controller: _searchCtrl,
-                            decoration: const InputDecoration(
+                            decoration: InputDecoration(
                               hintText: 'Cari nama atau kategori jenis...',
-                              prefixIcon: Icon(Icons.search, size: 20),
-                              contentPadding:
-                                  EdgeInsets.symmetric(vertical: 12),
-                              border: InputBorder.none,
-                              enabledBorder: InputBorder.none,
-                              focusedBorder: InputBorder.none,
+                              prefixIcon: const Icon(Icons.search, size: 20, color: AppColors.textSecondary),
+                              filled: true,
+                              fillColor: Colors.white,
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                borderSide: const BorderSide(color: AppColors.border),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                borderSide: const BorderSide(color: AppColors.border),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+                              ),
                             ),
                             onChanged: (_) => setState(() {}),
                           ),
@@ -149,88 +169,114 @@ class _JenisCard extends StatelessWidget {
     required this.onEdit,
   });
 
+  Color _kategoriColor(String k) {
+    switch (k.toUpperCase()) {
+      case 'IT':
+        return const Color(0xFF10B981);
+      case 'DRIVER':
+        return const Color(0xFF3B82F6);
+      case 'GA':
+        return const Color(0xFFF59E0B);
+      default:
+        return const Color(0xFF8B5CF6);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final activeColor =
         jenis.jenisIsActive ? AppColors.success : AppColors.textSecondary;
-    return Card(
-      margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Row(
-          children: [
-            Container(
-              width: 42,
-              height: 42,
-              decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(Icons.category_outlined,
-                  color: AppColors.primary, size: 22),
+    final activeBg =
+        jenis.jenisIsActive ? AppColors.success.withValues(alpha: 0.08) : Colors.grey.shade100;
+
+    final categoryColor = _kategoriColor(jenis.jenisKategori);
+    final categoryBg = categoryColor.withValues(alpha: 0.08);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border.withValues(alpha: 0.5)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(14),
+      child: Row(
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: categoryBg,
+              borderRadius: BorderRadius.circular(12),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    jenis.jenisNama,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w700, fontSize: 14),
+            child: Icon(Icons.category_outlined, color: categoryColor, size: 22),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  jenis.jenisNama,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 14,
+                    color: AppColors.textPrimary,
                   ),
-                  const SizedBox(height: 4),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 6,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.08),
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: Text(
-                          jenis.jenisKategori,
-                          style: const TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.primary,
-                          ),
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: categoryBg,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        jenis.jenisKategori,
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          color: categoryColor,
                         ),
                       ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: activeColor.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: Text(
-                          jenis.jenisIsActive ? 'Aktif' : 'Nonaktif',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: activeColor,
-                          ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: activeBg,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        jenis.jenisIsActive ? 'Aktif' : 'Nonaktif',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          color: activeColor,
                         ),
                       ),
-                    ],
-                  ),
-                ],
-              ),
+                    ),
+                  ],
+                ),
+              ],
             ),
-            const SizedBox(width: 8),
-            IconButton(
-              icon: const Icon(Icons.edit_outlined,
-                  color: AppColors.textSecondary),
-              onPressed: onEdit,
-            ),
-          ],
-        ),
+          ),
+          const SizedBox(width: 8),
+          IconButton(
+            icon: const Icon(Icons.edit_outlined, color: AppColors.textSecondary),
+            onPressed: onEdit,
+          ),
+        ],
       ),
     );
   }
