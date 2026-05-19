@@ -307,8 +307,9 @@ class JadwalProvider extends ChangeNotifier {
         if (byDivisi) 'by_divisi': true,
       };
       final res = await ApiClient.get(ApiConfig.realisasi, query: query);
-      realisasiList =
-          (res['data'] as List).map((e) => RealisasiModel.fromJson(e)).toList();
+      realisasiList = ((res['data']['items'] ?? res['data']) as List)
+          .map((e) => RealisasiModel.fromJson(e))
+          .toList();
       _setError(null);
     } on ApiException catch (e) {
       _setError(e.message);
@@ -328,7 +329,7 @@ class JadwalProvider extends ChangeNotifier {
         if (status != null) 'status': status,
       };
       final res = await ApiClient.get(ApiConfig.realisasi, query: query);
-      return (res['data'] as List)
+      return ((res['data']['items'] ?? res['data']) as List)
           .map((e) => RealisasiModel.fromJson(e))
           .toList();
     } on ApiException {

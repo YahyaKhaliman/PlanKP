@@ -33,8 +33,14 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
 
   Future<void> _loadDetailData() async {
     final provider = context.read<JadwalProvider>();
+    final master = context.read<MasterProvider>();
+    
     await provider.fetchJadwalDetail(widget.jadwalId);
     await provider.fetchRealisasi(jadwalId: widget.jadwalId, status: 'Selesai');
+    
+    if (master.jenisMaster.isEmpty) {
+      await master.fetchJenis();
+    }
   }
 
   Future<void> _openRealisasiDetail(RealisasiModel item) async {
@@ -81,7 +87,8 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
             return const EmptyState(message: 'Detail jadwal tidak ditemukan');
           }
 
-          final jenisNama = master.jenisById(jadwal.jdwJenisId)?.jenisNama ??
+          final jenisNama = jadwal.jdwInvJenis ??
+              master.jenisById(jadwal.jdwJenisId)?.jenisNama ??
               'ID ${jadwal.jdwJenisId}';
           final targetUnit = jadwal.jdwTarget ?? jadwal.jdwTotalUnit ?? 0;
           final selesaiUnit = jadwal.jdwSelesaiUnit ?? 0;
