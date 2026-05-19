@@ -61,7 +61,7 @@ jobs:
           test -s android/app/upload-keystore.jks
 
           cat > android/key.properties <<EOF
-          storeFile=app/upload-keystore.jks
+          storeFile=upload-keystore.jks
           storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}
           keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
