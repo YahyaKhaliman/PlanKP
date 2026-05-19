@@ -8,6 +8,7 @@ import '../../../core/constants/app_constants.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../../core/widgets/app_notifier.dart';
 import '../../../core/widgets/empty_state.dart';
+import '../../../core/widgets/shimmer_loading.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../../features/master/providers/master_provider.dart';
 import '../../../features/master/widgets/jenis_lookup_sheet.dart';
@@ -335,8 +336,22 @@ class _JadwalScreenState extends State<JadwalScreen> {
           : null,
       body: Consumer<JadwalProvider>(
         builder: (_, p, __) {
-          if (p.loading)
-            return const Center(child: CircularProgressIndicator());
+          if (p.loading) {
+            return const AppShimmer(
+              child: SingleChildScrollView(
+                physics: NeverScrollableScrollPhysics(),
+                padding: EdgeInsets.fromLTRB(16, 16, 16, 120),
+                child: Column(
+                  children: [
+                    AppSkeletonListCard(),
+                    AppSkeletonListCard(),
+                    AppSkeletonListCard(),
+                    AppSkeletonListCard(),
+                  ],
+                ),
+              ),
+            );
+          }
 
           final jadwalAktif =
               p.jadwalList.where((j) => j.jdwStatus == 'Draft').toList();

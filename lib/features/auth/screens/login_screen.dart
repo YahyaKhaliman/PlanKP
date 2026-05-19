@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:awesome_dialog/awesome_dialog.dart';
@@ -161,6 +162,7 @@ class _LoginScreenState extends State<LoginScreen> {
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
             padding: const EdgeInsets.all(20),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 1040),
@@ -228,6 +230,11 @@ class _LoginScreenState extends State<LoginScreen> {
             child: Image.asset(
               'assets/images/logo.png',
               fit: BoxFit.contain,
+              errorBuilder: (_, __, ___) => const Icon(
+                Icons.precision_manufacturing_rounded,
+                color: Colors.white,
+                size: 48,
+              ),
             ),
           ),
           const SizedBox(height: 18),
@@ -247,16 +254,16 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Widget _buildLoginCard(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(32),
+      padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 32),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: AppColors.border.withValues(alpha: 0.8)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 16,
-            offset: const Offset(0, 6),
+            color: Colors.black.withValues(alpha: 0.025),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
@@ -273,7 +280,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 color: AppColors.textPrimary,
               ),
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 24),
             _buildInputField(
               controller: _usernameCtrl,
               label: 'Username',
@@ -293,12 +300,12 @@ class _LoginScreenState extends State<LoginScreen> {
               validator: (v) =>
                   (v == null || v.isEmpty) ? 'Password wajib diisi' : null,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 14),
             Row(
               children: [
                 SizedBox(
-                  height: 24,
-                  width: 24,
+                  height: 22,
+                  width: 22,
                   child: Checkbox(
                     value: _rememberMe,
                     onChanged: (val) {
@@ -307,14 +314,13 @@ class _LoginScreenState extends State<LoginScreen> {
                       });
                     },
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(4),
+                      borderRadius: BorderRadius.circular(6),
                     ),
                     activeColor: AppColors.primary,
-                    side: const BorderSide(
-                        color: AppColors.textSecondary, width: 1.5),
+                    side: const BorderSide(color: AppColors.border, width: 1.5),
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 10),
                 GestureDetector(
                   onTap: () {
                     setState(() {
@@ -325,6 +331,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     'Ingat Saya',
                     style: TextStyle(
                       color: AppColors.textSecondary,
+                      fontWeight: FontWeight.w600,
                       fontSize: 14,
                     ),
                   ),
@@ -338,7 +345,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: AppColors.white,
-                  minimumSize: const Size(double.infinity, 56),
+                  minimumSize: const Size(double.infinity, 54),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16)),
                   elevation: 0,
@@ -351,18 +358,21 @@ class _LoginScreenState extends State<LoginScreen> {
                             strokeWidth: 2.5, color: Colors.white),
                       )
                     : const Text(
-                        'Login',
+                        'Masuk',
                         style: TextStyle(
-                            fontWeight: FontWeight.w700, fontSize: 16),
+                            fontWeight: FontWeight.w700, fontSize: 15),
                       ),
               ),
             ),
+            const SizedBox(height: 24),
+            const Divider(height: 1, color: AppColors.border),
             const SizedBox(height: 16),
             Text(
               _appVersionLabel,
               style: const TextStyle(
                 color: AppColors.textSecondary,
-                fontSize: 12,
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
               ),
               textAlign: TextAlign.center,
             ),
@@ -371,7 +381,7 @@ class _LoginScreenState extends State<LoginScreen> {
               _updateStatusLabel,
               style: TextStyle(
                 color: _updateStatusColor,
-                fontSize: 12,
+                fontSize: 11,
                 fontWeight: FontWeight.w600,
               ),
               textAlign: TextAlign.center,
@@ -395,53 +405,70 @@ class _LoginScreenState extends State<LoginScreen> {
       controller: controller,
       obscureText: obscure,
       validator: validator,
+      style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600),
       decoration: InputDecoration(
         labelText: label,
-        prefixIcon: Icon(icon, color: AppColors.primary),
+        labelStyle: const TextStyle(
+            color: AppColors.textSecondary,
+            fontWeight: FontWeight.w500,
+            fontSize: 14),
+        prefixIcon: Icon(icon, color: AppColors.textSecondary, size: 20),
         suffixIcon: isPassword
             ? IconButton(
                 icon: Icon(obscure
                     ? Icons.visibility_off_outlined
                     : Icons.visibility_outlined),
                 onPressed: onToggle,
+                iconSize: 20,
                 color: AppColors.textSecondary,
               )
             : null,
         filled: true,
-        fillColor: AppColors.white,
+        fillColor: AppColors.surface,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: AppColors.border),
+          borderSide: BorderSide.none,
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: AppColors.border),
+          borderSide: BorderSide.none,
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: AppColors.primary, width: 1.8),
+          borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
         ),
         contentPadding:
-            const EdgeInsets.symmetric(vertical: 16, horizontal: 14),
+            const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
       ),
     );
   }
 
   Widget _buildFooterLink() {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 24),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Text('Belum punya akun?'),
-          TextButton(
-            onPressed: () => Navigator.pushNamed(context, AppRoutes.register),
-            child: const Text('Register',
-                style: TextStyle(
-                    fontWeight: FontWeight.w700, color: AppColors.primary)),
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        const Text(
+          'Belum punya akun?',
+          style: TextStyle(
+              color: AppColors.textSecondary,
+              fontWeight: FontWeight.w500,
+              fontSize: 14),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pushNamed(context, AppRoutes.register),
+          style: TextButton.styleFrom(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
           ),
-        ],
-      ),
+          child: const Text(
+            'Daftar Sekarang',
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: 14,
+              color: AppColors.primary,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

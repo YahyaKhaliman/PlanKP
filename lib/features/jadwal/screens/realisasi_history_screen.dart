@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/empty_state.dart';
+import '../../../core/widgets/shimmer_loading.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../models/jadwal_model.dart';
 import '../models/realisasi_model.dart';
@@ -230,8 +231,22 @@ class _RealisasiHistoryScreenState extends State<RealisasiHistoryScreen> {
         onRefresh: _loadData,
         child: Consumer<JadwalProvider>(
           builder: (_, p, __) {
-            if (p.loading)
-              return const Center(child: CircularProgressIndicator());
+            if (p.loading) {
+              return const AppShimmer(
+                child: SingleChildScrollView(
+                  physics: NeverScrollableScrollPhysics(),
+                  padding: EdgeInsets.fromLTRB(16, 16, 16, 120),
+                  child: Column(
+                    children: [
+                      AppSkeletonListCard(),
+                      AppSkeletonListCard(),
+                      AppSkeletonListCard(),
+                      AppSkeletonListCard(),
+                    ],
+                  ),
+                ),
+              );
+            }
 
             final monthRealisasi =
                 _filterRealisasiByMonth(p.realisasiList, _selectedMonth);

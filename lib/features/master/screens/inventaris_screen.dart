@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/app_notifier.dart';
 import '../../../core/widgets/empty_state.dart';
+import '../../../core/widgets/shimmer_loading.dart';
 import '../models/inventaris_model.dart';
 import '../models/jenis_model.dart';
 import '../providers/master_provider.dart';
@@ -165,8 +166,19 @@ class _InventarisScreenState extends State<InventarisScreen> {
                       Expanded(
                         child: () {
                           if (p.loading) {
-                            return const Center(
-                                child: CircularProgressIndicator());
+                            return const AppShimmer(
+                              child: SingleChildScrollView(
+                                physics: NeverScrollableScrollPhysics(),
+                                padding: EdgeInsets.only(top: 8),
+                                child: Column(
+                                  children: [
+                                    AppSkeletonFolderCard(),
+                                    AppSkeletonFolderCard(),
+                                    AppSkeletonFolderCard(),
+                                  ],
+                                ),
+                              ),
+                            );
                           }
                           if (p.inventarisList.isEmpty) {
                             return EmptyState(

@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/app_notifier.dart';
 import '../../../core/widgets/empty_state.dart';
+import '../../../core/widgets/shimmer_loading.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../models/user_model.dart';
 import '../providers/master_provider.dart';
@@ -134,7 +135,20 @@ class _UserScreenState extends State<UserScreen> {
                     builder: (_, p, __) {
                       final authUserId = _currentAuthUserId();
                       if (p.loading) {
-                        return const Center(child: CircularProgressIndicator());
+                        return const AppShimmer(
+                          child: SingleChildScrollView(
+                            physics: NeverScrollableScrollPhysics(),
+                            padding: EdgeInsets.symmetric(horizontal: 16),
+                            child: Column(
+                              children: [
+                                AppSkeletonListCard(),
+                                AppSkeletonListCard(),
+                                AppSkeletonListCard(),
+                                AppSkeletonListCard(),
+                              ],
+                            ),
+                          ),
+                        );
                       }
                       final filteredUsers = p.userList.where((user) {
                         final q = _searchQuery.toLowerCase();

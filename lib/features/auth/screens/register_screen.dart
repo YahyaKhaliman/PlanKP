@@ -111,11 +111,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
             padding: const EdgeInsets.all(20),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 1040),
               child: isDesktop
                   ? Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         Expanded(child: _buildHeroPanel(compact: false)),
                         const SizedBox(width: 24),
@@ -127,7 +129,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         _buildHeroPanel(compact: true),
                         Transform.translate(
                           offset: const Offset(0, -22),
-                          child: _buildFormCard(),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 4),
+                            child: _buildFormCard(),
+                          ),
                         ),
                       ],
                     ),
@@ -178,16 +183,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   Widget _buildFormCard() {
     return Container(
-      padding: const EdgeInsets.all(28),
+      padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 32),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: AppColors.border.withValues(alpha: 0.8)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 16,
-            offset: const Offset(0, 6),
+            color: Colors.black.withValues(alpha: 0.025),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
@@ -204,38 +209,32 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 color: AppColors.textPrimary,
               ),
             ),
-            const SizedBox(height: 8),
-            TextFormField(
+            const SizedBox(height: 24),
+            _buildInputField(
               controller: _namaCtrl,
+              label: 'Nama Lengkap',
+              icon: Icons.person_outline_rounded,
               textCapitalization: TextCapitalization.words,
-              decoration: const InputDecoration(
-                labelText: 'Nama User',
-                prefixIcon: Icon(Icons.person_outline),
-              ),
               validator: (v) =>
                   v == null || v.trim().isEmpty ? 'Nama wajib diisi' : null,
             ),
-            const SizedBox(height: 12),
-            TextFormField(
+            const SizedBox(height: 14),
+            _buildInputField(
               controller: _nikCtrl,
+              label: 'NIK',
+              icon: Icons.badge_outlined,
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: 'NIK',
-                prefixIcon: Icon(Icons.badge_outlined),
-              ),
               validator: (v) =>
                   v == null || v.trim().isEmpty ? 'NIK wajib diisi' : null,
             ),
-            const SizedBox(height: 12),
-            DropdownButtonFormField<String>(
-              initialValue: _divisiCtrl.text.isNotEmpty &&
+            const SizedBox(height: 14),
+            _buildDropdownField<String>(
+              label: 'Divisi',
+              icon: Icons.account_tree_outlined,
+              value: _divisiCtrl.text.isNotEmpty &&
                       _divisiOptions.contains(_divisiCtrl.text)
                   ? _divisiCtrl.text
                   : null,
-              decoration: const InputDecoration(
-                labelText: 'Divisi',
-                prefixIcon: Icon(Icons.account_tree_outlined),
-              ),
               items: _divisiOptions
                   .map((opt) => DropdownMenuItem(value: opt, child: Text(opt)))
                   .toList(),
@@ -247,24 +246,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
               validator: (v) =>
                   v == null || v.isEmpty ? 'Divisi wajib diisi' : null,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 14),
             _loadingPabrik
                 ? const SizedBox(
-                    height: 56,
+                    height: 52,
                     child: Center(
                       child: SizedBox(
-                        width: 24,
-                        height: 24,
+                        width: 22,
+                        height: 22,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       ),
                     ),
                   )
-                : DropdownButtonFormField<String>(
-                    initialValue: _selectedCabang,
-                    decoration: const InputDecoration(
-                      labelText: 'Cabang',
-                      prefixIcon: Icon(Icons.business_outlined),
-                    ),
+                : _buildDropdownField<String>(
+                    label: 'Cabang',
+                    icon: Icons.business_outlined,
+                    value: _selectedCabang,
                     items: _pabrikList
                         .map((pab) => DropdownMenuItem<String>(
                               value: pab['pab_kode'] as String,
@@ -278,20 +275,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     },
                     validator: (v) => v == null ? 'Cabang wajib diisi' : null,
                   ),
-            const SizedBox(height: 12),
-            TextFormField(
+            const SizedBox(height: 14),
+            _buildInputField(
               controller: _passwordCtrl,
-              obscureText: _obscure,
-              decoration: InputDecoration(
-                labelText: 'Password',
-                prefixIcon: const Icon(Icons.lock_outline),
-                suffixIcon: IconButton(
-                  icon: Icon(_obscure
-                      ? Icons.visibility_off_outlined
-                      : Icons.visibility_outlined),
-                  onPressed: () => setState(() => _obscure = !_obscure),
-                ),
-              ),
+              label: 'Password',
+              icon: Icons.lock_outline_rounded,
+              isPassword: true,
+              obscure: _obscure,
+              onToggle: () => setState(() => _obscure = !_obscure),
               validator: (v) => v == null || v.length <= 2
                   ? 'Password minimal 3 karakter'
                   : null,
@@ -300,17 +291,29 @@ class _RegisterScreenState extends State<RegisterScreen> {
             Consumer<AuthProvider>(
               builder: (_, auth, __) => ElevatedButton(
                 onPressed: auth.loading ? null : _submit,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: AppColors.white,
+                  minimumSize: const Size(double.infinity, 54),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16)),
+                  elevation: 0,
+                ),
                 child: auth.loading
                     ? const SizedBox(
-                        height: 22,
-                        width: 22,
+                        height: 24,
+                        width: 24,
                         child: CircularProgressIndicator(
-                            strokeWidth: 2.2, color: Colors.white),
+                            strokeWidth: 2.5, color: Colors.white),
                       )
-                    : const Text('Daftar'),
+                    : const Text(
+                        'Daftar Sekarang',
+                        style: TextStyle(
+                            fontWeight: FontWeight.w700, fontSize: 15),
+                      ),
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 18),
             _buildFooterLink(),
           ],
         ),
@@ -318,25 +321,119 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
+  Widget _buildInputField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    bool isPassword = false,
+    bool obscure = false,
+    VoidCallback? onToggle,
+    TextCapitalization textCapitalization = TextCapitalization.none,
+    TextInputType? keyboardType,
+    String? Function(String?)? validator,
+  }) {
+    return TextFormField(
+      controller: controller,
+      obscureText: obscure,
+      validator: validator,
+      keyboardType: keyboardType,
+      textCapitalization: textCapitalization,
+      style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: const TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w500, fontSize: 14),
+        prefixIcon: Icon(icon, color: AppColors.textSecondary, size: 20),
+        suffixIcon: isPassword
+            ? IconButton(
+                icon: Icon(obscure
+                    ? Icons.visibility_off_outlined
+                    : Icons.visibility_outlined),
+                onPressed: onToggle,
+                iconSize: 20,
+                color: AppColors.textSecondary,
+              )
+            : null,
+        filled: true,
+        fillColor: AppColors.surface,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide.none,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide.none,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+        ),
+        contentPadding:
+            const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+      ),
+    );
+  }
+
+  Widget _buildDropdownField<T>({
+    required String label,
+    required IconData icon,
+    required T? value,
+    required List<DropdownMenuItem<T>> items,
+    required void Function(T?) onChanged,
+    required String? Function(T?) validator,
+  }) {
+    return DropdownButtonFormField<T>(
+      initialValue: value,
+      items: items,
+      onChanged: onChanged,
+      validator: validator,
+      style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: const TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w500, fontSize: 14),
+        prefixIcon: Icon(icon, color: AppColors.textSecondary, size: 20),
+        filled: true,
+        fillColor: AppColors.surface,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide.none,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide.none,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+        ),
+        contentPadding:
+            const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+      ),
+    );
+  }
+
   Widget _buildFooterLink() {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Text('Sudah punya akun?'),
-          TextButton(
-            onPressed: _backToLogin,
-            child: const Text(
-              'Login',
-              style: TextStyle(
-                fontWeight: FontWeight.w700,
-                color: AppColors.primary,
-              ),
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        const Text(
+          'Sudah punya akun?',
+          style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w500, fontSize: 14),
+        ),
+        TextButton(
+          onPressed: _backToLogin,
+          style: TextButton.styleFrom(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+          ),
+          child: const Text(
+            'Login',
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: 14,
+              color: AppColors.primary,
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

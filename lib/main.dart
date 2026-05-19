@@ -242,8 +242,14 @@ class _MainAppWrapperState extends State<MainAppWrapper> with WidgetsBindingObse
                     pressEvent: () async {
                       Navigator.of(context).pop();
 
-                      // Buka tautan unduhan langsung di browser eksternal
-                      final uri = Uri.parse(manifest.url);
+                      // Buka tautan unduhan langsung di browser eksternal dengan cache buster
+                      String downloadUrl = manifest.url;
+                      if (downloadUrl.contains('?')) {
+                        downloadUrl += '&t=${DateTime.now().millisecondsSinceEpoch}';
+                      } else {
+                        downloadUrl += '?t=${DateTime.now().millisecondsSinceEpoch}';
+                      }
+                      final uri = Uri.parse(downloadUrl);
                       if (await canLaunchUrl(uri)) {
                         await launchUrl(uri, mode: LaunchMode.externalApplication);
                       }
