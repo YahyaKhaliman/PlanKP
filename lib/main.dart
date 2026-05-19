@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:awesome_dialog/awesome_dialog.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'core/theme/app_theme.dart';
 import 'core/constants/app_constants.dart';
 import 'core/update/update_checker.dart';
@@ -17,6 +18,8 @@ import 'features/auth/screens/register_screen.dart';
 import 'features/dashboard/screens/dashboard_screen.dart';
 import 'features/jadwal/screens/jadwal_detail_screen.dart';
 import 'features/jadwal/screens/realisasi_form_screen.dart';
+
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -36,8 +39,10 @@ class PlanKPApp extends StatelessWidget {
       ],
       child: MaterialApp(
         title: 'PlanKP',
+        navigatorKey: navigatorKey,
         debugShowCheckedModeBanner: false,
         theme: AppTheme.light,
+        builder: (context, child) => MainAppWrapper(child: child!),
         routes: {
           AppRoutes.login: (_) => const LoginScreen(),
           AppRoutes.register: (_) => const RegisterScreen(),
@@ -74,10 +79,98 @@ class _AuthGate extends StatefulWidget {
 }
 
 class _AuthGateState extends State<_AuthGate> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final auth = context.read<AuthProvider>();
+      await auth.checkSession();
+      if (mounted) {
+        Navigator.pushReplacementNamed(
+          context,
+          auth.isLoggedIn ? AppRoutes.dashboard : AppRoutes.login,
+        );
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      body: Center(child: CircularProgressIndicator()),
+    );
+  }
+}
+
+class MainAppWrapper extends StatefulWidget {
+  final Widget child;
+  const MainAppWrapper({super.key, required this.child});
+
+  @override
+  State<MainAppWrapper> createState() => _MainAppWrapperState();
+}
+
+class _MainAppWrapperState extends State<MainAppWrapper> with WidgetsBindingObserver {
   final UpdateChecker _updateChecker = UpdateChecker();
   final UpdateDownloader _updateDownloader = UpdateDownloader();
+  bool _isChecking = false;
+  DateTime? _lastCheckTime;
+  bool _dialogOpen = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    // Pemicu 1: Cek saat startup pertama kali
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _triggerUpdateCheck();
+    });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Pemicu 2: Cek saat kembali dari background (Foreground trigger)
+    if (state == AppLifecycleState.resumed) {
+      _triggerUpdateCheck();
+    }
+  }
+
+  Future<void> _triggerUpdateCheck() async {
+    if (_isChecking || _dialogOpen) return;
+
+    final now = DateTime.now();
+    // Throttling: Jangan cek kembali jika belum lewat 30 detik
+    if (_lastCheckTime != null && now.difference(_lastCheckTime!).inSeconds < 30) {
+      return;
+    }
+
+    _isChecking = true;
+    _lastCheckTime = now;
+
+    try {
+      final updateResult = await _updateChecker.checkForUpdate();
+      if (mounted && updateResult.hasUpdate && updateResult.manifest != null) {
+        _dialogOpen = true;
+        await _showUpdateDialog(updateResult.manifest!);
+        _dialogOpen = false;
+      }
+    } catch (e) {
+      debugPrint('[AutoUpdate] Error checking update: $e');
+    } finally {
+      _isChecking = false;
+    }
+  }
 
   Future<void> _showUpdateDialog(AppUpdateManifest manifest) async {
+    final context = navigatorKey.currentContext;
+    if (context == null) return;
+
     var isDownloading = false;
     var progress = 0;
 
@@ -197,14 +290,16 @@ class _AuthGateState extends State<_AuthGate> {
                                         .downloadedOpenedFolder) {
                                   Navigator.of(context).pop();
                                   _showManualInstallDialog(
-                                      result.filePath ?? '');
+                                      manifest.url, result.filePath ?? '');
                                 } else if (result.status ==
                                     AppUpdateDownloadStatus.failedNetwork) {
-                                  AppNotifier.showError(context,
+                                  Navigator.of(context).pop();
+                                  _showDownloadFailedDialog(manifest.url,
                                       'Gagal mengunduh: Periksa jaringan Anda.');
                                 } else if (result.status ==
                                     AppUpdateDownloadStatus.failedOther) {
-                                  AppNotifier.showError(context,
+                                  Navigator.of(context).pop();
+                                  _showDownloadFailedDialog(manifest.url,
                                       'Gagal memproses pembaruan:\n${result.filePath ?? "Unknown Error"}');
                                 } else {
                                   if (!manifest.mandatory && context.mounted) {
@@ -225,7 +320,64 @@ class _AuthGateState extends State<_AuthGate> {
     ).show();
   }
 
-  void _showManualInstallDialog(String filePath) {
+  void _showDownloadFailedDialog(String downloadUrl, String reason) {
+    final context = navigatorKey.currentContext;
+    if (context == null) return;
+
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.error_outline, color: Colors.red, size: 28),
+            SizedBox(width: 12),
+            Text('Unduhan Gagal',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(reason),
+            const SizedBox(height: 16),
+            const Text(
+                'Anda dapat mengunduh aplikasi secara langsung melalui browser perangkat Anda.'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton.icon(
+            onPressed: () async {
+              Navigator.of(ctx).pop();
+              final uri = Uri.parse(downloadUrl);
+              if (await canLaunchUrl(uri)) {
+                await launchUrl(uri, mode: LaunchMode.externalApplication);
+              }
+            },
+            icon: const Icon(Icons.open_in_browser),
+            label: const Text('Unduh di Browser'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showManualInstallDialog(String downloadUrl, String filePath) {
+    final context = navigatorKey.currentContext;
+    if (context == null) return;
+
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -267,26 +419,40 @@ class _AuthGateState extends State<_AuthGate> {
               ),
               const SizedBox(height: 24),
               Row(
-                mainAxisAlignment: MainAxisAlignment.end,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   TextButton.icon(
                     onPressed: () async {
-                      await Clipboard.setData(ClipboardData(text: filePath));
-                      if (ctx.mounted) {
-                        AppNotifier.showSuccess(
-                            ctx, 'Path berhasil disalin ke clipboard');
+                      final uri = Uri.parse(downloadUrl);
+                      if (await canLaunchUrl(uri)) {
+                        await launchUrl(uri, mode: LaunchMode.externalApplication);
                       }
                     },
-                    icon: const Icon(Icons.copy, size: 18),
-                    label: const Text('Salin Path'),
+                    icon: const Icon(Icons.open_in_browser, size: 18),
+                    label: const Text('Buka Link'),
                   ),
-                  const SizedBox(width: 12),
-                  FilledButton(
-                    onPressed: () => Navigator.of(ctx).pop(),
-                    style: FilledButton.styleFrom(
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10))),
-                    child: const Text('Tutup'),
+                  Row(
+                    children: [
+                      TextButton(
+                        onPressed: () async {
+                          await Clipboard.setData(ClipboardData(text: filePath));
+                          if (ctx.mounted) {
+                            AppNotifier.showSuccess(
+                                ctx, 'Path berhasil disalin ke clipboard');
+                          }
+                        },
+                        child: const Text('Salin Path'),
+                      ),
+                      const SizedBox(width: 8),
+                      FilledButton(
+                        onPressed: () => Navigator.of(ctx).pop(),
+                        style: FilledButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10))),
+                        child: const Text('Tutup'),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -298,31 +464,8 @@ class _AuthGateState extends State<_AuthGate> {
   }
 
   @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      final auth = context.read<AuthProvider>();
-
-      final updateResult = await _updateChecker.checkForUpdate();
-      if (mounted && updateResult.hasUpdate && updateResult.manifest != null) {
-        await _showUpdateDialog(updateResult.manifest!);
-      }
-
-      await auth.checkSession();
-      if (mounted) {
-        Navigator.pushReplacementNamed(
-          context,
-          auth.isLoggedIn ? AppRoutes.dashboard : AppRoutes.login,
-        );
-      }
-    });
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(child: CircularProgressIndicator()),
-    );
+    return widget.child;
   }
 }
 

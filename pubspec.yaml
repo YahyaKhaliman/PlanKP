@@ -1,7 +1,7 @@
 name: plankp
 description: PlanKP - Sistem Penjadwalan Maintenance Kencana Print
 publish_to: "none"
-version: 1.0.18+18 # Format: major.minor.patch+build
+version: 1.0.19+19 # Format: major.minor.patch+build
 
 environment:
   sdk: ">=3.0.0 <4.0.0"
@@ -20,6 +20,7 @@ dependencies:
   google_fonts: ^6.2.1
   awesome_dialog: ^3.2.1
   open_filex: ^4.5.0
+  url_launcher: ^6.3.0
 
 dev_dependencies:
   flutter_test:
