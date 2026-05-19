@@ -8,7 +8,6 @@ import 'package:url_launcher/url_launcher.dart';
 import 'core/theme/app_theme.dart';
 import 'core/constants/app_constants.dart';
 import 'core/update/update_checker.dart';
-import 'core/update/update_downloader.dart';
 import 'core/widgets/app_notifier.dart';
 import 'features/auth/providers/auth_provider.dart';
 import 'features/master/providers/master_provider.dart';
@@ -112,7 +111,6 @@ class MainAppWrapper extends StatefulWidget {
 
 class _MainAppWrapperState extends State<MainAppWrapper> with WidgetsBindingObserver {
   final UpdateChecker _updateChecker = UpdateChecker();
-  final UpdateDownloader _updateDownloader = UpdateDownloader();
   bool _isChecking = false;
   DateTime? _lastCheckTime;
   bool _dialogOpen = false;
@@ -171,210 +169,96 @@ class _MainAppWrapperState extends State<MainAppWrapper> with WidgetsBindingObse
     final context = navigatorKey.currentContext;
     if (context == null) return;
 
-    var isDownloading = false;
-    var progress = 0;
-
     await AwesomeDialog(
       context: context,
       dialogType: DialogType.info,
       animType: AnimType.scale,
       dismissOnTouchOutside: !manifest.mandatory,
       dismissOnBackKeyPress: !manifest.mandatory,
-      body: StatefulBuilder(
-        builder: (context, setState) {
-          return Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text(
-                  'Pembaruan Tersedia!',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary,
-                  ),
-                  textAlign: TextAlign.center,
+      body: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Pembaruan Tersedia!',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textPrimary,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Versi terbaru ${manifest.version} siap diunduh.',
+              style: const TextStyle(
+                fontSize: 14,
+                color: AppColors.textSecondary,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            if ((manifest.notes ?? '').trim().isNotEmpty) ...[
+              const SizedBox(height: 16),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.border),
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  'Versi terbaru ${manifest.version} siap diunduh.',
+                child: Text(
+                  manifest.notes!.trim(),
                   style: const TextStyle(
-                    fontSize: 14,
-                    color: AppColors.textSecondary,
-                  ),
-                  textAlign: TextAlign.center,
+                      fontSize: 13, color: AppColors.textPrimary),
+                  textAlign: TextAlign.left,
                 ),
-                if ((manifest.notes ?? '').trim().isNotEmpty) ...[
-                  const SizedBox(height: 16),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade50,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppColors.border),
-                    ),
-                    child: Text(
-                      manifest.notes!.trim(),
-                      style: const TextStyle(
-                          fontSize: 13, color: AppColors.textPrimary),
-                      textAlign: TextAlign.left,
+              ),
+            ],
+            const SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (!manifest.mandatory) ...[
+                  Expanded(
+                    child: AnimatedButton(
+                      text: 'Nanti Saja',
+                      color: Colors.grey.shade300,
+                      pressEvent: () => Navigator.of(context).pop(),
+                      isFixedHeight: false,
                     ),
                   ),
+                  const SizedBox(width: 10),
                 ],
-                if (isDownloading) ...[
-                  const SizedBox(height: 24),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: LinearProgressIndicator(
-                      value: progress / 100,
-                      minHeight: 10,
-                      backgroundColor: Colors.grey.shade200,
-                      valueColor: const AlwaysStoppedAnimation<Color>(
-                          AppColors.primary),
-                    ),
+                Expanded(
+                  child: AnimatedButton(
+                    text: 'Update Sekarang',
+                    color: AppColors.primary,
+                    pressEvent: () async {
+                      Navigator.of(context).pop();
+
+                      // Buka tautan unduhan langsung di browser eksternal
+                      final uri = Uri.parse(manifest.url);
+                      if (await canLaunchUrl(uri)) {
+                        await launchUrl(uri, mode: LaunchMode.externalApplication);
+                      }
+
+                      // Tampilkan Panduan Pemasangan Manual agar file APK mudah ditemukan dan dipasang
+                      _showManualInstallDialog(manifest.url, manifest.version);
+                    },
+                    isFixedHeight: false,
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Mengunduh... $progress%',
-                    style: const TextStyle(
-                        fontWeight: FontWeight.bold, color: AppColors.primary),
-                  ),
-                ],
-                const SizedBox(height: 24),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    if (!manifest.mandatory && !isDownloading) ...[
-                      Expanded(
-                        child: AnimatedButton(
-                          text: 'Nanti Saja',
-                          color: Colors.grey.shade300,
-                          pressEvent: () => Navigator.of(context).pop(),
-                          isFixedHeight: false,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                    ],
-                    Expanded(
-                      child: AnimatedButton(
-                        text: isDownloading ? 'Mengunduh...' : 'Update',
-                        color: isDownloading
-                            ? Colors.grey.shade400
-                            : AppColors.primary,
-                        pressEvent: isDownloading
-                            ? () {}
-                            : () async {
-                                setState(() {
-                                  isDownloading = true;
-                                  progress = 0;
-                                });
-
-                                final result = await _updateDownloader
-                                    .downloadAndOpenInstaller(
-                                  downloadUrl: manifest.url,
-                                  versionName: manifest.version,
-                                  onProgress: (value) {
-                                    setState(() => progress = value);
-                                  },
-                                );
-
-                                if (!context.mounted) return;
-                                setState(() {
-                                  isDownloading = false;
-                                });
-
-                                if (result.status ==
-                                    AppUpdateDownloadStatus
-                                        .downloadedOpenedFolder) {
-                                  Navigator.of(context).pop();
-                                  _showManualInstallDialog(
-                                      manifest.url, result.filePath ?? '');
-                                } else if (result.status ==
-                                    AppUpdateDownloadStatus.failedNetwork) {
-                                  Navigator.of(context).pop();
-                                  _showDownloadFailedDialog(manifest.url,
-                                      'Gagal mengunduh: Periksa jaringan Anda.');
-                                } else if (result.status ==
-                                    AppUpdateDownloadStatus.failedOther) {
-                                  Navigator.of(context).pop();
-                                  _showDownloadFailedDialog(manifest.url,
-                                      'Gagal memproses pembaruan:\n${result.filePath ?? "Unknown Error"}');
-                                } else {
-                                  if (!manifest.mandatory && context.mounted) {
-                                    Navigator.of(context).pop();
-                                  }
-                                }
-                              },
-                        isFixedHeight: false,
-                      ),
-                    ),
-                  ],
                 ),
               ],
             ),
-          );
-        },
+          ],
+        ),
       ),
     ).show();
   }
 
-  void _showDownloadFailedDialog(String downloadUrl, String reason) {
-    final context = navigatorKey.currentContext;
-    if (context == null) return;
-
-    showDialog(
-      context: context,
-      barrierDismissible: true,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Row(
-          children: [
-            Icon(Icons.error_outline, color: Colors.red, size: 28),
-            SizedBox(width: 12),
-            Text('Unduhan Gagal',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(reason),
-            const SizedBox(height: 16),
-            const Text(
-                'Anda dapat mengunduh aplikasi secara langsung melalui browser perangkat Anda.'),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Batal'),
-          ),
-          ElevatedButton.icon(
-            onPressed: () async {
-              Navigator.of(ctx).pop();
-              final uri = Uri.parse(downloadUrl);
-              if (await canLaunchUrl(uri)) {
-                await launchUrl(uri, mode: LaunchMode.externalApplication);
-              }
-            },
-            icon: const Icon(Icons.open_in_browser),
-            label: const Text('Unduh di Browser'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10)),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showManualInstallDialog(String downloadUrl, String filePath) {
+  void _showManualInstallDialog(String downloadUrl, String versionName) {
     final context = navigatorKey.currentContext;
     if (context == null) return;
 
@@ -382,7 +266,7 @@ class _MainAppWrapperState extends State<MainAppWrapper> with WidgetsBindingObse
       context: context,
       barrierDismissible: false,
       builder: (ctx) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         child: Padding(
           padding: const EdgeInsets.all(24),
           child: Column(
@@ -391,68 +275,82 @@ class _MainAppWrapperState extends State<MainAppWrapper> with WidgetsBindingObse
             children: [
               const Row(
                 children: [
-                  Icon(Icons.folder_special, color: AppColors.primary, size: 28),
+                  Icon(Icons.download_for_offline, color: AppColors.primary, size: 30),
                   SizedBox(width: 12),
-                  Text('Download Selesai',
-                      style:
-                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  Expanded(
+                    child: Text(
+                      'Unduhan Dimulai',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(height: 16),
               const Text(
-                  'Aplikasi gagal membuka installer secara otomatis karena batasan sistem perangkat. Silakan buka File Manager / File Saya dan cari file APK yang telah diunduh di lokasi berikut:'),
+                'File pembaruan APK sedang diunduh oleh Web Browser Anda langsung ke penyimpanan telepon.',
+                style: TextStyle(fontSize: 14, color: AppColors.textPrimary),
+              ),
               const SizedBox(height: 16),
               Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                    color: Colors.grey.shade100,
-                    border: Border.all(color: Colors.grey.shade300),
-                    borderRadius: BorderRadius.circular(10)),
-                child: SelectableText(
-                  filePath,
-                  style: const TextStyle(
-                      fontFamily: 'monospace',
-                      fontSize: 12,
-                      color: Colors.black87),
+                  color: Colors.blue.shade50,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.blue.shade200),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Langkah Pemasangan Manual:',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                        color: Colors.blueAccent,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    _buildStepRow('1', 'Tunggu unduhan selesai di bar notifikasi browser Anda.'),
+                    const SizedBox(height: 6),
+                    _buildStepRow('2', 'Buka aplikasi File Manager / File Saya / Files di HP Anda.'),
+                    const SizedBox(height: 6),
+                    _buildStepRow('3', 'Masuk ke folder Downloads / Unduhan publik.'),
+                    const SizedBox(height: 6),
+                    _buildStepRow('4', 'Cari dan klik file APK PlanKP yang baru saja diunduh untuk memasangnya secara manual.'),
+                  ],
                 ),
               ),
               const SizedBox(height: 24),
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  TextButton.icon(
-                    onPressed: () async {
-                      final uri = Uri.parse(downloadUrl);
-                      if (await canLaunchUrl(uri)) {
-                        await launchUrl(uri, mode: LaunchMode.externalApplication);
-                      }
-                    },
-                    icon: const Icon(Icons.open_in_browser, size: 18),
-                    label: const Text('Buka Link'),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () async {
+                        await Clipboard.setData(ClipboardData(text: downloadUrl));
+                        if (ctx.mounted) {
+                          AppNotifier.showSuccess(ctx, 'Link unduhan disalin ke clipboard');
+                        }
+                      },
+                      icon: const Icon(Icons.copy, size: 16),
+                      label: const Text('Salin Link'),
+                      style: OutlinedButton.styleFrom(
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                    ),
                   ),
-                  Row(
-                    children: [
-                      TextButton(
-                        onPressed: () async {
-                          await Clipboard.setData(ClipboardData(text: filePath));
-                          if (ctx.mounted) {
-                            AppNotifier.showSuccess(
-                                ctx, 'Path berhasil disalin ke clipboard');
-                          }
-                        },
-                        child: const Text('Salin Path'),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.of(ctx).pop(),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
-                      const SizedBox(width: 8),
-                      FilledButton(
-                        onPressed: () => Navigator.of(ctx).pop(),
-                        style: FilledButton.styleFrom(
-                            backgroundColor: AppColors.primary,
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10))),
-                        child: const Text('Tutup'),
-                      ),
-                    ],
+                      child: const Text('Tutup'),
+                    ),
                   ),
                 ],
               ),
@@ -460,6 +358,34 @@ class _MainAppWrapperState extends State<MainAppWrapper> with WidgetsBindingObse
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildStepRow(String num, String text) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 18,
+          height: 18,
+          margin: const EdgeInsets.only(top: 2, right: 8),
+          decoration: const BoxDecoration(
+            color: Colors.blueAccent,
+            shape: BoxShape.circle,
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            num,
+            style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+          ),
+        ),
+        Expanded(
+          child: Text(
+            text,
+            style: const TextStyle(fontSize: 12, color: Colors.black87),
+          ),
+        ),
+      ],
     );
   }
 

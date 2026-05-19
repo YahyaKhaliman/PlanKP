@@ -24,7 +24,6 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   static const _pageBg = Color(0xFFF8FAFC);
-  static const _cardRadius = 16.0;
 
   int _isoWeekNumber(DateTime date) {
     final d = DateTime.utc(date.year, date.month, date.day);
@@ -60,15 +59,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   BoxDecoration _surfaceCard({Color? borderColor}) => BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(_cardRadius),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: borderColor ?? Colors.black.withValues(alpha: 0.05),
+          color: borderColor ?? AppColors.border.withValues(alpha: 0.6),
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
         ],
       );
@@ -479,27 +478,52 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     SliverToBoxAdapter(
                       child: Container(
                         padding: const EdgeInsets.fromLTRB(20, 60, 20, 30),
-                        decoration: const BoxDecoration(
-                          color: _pageBg,
-                          borderRadius: BorderRadius.vertical(
-                            bottom: Radius.circular(24),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [AppColors.primary, AppColors.accent],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
                           ),
+                          borderRadius: const BorderRadius.vertical(
+                            bottom: Radius.circular(32),
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.primary.withValues(alpha: 0.24),
+                              blurRadius: 16,
+                              offset: const Offset(0, 8),
+                            ),
+                          ],
                         ),
                         child: Container(
-                          padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
-                          decoration: _surfaceCard(),
+                          padding: const EdgeInsets.fromLTRB(16, 16, 12, 16),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(24),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.25),
+                            ),
+                          ),
                           child: Row(
                             children: [
-                              CircleAvatar(
-                                radius: 24,
-                                backgroundColor:
-                                    AppColors.primary.withValues(alpha: 0.12),
-                                child: Text(
-                                  _userInitial(auth.user),
-                                  style: const TextStyle(
-                                    color: AppColors.primary,
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.bold,
+                              Container(
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: Colors.white.withValues(alpha: 0.6),
+                                    width: 2,
+                                  ),
+                                ),
+                                child: CircleAvatar(
+                                  radius: 24,
+                                  backgroundColor: Colors.white,
+                                  child: Text(
+                                    _userInitial(auth.user),
+                                    style: const TextStyle(
+                                      color: AppColors.primary,
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.w900,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -508,12 +532,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const Text(
+                                    Text(
                                       'Selamat Datang',
                                       style: TextStyle(
-                                        color: AppColors.textSecondary,
+                                        color: Colors.white.withValues(alpha: 0.85),
                                         fontSize: 12,
                                         fontWeight: FontWeight.w600,
+                                        letterSpacing: 0.5,
                                       ),
                                     ),
                                     const SizedBox(height: 2),
@@ -522,42 +547,48 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                       style: const TextStyle(
-                                        color: AppColors.textPrimary,
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w700,
+                                        color: Colors.white,
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w800,
+                                        letterSpacing: 0.5,
                                       ),
                                     ),
-                                    const SizedBox(height: 2),
+                                    const SizedBox(height: 4),
                                     Container(
                                       padding: const EdgeInsets.symmetric(
-                                        horizontal: 8,
+                                        horizontal: 10,
                                         vertical: 3,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: AppColors.primary
-                                            .withValues(alpha: 0.08),
-                                        borderRadius:
-                                            BorderRadius.circular(999),
+                                        color: Colors.white.withValues(alpha: 0.22),
+                                        borderRadius: BorderRadius.circular(999),
                                       ),
                                       child: Text(
-                                        '${auth.user?['user_divisi'] ?? '-'}',
+                                        '${auth.user?['user_divisi'] ?? '-'}'.toUpperCase(),
                                         style: const TextStyle(
-                                          color: AppColors.primary,
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w600,
+                                          color: Colors.white,
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w800,
+                                          letterSpacing: 0.5,
                                         ),
                                       ),
                                     ),
                                   ],
                                 ),
                               ),
-                              IconButton(
-                                icon: const Icon(
-                                  Icons.logout_outlined,
-                                  color: Color.fromARGB(255, 255, 157, 157),
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.15),
+                                  shape: BoxShape.circle,
                                 ),
-                                tooltip: 'Logout',
-                                onPressed: _logout,
+                                child: IconButton(
+                                  icon: const Icon(
+                                    Icons.logout_rounded,
+                                    color: Colors.white,
+                                  ),
+                                  tooltip: 'Logout',
+                                  onPressed: _logout,
+                                ),
                               ),
                             ],
                           ),
@@ -896,43 +927,76 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildStepCard(Map<String, dynamic> step, {bool isFullWidth = false}) {
+    final Color color = step['c'] as Color;
+    final String title = step['t'] as String;
+    final String desc = step['d'] as String;
+
+    // Extract step number from e.g. "1. Jenis" -> "01"
+    final stepNum = title.split('.').first.trim();
+    final formattedNum = stepNum.length == 1 ? '0$stepNum' : stepNum;
+    final cleanTitle = title.substring(title.indexOf('.') + 1).trim();
+
     return InkWell(
       onTap: () => _nav(step['s'] as Widget),
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(18),
       child: Container(
-        width: isFullWidth ? null : 140,
-        padding: const EdgeInsets.all(12),
+        width: isFullWidth ? null : 155,
+        padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border:
-              Border.all(color: (step['c'] as Color).withValues(alpha: 0.1)),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: color.withValues(alpha: 0.12), width: 1),
           boxShadow: [
             BoxShadow(
-                color: Colors.black.withValues(alpha: 0.03),
-                blurRadius: 8,
-                offset: const Offset(0, 2))
+              color: Colors.black.withValues(alpha: 0.02),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            )
           ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            CircleAvatar(
-              radius: 16,
-              backgroundColor: (step['c'] as Color).withValues(alpha: 0.1),
-              child: Icon(step['i'] as IconData,
-                  color: step['c'] as Color, size: 18),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(step['i'] as IconData, color: color, size: 20),
+                ),
+                Text(
+                  formattedNum,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w900,
+                    color: color.withValues(alpha: 0.4),
+                    fontFamily: 'monospace',
+                  ),
+                ),
+              ],
             ),
             const Spacer(),
-            Text(step['t'] as String,
-                style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
-                    color: AppColors.textPrimary)),
-            Text(step['d'] as String,
-                style: const TextStyle(fontSize: 10, color: Colors.grey),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis),
+            Text(
+              cleanTitle,
+              style: const TextStyle(
+                fontWeight: FontWeight.w800,
+                fontSize: 14,
+                color: AppColors.textPrimary,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 2),
+            Text(
+              desc,
+              style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
           ],
         ),
       ),
@@ -986,38 +1050,72 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildQuickAction(
-      {required IconData icon,
-      required String label,
-      required Color color,
-      required VoidCallback onTap}) {
+  Widget _buildQuickAction({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
     return Expanded(
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: _surfaceCard(
-            borderColor: color.withValues(alpha: 0.18),
-          ),
-          child: Column(children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(12),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: color.withValues(alpha: 0.15), width: 1),
+            boxShadow: [
+              BoxShadow(
+                color: color.withValues(alpha: 0.04),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
               ),
-              child: Icon(icon, color: color, size: 24),
-            ),
-            const SizedBox(height: 8),
-            Text(label,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 14,
-                  color: AppColors.textPrimary,
-                ))
-          ]),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Icon(icon, color: color, size: 24),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 15,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    const Text(
+                      'Kelola',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.arrow_forward_ios_rounded,
+                size: 14,
+                color: color.withValues(alpha: 0.5),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -1100,85 +1198,147 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final rem = _getRemainingDays(item);
     final divisiColor = _colorForDivisi(item.jdwDivisi);
     final icon = _iconForDivisi(item.jdwDivisi);
-    final remColor = rem.contains('Terlewat')
-        ? Colors.red.shade700
-        : (rem == 'Hari ini' ? Colors.orange.shade700 : Colors.green.shade700);
+
+    Color badgeBg;
+    Color badgeText;
+    if (rem.contains('Terlewat')) {
+      badgeBg = AppColors.danger.withValues(alpha: 0.08);
+      badgeText = AppColors.danger;
+    } else if (rem == 'Hari ini' || rem == 'Besok') {
+      badgeBg = AppColors.warning.withValues(alpha: 0.08);
+      badgeText = AppColors.warning;
+    } else {
+      badgeBg = AppColors.success.withValues(alpha: 0.08);
+      badgeText = AppColors.success;
+    }
 
     return Container(
       width: width,
       margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: _surfaceCard(),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: () => _openJadwalDetail(item, closeSheetFirst: closeSheetOnTap),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                CircleAvatar(
-                  radius: 18,
-                  backgroundColor: divisiColor.withValues(alpha: 0.14),
-                  child: Icon(
-                    icon,
-                    size: 18,
-                    color: divisiColor,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.border.withValues(alpha: 0.6)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () =>
+                _openJadwalDetail(item, closeSheetFirst: closeSheetOnTap),
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: divisiColor.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(
+                          icon,
+                          size: 20,
+                          color: divisiColor,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              item.jdwJudul,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w800,
+                                fontSize: 14,
+                                color: AppColors.textPrimary,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            if (showDivisi) ...[
+                              const SizedBox(height: 2),
+                              Text(
+                                item.jdwDivisi.toUpperCase(),
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: divisiColor,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ] else ...[
+                              const SizedBox(height: 2),
+                              Text(
+                                item.jdwFrekuensi,
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    item.jdwJudul,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textPrimary,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      if (!showDivisi)
+                        Text(
+                          item.jdwDivisi.toUpperCase(),
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: divisiColor,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.5,
+                          ),
+                        )
+                      else
+                        Text(
+                          item.jdwFrekuensi,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: badgeBg,
+                          borderRadius: BorderRadius.circular(99),
+                        ),
+                        child: Text(
+                          rem,
+                          style: TextStyle(
+                            color: badgeText,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-              ],
-            ),
-            SizedBox(height: compact ? 6 : 8),
-            if (showDivisi)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 6),
-                child: Text(
-                  item.jdwDivisi,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: Colors.black54,
-                    fontWeight: FontWeight.w500,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
+                ],
               ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Text(
-                    item.jdwFrekuensi,
-                    style: const TextStyle(fontSize: 12, color: Colors.grey),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  rem,
-                  style: TextStyle(
-                    color: remColor,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 12,
-                  ),
-                ),
-              ],
             ),
-          ],
+          ),
         ),
       ),
     );
