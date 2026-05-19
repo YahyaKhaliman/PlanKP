@@ -121,7 +121,7 @@ jobs:
       # =========================================
       - name: Verify APK signature
         run: |
-          jarsigner -verify -verbose -certs build/app/outputs/flutter-apk/app-release.apk
+          $ANDROID_HOME/build-tools/34.0.0/apksigner verify --verbose build/app/outputs/flutter-apk/app-release.apk
 
       # =========================================
       # Prepare metadata
