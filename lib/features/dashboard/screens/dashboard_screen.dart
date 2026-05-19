@@ -639,7 +639,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 padding: const EdgeInsets.all(16),
                                 decoration: _surfaceCard(),
                                 child: const Text(
-                                  'Belum ada jadwal untuk direalisasikan.',
+                                  'Belum ada jadwal terdaftar',
                                   style:
                                       TextStyle(color: AppColors.textSecondary),
                                 ),
@@ -1067,7 +1067,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               child: plans.isEmpty
                   ? const Center(
                       child: Text(
-                        'Belum ada jadwal untuk direalisasikan.',
+                        'Belum ada jadwal terdaftar',
                         style: TextStyle(color: Colors.grey),
                       ),
                     )
