@@ -142,7 +142,7 @@ class _LoginScreenState extends State<LoginScreen> {
           await prefs.remove('saved_username');
         }
       } catch (_) {}
-      
+
       final userName = (auth.user?['user_nama'] as String?) ?? 'User';
       _showWelcomeDialog(userName);
     } else if (mounted) {
@@ -266,7 +266,7 @@ class _LoginScreenState extends State<LoginScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const Text(
-              'Masuk',
+              'Login',
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.w700,
@@ -351,7 +351,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             strokeWidth: 2.5, color: Colors.white),
                       )
                     : const Text(
-                        'Masuk',
+                        'Login',
                         style: TextStyle(
                             fontWeight: FontWeight.w700, fontSize: 16),
                       ),
