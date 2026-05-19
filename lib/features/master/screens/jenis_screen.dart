@@ -4,6 +4,7 @@ import '../../auth/providers/auth_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/app_notifier.dart';
 import '../../../core/widgets/empty_state.dart';
+import '../../../core/widgets/shimmer_loading.dart';
 import '../models/jenis_model.dart';
 import '../providers/master_provider.dart';
 
@@ -70,7 +71,8 @@ class _JenisScreenState extends State<JenisScreen> {
                   return nama.contains(query) || kategori.contains(query);
                 }).toList();
 
-          if (p.loading) {
+          if (p.loading && p.jenisMaster.isEmpty) {
+            // Jika loading pertama kali saat data masih kosong
             return const Center(child: CircularProgressIndicator());
           }
           if (p.jenisMaster.isEmpty) {
@@ -130,23 +132,38 @@ class _JenisScreenState extends State<JenisScreen> {
                         ),
                       ),
                       Expanded(
-                        child: filtered.isEmpty
-                            ? const EmptyState(
-                                message: 'Data jenis tidak ditemukan')
-                            : ListView.separated(
-                                padding:
-                                    const EdgeInsets.fromLTRB(16, 8, 16, 80),
-                                itemCount: filtered.length,
-                                separatorBuilder: (_, __) =>
-                                    const SizedBox(height: 12),
-                                itemBuilder: (_, i) {
-                                  final jenis = filtered[i];
-                                  return _JenisCard(
-                                    jenis: jenis,
-                                    onEdit: () => _openForm(jenis),
-                                  );
-                                },
-                              ),
+                        child: p.loading
+                            ? const AppShimmer(
+                                child: SingleChildScrollView(
+                                  physics: NeverScrollableScrollPhysics(),
+                                  padding: EdgeInsets.symmetric(horizontal: 16),
+                                  child: Column(
+                                    children: [
+                                      AppSkeletonListCard(),
+                                      AppSkeletonListCard(),
+                                      AppSkeletonListCard(),
+                                      AppSkeletonListCard(),
+                                    ],
+                                  ),
+                                ),
+                              )
+                            : filtered.isEmpty
+                                ? const EmptyState(
+                                    message: 'Data jenis tidak ditemukan')
+                                : ListView.separated(
+                                    padding:
+                                        const EdgeInsets.fromLTRB(16, 8, 16, 80),
+                                    itemCount: filtered.length,
+                                    separatorBuilder: (_, __) =>
+                                        const SizedBox(height: 12),
+                                    itemBuilder: (_, i) {
+                                      final jenis = filtered[i];
+                                      return _JenisCard(
+                                        jenis: jenis,
+                                        onEdit: () => _openForm(jenis),
+                                      );
+                                    },
+                                  ),
                       ),
                     ],
                   ),

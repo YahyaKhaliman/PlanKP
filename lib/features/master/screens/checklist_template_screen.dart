@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/app_notifier.dart';
 import '../../../core/widgets/empty_state.dart';
+import '../../../core/widgets/shimmer_loading.dart';
 import '../models/checklist_template_model.dart';
 import '../providers/master_provider.dart';
 
@@ -768,52 +769,79 @@ class _ChecklistTab extends StatelessWidget {
 
         return Column(children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-            child: Card(
-              margin: EdgeInsets.zero,
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.02),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
               child: TextField(
                 controller: searchCtrl,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   hintText: 'Cari item checklist atau jenis...',
-                  prefixIcon: Icon(Icons.search, size: 20),
-                  contentPadding: EdgeInsets.symmetric(vertical: 12),
-                  border: InputBorder.none,
-                  enabledBorder: InputBorder.none,
-                  focusedBorder: InputBorder.none,
+                  prefixIcon: const Icon(Icons.search, size: 20, color: AppColors.textSecondary),
+                  filled: true,
+                  fillColor: Colors.white,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: const BorderSide(color: AppColors.border),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: const BorderSide(color: AppColors.border),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+                  ),
                 ),
                 onChanged: onSearchChanged,
               ),
             ),
           ),
-          if (filtered.isNotEmpty)
-            Container(
-              color: const Color(0xFFF8FAFC),
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-              child: Row(children: [
-                Text('$jenisCount item',
-                    style: const TextStyle(
-                        fontSize: 12, color: AppColors.textSecondary)),
-                if (query.isNotEmpty)
-                  const Text(' · hasil pencarian',
-                      style: TextStyle(
+          if (p.loading)
+            const Expanded(
+              child: _ChecklistSkeleton(),
+            )
+          else ...[
+            if (filtered.isNotEmpty)
+              Container(
+                color: const Color(0xFFF8FAFC),
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                child: Row(children: [
+                  Text('$jenisCount kelompok jenis',
+                      style: const TextStyle(
                           fontSize: 12, color: AppColors.textSecondary)),
-              ]),
-            ),
-          if (filtered.isEmpty)
-            Expanded(
-              child: EmptyState(
-                message: 'Belum ada item checklist',
-                actionLabel: 'Bulk Input',
-                onAction: () => openBulkForm(),
+                  if (query.isNotEmpty)
+                    const Text(' · hasil pencarian',
+                        style: TextStyle(
+                            fontSize: 12, color: AppColors.textSecondary)),
+                ]),
               ),
-            ),
-          if (filtered.isNotEmpty)
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 120),
-                children: _buildGroupedCards(filtered, jenisNameById),
+            if (filtered.isEmpty)
+              Expanded(
+                child: EmptyState(
+                  message: 'Belum ada item checklist',
+                  actionLabel: 'Bulk Input',
+                  onAction: () => openBulkForm(),
+                ),
               ),
-            ),
+            if (filtered.isNotEmpty)
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 120),
+                  children: _buildGroupedCards(filtered, jenisNameById),
+                ),
+              ),
+          ]
         ]);
       },
     );
@@ -850,114 +878,192 @@ class _ChecklistTab extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 12),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.black.withValues(alpha: 0.04)),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppColors.border.withValues(alpha: 0.6)),
           boxShadow: [
             BoxShadow(
-                color: Colors.black.withValues(alpha: 0.03),
-                blurRadius: 8,
-                offset: const Offset(0, 2)),
+                color: Colors.black.withValues(alpha: 0.02),
+                blurRadius: 12,
+                offset: const Offset(0, 4)),
           ],
         ),
         child: ExpansionTile(
           key: PageStorageKey('jenis_$jenisId'),
           initiallyExpanded: grouped.length == 1,
           shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           collapsedShape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
           maintainState: true,
           title: Row(children: [
-            const Icon(Icons.label_outline, size: 18, color: AppColors.primary),
-            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(Icons.folder_open_rounded, size: 18, color: AppColors.primary),
+            ),
+            const SizedBox(width: 12),
             Expanded(
               child: Text(jenisLabel,
                   style: const TextStyle(
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w800,
                       fontSize: 15,
-                      color: AppColors.primary)),
+                      color: AppColors.textPrimary)),
             ),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(10),
+                color: AppColors.primarySoft,
+                borderRadius: BorderRadius.circular(8),
               ),
               child: Text('${list.length} item',
                   style: const TextStyle(
                       fontSize: 11,
-                      fontWeight: FontWeight.w500,
+                      fontWeight: FontWeight.w800,
                       color: AppColors.primary)),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 10),
             InkWell(
               onTap: () => openBulkForm('$jenisId', list),
+              borderRadius: BorderRadius.circular(12),
               child: Container(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(20),
+                  color: AppColors.primary,
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Row(mainAxisSize: MainAxisSize.min, children: [
-                  Icon(Icons.add, size: 16, color: AppColors.primary),
+                  Icon(Icons.add, size: 14, color: Colors.white),
                   SizedBox(width: 4),
                   Text('Tambah',
                       style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.primary)),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white)),
                 ]),
               ),
             ),
           ]),
-          children: list
-              .map((item) => ListTile(
-                    key: ValueKey(item.ctId),
-                    dense: true,
-                    contentPadding:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                    leading: Container(
-                      width: 30,
-                      height: 30,
-                      decoration: BoxDecoration(
-                        color: AppColors.bgGray,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Center(
-                        child: Text('${item.ctUrutan}',
-                            style: const TextStyle(
-                                fontWeight: FontWeight.w600,
-                                fontSize: 12,
-                                color: AppColors.textSecondary)),
-                      ),
-                    ),
-                    title: Text(item.ctItem,
-                        style: const TextStyle(fontWeight: FontWeight.w600)),
-                    subtitle: item.ctKeterangan != null
-                        ? Text(item.ctKeterangan!,
-                            style: const TextStyle(fontSize: 12))
-                        : null,
-                    trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-                      IconButton(
-                        icon: const Icon(Icons.edit_outlined,
-                            size: 18, color: AppColors.textSecondary),
-                        onPressed: () => openSingleForm(item),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.delete_outline,
-                            size: 18, color: AppColors.danger),
-                        onPressed: () => confirmDelete(item),
-                      ),
-                    ]),
-                  ))
-              .toList(),
+          children: [
+            const Divider(height: 1, color: AppColors.border),
+            const SizedBox(height: 4),
+            ...list.map((item) => _buildChecklistItemCard(item)),
+            const SizedBox(height: 12),
+          ],
         ),
       );
     }).toList();
   }
+
+  Widget _buildChecklistItemCard(ChecklistTemplateModel item) {
+    final hasKeterangan = item.ctKeterangan != null && item.ctKeterangan!.trim().isNotEmpty;
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.border.withValues(alpha: 0.5)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Center(
+              child: Text(
+                '${item.ctUrutan}',
+                style: const TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 12,
+                  color: AppColors.primary,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  item.ctItem,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 14,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                if (hasKeterangan) ...[
+                  const SizedBox(height: 3),
+                  Text(
+                    item.ctKeterangan!,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                icon: const Icon(Icons.edit_outlined, size: 18, color: AppColors.textSecondary),
+                onPressed: () => openSingleForm(item),
+              ),
+              const SizedBox(width: 10),
+              IconButton(
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.danger),
+                onPressed: () => confirmDelete(item),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 }
+
+// ═══════════════════════════════════════════════════════════════
+//  SKELETON LOADING WIDGETS
+// ═══════════════════════════════════════════════════════════════
+class _ChecklistSkeleton extends StatelessWidget {
+  const _ChecklistSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return const AppShimmer(
+      child: SingleChildScrollView(
+        physics: NeverScrollableScrollPhysics(),
+        padding: EdgeInsets.fromLTRB(16, 16, 16, 120),
+        child: Column(
+          children: [
+            AppSkeletonFolderCard(),
+            AppSkeletonFolderCard(),
+            AppSkeletonFolderCard(),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 
 // ═══════════════════════════════════════════════════════════════
 //  SHARED WIDGETS
