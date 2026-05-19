@@ -535,7 +535,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                     Text(
                                       'Selamat Datang',
                                       style: TextStyle(
-                                        color: Colors.white.withValues(alpha: 0.85),
+                                        color: Colors.white
+                                            .withValues(alpha: 0.85),
                                         fontSize: 12,
                                         fontWeight: FontWeight.w600,
                                         letterSpacing: 0.5,
@@ -560,11 +561,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                         vertical: 3,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: Colors.white.withValues(alpha: 0.22),
-                                        borderRadius: BorderRadius.circular(999),
+                                        color: Colors.white
+                                            .withValues(alpha: 0.22),
+                                        borderRadius:
+                                            BorderRadius.circular(999),
                                       ),
                                       child: Text(
-                                        '${auth.user?['user_divisi'] ?? '-'}'.toUpperCase(),
+                                        '${auth.user?['user_divisi'] ?? '-'}'
+                                            .toUpperCase(),
                                         style: const TextStyle(
                                           color: Colors.white,
                                           fontSize: 10,
@@ -631,7 +635,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text("Jadwal Mendatang",
+                            const Text("Daftar Jadwal",
                                 style: TextStyle(
                                     fontSize: 16, fontWeight: FontWeight.bold)),
                             TextButton(
@@ -993,7 +997,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
             const SizedBox(height: 2),
             Text(
               desc,
-              style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+              style:
+                  const TextStyle(fontSize: 11, color: AppColors.textSecondary),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
