@@ -65,6 +65,7 @@ class RealisasiDetailSheet {
                     : detail.realTtdPicNama!.trim(),
               ),
               _ttdRow(detail.realTtdData),
+              _fotoRow(detail.realFoto),
               const SizedBox(height: 12),
               const Text(
                 'Checklist',
@@ -169,5 +170,63 @@ class RealisasiDetailSheet {
     } catch (_) {
       return _detailRow('TTD', 'Data TTD tidak valid');
     }
+  }
+
+  static Widget _fotoRow(String? realFoto) {
+    final url = (realFoto ?? '').trim();
+    if (url.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(
+            width: 110,
+            child: Text(
+              'Foto Bukti',
+              style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+            ),
+          ),
+          Expanded(
+            child: Container(
+              height: 180,
+              decoration: BoxDecoration(
+                border: Border.all(color: AppColors.border),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(11),
+                child: Image.network(
+                  url,
+                  fit: BoxFit.cover,
+                  loadingBuilder: (context, child, loadingProgress) {
+                    if (loadingProgress == null) return child;
+                    return const Center(
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    );
+                  },
+                  errorBuilder: (context, error, stackTrace) {
+                    return const Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.broken_image_outlined, color: Colors.grey, size: 36),
+                          SizedBox(height: 4),
+                          Text(
+                            'Gagal memuat gambar',
+                            style: TextStyle(fontSize: 11, color: Colors.grey),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

@@ -126,6 +126,16 @@ class _InventarisScreenState extends State<InventarisScreen> {
                             decoration: InputDecoration(
                               hintText: 'Cari nama inventaris...',
                               prefixIcon: const Icon(Icons.search, size: 20, color: AppColors.textSecondary),
+                              suffixIcon: _search.text.isNotEmpty
+                                  ? IconButton(
+                                      icon: const Icon(Icons.clear, size: 20, color: AppColors.textSecondary),
+                                      onPressed: () {
+                                        _search.clear();
+                                        _onSearchChanged('');
+                                        setState(() {});
+                                      },
+                                    )
+                                  : null,
                               filled: true,
                               fillColor: Colors.white,
                               contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -142,7 +152,10 @@ class _InventarisScreenState extends State<InventarisScreen> {
                                 borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
                               ),
                             ),
-                            onChanged: _onSearchChanged,
+                            onChanged: (v) {
+                              _onSearchChanged(v);
+                              setState(() {});
+                            },
                           ),
                         ),
                       ),
@@ -504,7 +517,7 @@ class _InventarisCard extends StatelessWidget {
     final categoryIcon = _kategoriIcon(item.invKategori);
     final categoryColor = _kategoriColor(item.invKategori);
 
-    return Container(
+    final cardWidget = Container(
       margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -528,15 +541,42 @@ class _InventarisCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  item.invNama,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 14,
-                    color: AppColors.textPrimary,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        item.invNama,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 14,
+                          color: AppColors.textPrimary,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                      decoration: BoxDecoration(
+                        color: (item.invIsActive ? AppColors.success : AppColors.danger).withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(
+                          color: (item.invIsActive ? AppColors.success : AppColors.danger).withValues(alpha: 0.25),
+                          width: 0.5,
+                        ),
+                      ),
+                      child: Text(
+                        item.invIsActive ? 'aktif' : 'nonaktif',
+                        style: TextStyle(
+                          fontSize: 8,
+                          fontWeight: FontWeight.w800,
+                          color: item.invIsActive ? AppColors.success : AppColors.danger,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 3),
                 Text(
@@ -598,6 +638,14 @@ class _InventarisCard extends StatelessWidget {
         ],
       ),
     );
+
+    if (!item.invIsActive) {
+      return Opacity(
+        opacity: 0.65,
+        child: cardWidget,
+      );
+    }
+    return cardWidget;
   }
 
   IconData _kategoriIcon(String k) {
@@ -636,6 +684,7 @@ class _InventarisFormState extends State<_InventarisForm> {
   final _notesCtrl = TextEditingController();
   String _kategori = '';
   String _kondisi = 'Baik (Sering digunakan)';
+  bool _isActive = true;
 
   static const _kondisiList = [
     'Baik (Sering digunakan)',
@@ -663,6 +712,7 @@ class _InventarisFormState extends State<_InventarisForm> {
           context.read<MasterProvider>().kategoriByJenisId(d.invJenisId);
       _kategori = (mappedKategori ?? d.invKategori).trim();
       _kondisi = d.invKondisi;
+      _isActive = d.invIsActive;
     } else if (widget.initialJenisId != null) {
       final jenis =
           context.read<MasterProvider>().jenisById(widget.initialJenisId!);
@@ -722,6 +772,7 @@ class _InventarisFormState extends State<_InventarisForm> {
       'inv_kondisi': _kondisi,
       'inv_notes':
           _notesCtrl.text.trim().isEmpty ? null : _notesCtrl.text.trim(),
+      'inv_is_active': _isActive ? 1 : 0,
     };
     final ok = await p.saveInventaris(body, id: widget.item?.invId);
     if (ok && mounted) {
@@ -818,6 +869,51 @@ class _InventarisFormState extends State<_InventarisForm> {
                   onChanged: (v) => setState(() => _kondisi = v!),
                 ),
                 const SizedBox(height: 14),
+
+                // Status Aktif Slider (Switch)
+                Container(
+                  margin: const EdgeInsets.only(bottom: 14),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AppColors.border.withValues(alpha: 0.8)),
+                  ),
+                  child: SwitchListTile(
+                    value: _isActive,
+                    activeColor: AppColors.primary,
+                    activeTrackColor: AppColors.primary.withValues(alpha: 0.2),
+                    inactiveThumbColor: AppColors.textSecondary,
+                    inactiveTrackColor: AppColors.border.withValues(alpha: 0.5),
+                    title: const Text(
+                      'Status',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    subtitle: Text(
+                      _isActive ? 'Inventaris aktif' : 'Inventaris tidak aktif',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: _isActive ? AppColors.success : AppColors.textSecondary,
+                      ),
+                    ),
+                    secondary: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: (_isActive ? AppColors.primary : AppColors.textSecondary).withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(
+                        _isActive ? Icons.check_circle_outline_rounded : Icons.cancel_outlined,
+                        color: _isActive ? AppColors.primary : AppColors.textSecondary,
+                        size: 20,
+                      ),
+                    ),
+                    onChanged: (value) => setState(() => _isActive = value),
+                  ),
+                ),
 
                 _field(_notesCtrl, 'Catatan', Icons.notes_outlined,
                     maxLines: 3),

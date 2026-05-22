@@ -19,6 +19,7 @@ class RealisasiModel {
   final String? realTtdAt;
   final int? realApprovedBy;
   final String? realApprovedAt;
+  final String? realFoto;
   final Map<String, dynamic>? jadwal;
   final Map<String, dynamic>? inventaris;
   final Map<String, dynamic>? teknisi;
@@ -43,6 +44,7 @@ class RealisasiModel {
     this.realTtdAt,
     this.realApprovedBy,
     this.realApprovedAt,
+    this.realFoto,
     this.jadwal,
     this.inventaris,
     this.teknisi,
@@ -68,6 +70,7 @@ class RealisasiModel {
         realTtdAt: j['real_ttd_at'],
         realApprovedBy: j['real_approved_by'],
         realApprovedAt: j['real_approved_at'],
+        realFoto: j['real_foto'],
         jadwal: (j['jadwal'] ?? j['real_jadwal']) != null
             ? Map<String, dynamic>.from(j['jadwal'] ?? j['real_jadwal'])
             : null,

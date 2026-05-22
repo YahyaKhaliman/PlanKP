@@ -121,10 +121,12 @@ class _UserScreenState extends State<UserScreen> {
                       controller: _searchCtrl,
                       decoration: InputDecoration(
                         hintText: 'Cari nama atau NIK...',
-                        prefixIcon: const Icon(Icons.search, size: 20, color: AppColors.textSecondary),
+                        prefixIcon: const Icon(Icons.search,
+                            size: 20, color: AppColors.textSecondary),
                         suffixIcon: _searchQuery.isNotEmpty
                             ? IconButton(
-                                icon: const Icon(Icons.clear_rounded, color: AppColors.textSecondary),
+                                icon: const Icon(Icons.clear_rounded,
+                                    color: AppColors.textSecondary),
                                 onPressed: () {
                                   _searchCtrl.clear();
                                   setState(() => _searchQuery = '');
@@ -133,7 +135,8 @@ class _UserScreenState extends State<UserScreen> {
                             : null,
                         filled: true,
                         fillColor: Colors.white,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 14),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(16),
                           borderSide: const BorderSide(color: AppColors.border),
@@ -144,7 +147,8 @@ class _UserScreenState extends State<UserScreen> {
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(16),
-                          borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+                          borderSide: const BorderSide(
+                              color: AppColors.primary, width: 1.5),
                         ),
                       ),
                     ),
@@ -200,7 +204,8 @@ class _UserScreenState extends State<UserScreen> {
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(20),
                               border: Border.all(
-                                  color: AppColors.border.withValues(alpha: 0.6)),
+                                  color:
+                                      AppColors.border.withValues(alpha: 0.6)),
                               boxShadow: [
                                 BoxShadow(
                                     color: Colors.black.withValues(alpha: 0.02),
@@ -215,7 +220,8 @@ class _UserScreenState extends State<UserScreen> {
                                 width: 44,
                                 height: 44,
                                 decoration: BoxDecoration(
-                                  color: AppColors.primary.withValues(alpha: 0.08),
+                                  color:
+                                      AppColors.primary.withValues(alpha: 0.08),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Center(
@@ -255,14 +261,16 @@ class _UserScreenState extends State<UserScreen> {
                                     Wrap(
                                       spacing: 6,
                                       runSpacing: 4,
-                                      crossAxisAlignment: WrapCrossAlignment.center,
+                                      crossAxisAlignment:
+                                          WrapCrossAlignment.center,
                                       children: [
                                         _JabatanBadge(user.jabatanLabel),
                                         if (isCurrentUser) const _SelfBadge(),
                                         _StatusBadge(isActive: user.aktif),
                                         if (user.userCabang != null)
                                           Padding(
-                                            padding: const EdgeInsets.only(left: 2),
+                                            padding:
+                                                const EdgeInsets.only(left: 2),
                                             child: Text(
                                               p.displayPabrik(user.userCabang),
                                               style: const TextStyle(
@@ -291,10 +299,12 @@ class _UserScreenState extends State<UserScreen> {
                                           size: 18, color: AppColors.warning),
                                       onPressed: () => _openForm(user),
                                       style: IconButton.styleFrom(
-                                        backgroundColor: AppColors.warning.withValues(alpha: 0.08),
+                                        backgroundColor: AppColors.warning
+                                            .withValues(alpha: 0.08),
                                         padding: const EdgeInsets.all(8),
                                         shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(10),
+                                          borderRadius:
+                                              BorderRadius.circular(10),
                                         ),
                                       ),
                                     ),
@@ -533,7 +543,7 @@ class _UserFormState extends State<_UserForm> {
               TextFormField(
                   controller: _namaCtrl,
                   decoration: const InputDecoration(
-                      labelText: 'Nama Lengkap',
+                      labelText: 'Nama User',
                       prefixIcon: Icon(Icons.person_outline)),
                   textCapitalization: TextCapitalization.words,
                   validator: (v) => (v == null || v.trim().isEmpty)

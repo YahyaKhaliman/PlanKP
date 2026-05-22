@@ -78,6 +78,43 @@ class ApiClient {
     return _parse(res);
   }
 
+  static Future<Map<String, dynamic>> upload(
+    String path, {
+    String? filePath,
+    List<int>? bytes,
+    String? filename,
+    String fieldName = 'foto',
+  }) async {
+    final uri = Uri.parse('${ApiConfig.baseUrl}$path');
+    final request = http.MultipartRequest('POST', uri);
+    
+    final token = await _getToken();
+    if (token != null) {
+      request.headers['Authorization'] = 'Bearer $token';
+    }
+    
+    if (bytes != null && filename != null) {
+      request.files.add(
+        http.MultipartFile.fromBytes(
+          fieldName,
+          bytes,
+          filename: filename,
+        ),
+      );
+    } else if (filePath != null) {
+      request.files.add(
+        await http.MultipartFile.fromPath(fieldName, filePath),
+      );
+    } else {
+      throw ArgumentError('Either filePath or bytes with filename must be provided');
+    }
+    
+    final streamedResponse = await request.send();
+    final res = await http.Response.fromStream(streamedResponse);
+    return _parse(res);
+  }
+
+
   static Map<String, dynamic> _parse(http.Response res) {
     final body = jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
     if (kDebugMode)

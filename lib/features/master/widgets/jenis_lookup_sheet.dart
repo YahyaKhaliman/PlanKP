@@ -59,9 +59,18 @@ class _JenisLookupSheetState extends State<JenisLookupSheet> {
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: TextField(
                   controller: _searchCtrl,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     hintText: 'Cari jenis berdasarkan nama/kategori',
-                    prefixIcon: Icon(Icons.search),
+                    prefixIcon: const Icon(Icons.search),
+                    suffixIcon: _keyword.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear, size: 20),
+                            onPressed: () {
+                              _searchCtrl.clear();
+                              setState(() => _keyword = '');
+                            },
+                          )
+                        : null,
                   ),
                   onChanged: (value) => setState(() => _keyword = value),
                 ),

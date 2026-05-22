@@ -787,6 +787,15 @@ class _ChecklistTab extends StatelessWidget {
                 decoration: InputDecoration(
                   hintText: 'Cari item checklist atau jenis...',
                   prefixIcon: const Icon(Icons.search, size: 20, color: AppColors.textSecondary),
+                  suffixIcon: searchCtrl.text.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear, size: 20, color: AppColors.textSecondary),
+                          onPressed: () {
+                            searchCtrl.clear();
+                            onSearchChanged('');
+                          },
+                        )
+                      : null,
                   filled: true,
                   fillColor: Colors.white,
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),

@@ -111,6 +111,15 @@ class _JenisScreenState extends State<JenisScreen> {
                             decoration: InputDecoration(
                               hintText: 'Cari nama atau kategori jenis...',
                               prefixIcon: const Icon(Icons.search, size: 20, color: AppColors.textSecondary),
+                              suffixIcon: _searchCtrl.text.isNotEmpty
+                                  ? IconButton(
+                                      icon: const Icon(Icons.clear, size: 20, color: AppColors.textSecondary),
+                                      onPressed: () {
+                                        _searchCtrl.clear();
+                                        setState(() {});
+                                      },
+                                    )
+                                  : null,
                               filled: true,
                               fillColor: Colors.white,
                               contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),

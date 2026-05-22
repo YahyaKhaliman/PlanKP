@@ -386,6 +386,27 @@ class JadwalProvider extends ChangeNotifier {
     }
   }
 
+  Future<bool> uploadRealisasiFoto(
+    int realId, {
+    String? filePath,
+    List<int>? bytes,
+    String? filename,
+  }) async {
+    try {
+      await ApiClient.upload(
+        '${ApiConfig.realisasi}/$realId/foto',
+        filePath: filePath,
+        bytes: bytes,
+        filename: filename,
+      );
+      return true;
+    } on ApiException catch (e) {
+      _setError(e.message);
+      return false;
+    }
+  }
+
+
   // Ambil template checklist untuk jenis inventaris tertentu
   Future<List<ChecklistInputModel>> fetchTemplate(int jenisId) async {
     try {

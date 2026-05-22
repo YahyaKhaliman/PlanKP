@@ -1,12 +1,15 @@
 import 'dart:convert';
+import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../../core/widgets/app_notifier.dart';
 import '../models/checklist_hasil_model.dart';
 import '../providers/jadwal_provider.dart';
+
 
 // ═══════════════════════════════════════════════════════════════
 //  REALISASI FORM SCREEN
@@ -29,8 +32,11 @@ class _RealisasiFormScreenState extends State<RealisasiFormScreen> {
   String? _invMerk;
   String? _invKondisiAwal;
   String? _invPicNama;
+  List<int>? _imageBytes;
+  String? _imageName;
 
   static const _kondisiList = ['Baik', 'Perlu Perhatian', 'Rusak'];
+
 
   int get _jadwalId => widget.args['jadwalId'];
   int get _invJenisId => widget.args['invJenisId'] ?? widget.args['invJenis'];
@@ -166,6 +172,24 @@ class _RealisasiFormScreenState extends State<RealisasiFormScreen> {
       return;
     }
 
+    // Jika user mengupload foto bukti
+    if (_imageBytes != null && _imageName != null) {
+      final okFoto = await p.uploadRealisasiFoto(
+        real.realId,
+        bytes: _imageBytes,
+        filename: _imageName,
+      );
+      if (!mounted) {
+        return;
+      }
+      if (!okFoto) {
+        setState(() => _submitting = false);
+        await AppNotifier.showError(
+            context, p.error ?? 'Gagal mengunggah foto bukti realisasi');
+        return;
+      }
+    }
+
     setState(() => _submitting = false);
     await AppNotifier.showSuccess(context, 'Realisasi berhasil diselesaikan');
     if (!mounted) {
@@ -183,6 +207,259 @@ class _RealisasiFormScreenState extends State<RealisasiFormScreen> {
       ),
     );
   }
+
+  Future<void> _pickImage(ImageSource source) async {
+    try {
+      final picker = ImagePicker();
+      final picked = await picker.pickImage(
+        source: source,
+        maxWidth: 1280,
+        maxHeight: 1280,
+        imageQuality: 80,
+      );
+      if (picked != null) {
+        final bytes = await picked.readAsBytes();
+        setState(() {
+          _imageBytes = bytes;
+          _imageName = picked.name;
+        });
+      }
+    } catch (e) {
+      debugPrint('[PICK IMAGE ERROR] $e');
+      if (mounted) {
+        AppNotifier.showError(context, 'Gagal mengambil gambar: $e');
+      }
+    }
+  }
+
+  void _showImageSourceDialog() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) => Container(
+        decoration: const BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 8),
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const Padding(
+                padding: EdgeInsets.all(16),
+                child: Text(
+                  'Pilih Sumber Foto Bukti',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+              ),
+              ListTile(
+                leading: const Icon(Icons.camera_alt_outlined, color: AppColors.primary),
+                title: const Text('Kamera (Ambil Foto Langsung)'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _pickImage(ImageSource.camera);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library_outlined, color: AppColors.primary),
+                title: const Text('Galeri (Pilih dari Foto Perangkat)'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _pickImage(ImageSource.gallery);
+                },
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPhotoSection() {
+    return _buildSectionCard(
+      title: 'Bukti Foto Realisasi',
+      subtitle:
+          'Tambahkan foto kondisi unit sebagai bukti pendukung penyelesaian maintenance.',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (_imageBytes == null)
+            InkWell(
+              onTap: _showImageSourceDialog,
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 16),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: AppColors.border,
+                    style: BorderStyle.solid,
+                  ),
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: const BoxDecoration(
+                        color: AppColors.primarySoft,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.camera_alt_outlined,
+                        color: AppColors.primary,
+                        size: 28,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Pilih / Ambil Foto Bukti',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'Mendukung Kamera langsung atau Unggah dari Galeri',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else
+            Stack(
+              children: [
+                Container(
+                  width: double.infinity,
+                  height: 240,
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(11),
+                    child: Image.memory(
+                      Uint8List.fromList(_imageBytes!),
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                ),
+                Positioned(
+                  top: 10,
+                  right: 10,
+                  child: Row(
+                    children: [
+                      // Ganti foto button
+                      Material(
+                        color: Colors.black.withValues(alpha: 0.6),
+                        borderRadius: BorderRadius.circular(30),
+                        child: InkWell(
+                          onTap: _showImageSourceDialog,
+                          borderRadius: BorderRadius.circular(30),
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            child: const Icon(
+                              Icons.refresh,
+                              color: Colors.white,
+                              size: 20,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      // Hapus foto button
+                      Material(
+                        color: Colors.red.withValues(alpha: 0.8),
+                        borderRadius: BorderRadius.circular(30),
+                        child: InkWell(
+                          onTap: () {
+                            setState(() {
+                              _imageBytes = null;
+                              _imageName = null;
+                            });
+                          },
+                          borderRadius: BorderRadius.circular(30),
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            child: const Icon(
+                              Icons.delete_outline,
+                              color: Colors.white,
+                              size: 20,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Positioned(
+                  bottom: 10,
+                  left: 10,
+                  right: 10,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.6),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.image_outlined,
+                          color: Colors.white,
+                          size: 14,
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            _imageName ?? 'Foto Realisasi',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ),
+                        Text(
+                          '${(_imageBytes!.length / 1024).toStringAsFixed(1)} KB',
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 10,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -354,6 +631,8 @@ class _RealisasiFormScreenState extends State<RealisasiFormScreen> {
                     ],
                   ),
                 ),
+                const SizedBox(height: 16),
+                _buildPhotoSection(),
                 const SizedBox(height: 18),
                 Consumer<JadwalProvider>(
                   builder: (_, p, __) => Card(
