@@ -5,6 +5,7 @@ class JadwalModel {
   final String? jdwInvJenis;
   final String jdwDivisi;
   final String jdwFrekuensi;
+  final int jdwGapHari;
   final String jdwTglMulai;
   final String? jdwTglSelesai;
   final int? jdwWeekNumber;
@@ -31,6 +32,7 @@ class JadwalModel {
     this.jdwInvJenis,
     required this.jdwDivisi,
     required this.jdwFrekuensi,
+    this.jdwGapHari = 0,
     required this.jdwTglMulai,
     this.jdwTglSelesai,
     this.jdwWeekNumber,
@@ -58,6 +60,9 @@ class JadwalModel {
         jdwInvJenis: j['jdw_inv_jenis'],
         jdwDivisi: j['jdw_divisi'] ?? '',
         jdwFrekuensi: j['jdw_frekuensi'] ?? '',
+        jdwGapHari: j['jdw_gap_hari'] is int
+            ? j['jdw_gap_hari']
+            : int.tryParse('${j['jdw_gap_hari'] ?? ''}') ?? 0,
         jdwTglMulai: j['jdw_tgl_mulai'] ?? '',
         jdwTglSelesai: j['jdw_tgl_selesai'],
         jdwWeekNumber: j['jdw_week_number'],

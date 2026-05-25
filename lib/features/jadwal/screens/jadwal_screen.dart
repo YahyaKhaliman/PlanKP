@@ -260,10 +260,13 @@ class _JadwalScreenState extends State<JadwalScreen> {
                   onPressed: () => setState(() => _selectedFrekuensi = null),
                   style: TextButton.styleFrom(
                     foregroundColor: AppColors.primary,
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   ),
                   icon: const Icon(Icons.filter_alt_off_rounded, size: 14),
-                  label: const Text('Reset', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                  label: const Text('Reset',
+                      style:
+                          TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
                 ),
             ],
           ),
@@ -296,7 +299,8 @@ class _JadwalScreenState extends State<JadwalScreen> {
                         width: 8,
                         height: 8,
                         decoration: BoxDecoration(
-                          color: isSelected ? AppColors.primary : Colors.grey[300],
+                          color:
+                              isSelected ? AppColors.primary : Colors.grey[300],
                           shape: BoxShape.circle,
                         ),
                       ),
@@ -306,7 +310,8 @@ class _JadwalScreenState extends State<JadwalScreen> {
                           f,
                           style: TextStyle(
                             fontSize: 13,
-                            fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                            fontWeight:
+                                isSelected ? FontWeight.w800 : FontWeight.w600,
                             color: AppColors.textPrimary,
                           ),
                         ),
@@ -325,7 +330,9 @@ class _JadwalScreenState extends State<JadwalScreen> {
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w800,
-                          color: isSelected ? AppColors.primary : AppColors.textPrimary,
+                          color: isSelected
+                              ? AppColors.primary
+                              : AppColors.textPrimary,
                         ),
                       ),
                     ],
@@ -434,16 +441,25 @@ class _JadwalScreenState extends State<JadwalScreen> {
                           delegate: SliverChildBuilderDelegate(
                             (context, i) {
                               final item = filtered[i];
-                              final jenisNama = context
-                                      .read<MasterProvider>()
-                                      .jenisById(item.jdwJenisId)
-                                      ?.jenisNama ??
-                                  'ID ${item.jdwJenisId}';
+                              final master = context.read<MasterProvider>();
+                              final jenisNama =
+                                  (item.jdwInvJenis ?? '').trim().isNotEmpty
+                                      ? item.jdwInvJenis!.trim()
+                                      : master
+                                              .jenisById(item.jdwJenisId)
+                                              ?.jenisNama ??
+                                          'Jenis tidak diketahui';
+                              final pabrikLabel = item.jdwPabrikList.isEmpty
+                                  ? null
+                                  : item.jdwPabrikList
+                                      .map((c) => master.displayPabrik(c))
+                                      .join(', ');
                               return Padding(
                                 padding: const EdgeInsets.only(bottom: 8),
                                 child: _JadwalCard(
                                   jadwal: item,
                                   jenisNama: jenisNama,
+                                  pabrikLabel: pabrikLabel,
                                   isAdmin: isAdmin,
                                   isUser: isUser,
                                   onTap: () => _handleJadwalTap(item,
@@ -549,10 +565,12 @@ class _InventarisPickerSheetState extends State<_InventarisPickerSheet> {
               TextField(
                 decoration: InputDecoration(
                   hintText: 'Cari no inventaris, nama, atau PIC...',
-                  prefixIcon: const Icon(Icons.search, size: 20, color: AppColors.textSecondary),
+                  prefixIcon: const Icon(Icons.search,
+                      size: 20, color: AppColors.textSecondary),
                   filled: true,
                   fillColor: Colors.white,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
                     borderSide: BorderSide.none,
@@ -563,7 +581,8 @@ class _InventarisPickerSheetState extends State<_InventarisPickerSheet> {
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+                    borderSide:
+                        const BorderSide(color: AppColors.primary, width: 1.5),
                   ),
                 ),
                 onChanged: (value) {
@@ -711,6 +730,7 @@ class _InventarisPickerSheetState extends State<_InventarisPickerSheet> {
 class _JadwalCard extends StatelessWidget {
   final JadwalModel jadwal;
   final String jenisNama;
+  final String? pabrikLabel;
   final bool isAdmin;
   final bool isUser;
   final VoidCallback onTap;
@@ -720,6 +740,7 @@ class _JadwalCard extends StatelessWidget {
   const _JadwalCard(
       {required this.jadwal,
       required this.jenisNama,
+      this.pabrikLabel,
       required this.isAdmin,
       required this.isUser,
       required this.onTap,
@@ -727,11 +748,45 @@ class _JadwalCard extends StatelessWidget {
       required this.onDelete,
       required this.onStatusChange});
 
+  String _buildWhenLabel() {
+    if ((jadwal.jdwNextDueDate ?? '').trim().isNotEmpty) {
+      return 'Jatuh tempo ${DateFormatter.toDisplay(jadwal.jdwNextDueDate)}';
+    }
+
+    final daysRemaining = jadwal.jdwDaysRemaining;
+    if (daysRemaining != null) {
+      if (daysRemaining < 0) return 'Terlambat ${daysRemaining.abs()} hari';
+      if (daysRemaining == 0) return 'Jatuh tempo hari ini';
+      return '$daysRemaining hari lagi';
+    }
+
+    final mulai = DateFormatter.toDisplay(jadwal.jdwTglMulai, fallback: '-');
+    final selesai = jadwal.jdwTglSelesai;
+    if ((selesai ?? '').trim().isNotEmpty) {
+      return 'Mulai $mulai–${DateFormatter.toDisplay(selesai)}';
+    }
+    return 'Mulai $mulai';
+  }
+
+  String _buildQuickDescription(int target) {
+    final whenLabel = _buildWhenLabel();
+    final assignedNama = jadwal.assignedNama.trim();
+    final hasAssigned = assignedNama.isNotEmpty && assignedNama != '-';
+    final hasPabrik = (pabrikLabel ?? '').trim().isNotEmpty;
+
+    final teknisiText = hasAssigned ? assignedNama : 'belum ditentukan';
+    final lokasiText = hasPabrik ? pabrikLabel!.trim() : 'semua lokasi terkait';
+
+    return 'Pemeliharaan $jenisNama frekuensi ${jadwal.jdwFrekuensi} di $lokasiText. '
+        'Pelaksana: $teknisiText. $whenLabel. Target: $target unit per ${jadwal.jdwFrekuensi.toLowerCase()}.';
+  }
+
   @override
   Widget build(BuildContext context) {
     final target = jadwal.jdwTarget ?? jadwal.jdwTotalUnit ?? 0;
     final selesai = jadwal.jdwSelesaiUnit ?? 0;
     final pct = target > 0 ? (selesai / target * 100) : 0;
+    final quickDescription = _buildQuickDescription(target);
 
     return Container(
       decoration: BoxDecoration(
@@ -790,6 +845,15 @@ class _JadwalCard extends StatelessWidget {
                               fontWeight: FontWeight.w600,
                             ),
                           ),
+                          const SizedBox(height: 4),
+                          Text(
+                            quickDescription,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: AppColors.textSecondary,
+                              height: 1.35,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -820,9 +884,8 @@ class _JadwalCard extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w800,
-                        color: pct >= 100
-                            ? AppColors.success
-                            : AppColors.primary,
+                        color:
+                            pct >= 100 ? AppColors.success : AppColors.primary,
                       ),
                     ),
                   ],
@@ -849,7 +912,8 @@ class _JadwalCard extends StatelessWidget {
                         onPressed: onEdit,
                         style: TextButton.styleFrom(
                           foregroundColor: AppColors.warning,
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 6),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
                           ),
@@ -857,7 +921,8 @@ class _JadwalCard extends StatelessWidget {
                         icon: const Icon(Icons.edit_rounded, size: 14),
                         label: const Text(
                           'Edit',
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                          style: TextStyle(
+                              fontSize: 12, fontWeight: FontWeight.w700),
                         ),
                       ),
                       const SizedBox(width: 4),
@@ -865,7 +930,8 @@ class _JadwalCard extends StatelessWidget {
                         onPressed: onDelete,
                         style: TextButton.styleFrom(
                           foregroundColor: AppColors.danger,
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 6),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
                           ),
@@ -873,7 +939,8 @@ class _JadwalCard extends StatelessWidget {
                         icon: const Icon(Icons.delete_rounded, size: 14),
                         label: const Text(
                           'Hapus',
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                          style: TextStyle(
+                              fontSize: 12, fontWeight: FontWeight.w700),
                         ),
                       ),
                     ],
@@ -931,6 +998,7 @@ class _JadwalFormState extends State<_JadwalForm> {
   final _form = GlobalKey<FormState>();
   final _judulCtrl = TextEditingController();
   final _targetCtrl = TextEditingController();
+  final _gapCtrl = TextEditingController();
   final _notesCtrl = TextEditingController();
   final TextEditingController _jenisCtrl = TextEditingController();
   int? _jenisId;
@@ -946,6 +1014,26 @@ class _JadwalFormState extends State<_JadwalForm> {
   String? _targetLimitError;
 
   static const _frekuensiList = ['Harian', 'Mingguan', 'Bulanan'];
+  bool get _showGapField => _frekuensi == 'Mingguan' || _frekuensi == 'Bulanan';
+
+  String _buildJadwalSummary() {
+    final judul = _judulCtrl.text.trim().isEmpty ? '-' : _judulCtrl.text.trim();
+    final jenis = _jenisCtrl.text.trim().isEmpty ? '-' : _jenisCtrl.text.trim();
+    final pelaksanaIdText =
+        _assignedToUserId != null ? '#$_assignedToUserId' : 'belum dipilih';
+    final target = int.tryParse(_targetCtrl.text.trim()) ?? 0;
+    final lokasi = _pabrikCodes.isEmpty ? '-' : _pabrikCodes.join(', ');
+    final mulai = _tglMulai != null ? _fmtDateDisplay(_tglMulai) : '-';
+    final selesai =
+        _tglSelesai != null ? _fmtDateDisplay(_tglSelesai) : 'tanpa batas';
+    final gap = _showGapField ? (int.tryParse(_gapCtrl.text.trim()) ?? 0) : 0;
+
+    final gapText = _showGapField ? ' | Gap realisasi: $gap hari' : '';
+
+    return 'Rencana: "$judul" | Jenis: $jenis | Frekuensi: $_frekuensi$gapText | '
+        'Target: ${target > 0 ? target : '-'} unit/$_frekuensi | Mulai: $mulai | Selesai: $selesai | '
+        'Lokasi: $lokasi | Pelaksana: $pelaksanaIdText';
+  }
 
   @override
   void initState() {
@@ -954,6 +1042,7 @@ class _JadwalFormState extends State<_JadwalForm> {
     if (d != null) {
       _judulCtrl.text = d.jdwJudul;
       _targetCtrl.text = '${d.jdwTarget ?? 1}';
+      _gapCtrl.text = '${d.jdwGapHari}';
       _notesCtrl.text = d.jdwNotes ?? '';
       _jenisId = d.jdwJenisId;
       _divisi = d.jdwDivisi;
@@ -969,6 +1058,7 @@ class _JadwalFormState extends State<_JadwalForm> {
       _jenisCtrl.text = jenis?.jenisNama ?? 'ID ${d.jdwJenisId}';
     } else {
       _targetCtrl.text = '1';
+      _gapCtrl.text = '0';
       // Untuk create, set divisi dari auth user
       final auth = context.read<AuthProvider>();
       _divisi = auth.user?['user_divisi'] ?? '';
@@ -984,6 +1074,7 @@ class _JadwalFormState extends State<_JadwalForm> {
   void dispose() {
     _judulCtrl.dispose();
     _targetCtrl.dispose();
+    _gapCtrl.dispose();
     _notesCtrl.dispose();
     _jenisCtrl.dispose();
     super.dispose();
@@ -1342,6 +1433,12 @@ class _JadwalFormState extends State<_JadwalForm> {
       );
       return;
     }
+    final parsedGapHari = int.tryParse(_gapCtrl.text.trim());
+    if (_showGapField && (parsedGapHari == null || parsedGapHari < 0)) {
+      await AppNotifier.showWarning(
+          context, 'Gap realisasi wajib angka minimal 0');
+      return;
+    }
     final p = context.read<JadwalProvider>();
     final body = {
       'jdw_judul': _judulCtrl.text.trim(),
@@ -1351,6 +1448,7 @@ class _JadwalFormState extends State<_JadwalForm> {
       'jdw_pabrik_kode': _pabrikCodes.join(','),
       'jdw_assigned_to': _assignedToUserId,
       'jdw_frekuensi': _frekuensi,
+      'jdw_gap_hari': _showGapField ? (parsedGapHari ?? 0) : 0,
       'jdw_tgl_mulai': _fmtDateApi(_tglMulai),
       'jdw_tgl_selesai': _tglSelesai != null ? _fmtDateApi(_tglSelesai) : null,
       'jdw_notes':
@@ -1458,6 +1556,9 @@ class _JadwalFormState extends State<_JadwalForm> {
                   if (v == null) return;
                   setState(() {
                     _frekuensi = v;
+                    if (!_showGapField) {
+                      _gapCtrl.text = '0';
+                    }
                     if (_tglMulai != null &&
                         !_isDateAllowedForFrekuensi(_tglMulai!)) {
                       _tglMulai = _nextAllowedDate(_tglMulai!);
@@ -1465,6 +1566,27 @@ class _JadwalFormState extends State<_JadwalForm> {
                   });
                 },
               ),
+              if (_showGapField) ...[
+                const SizedBox(height: 14),
+                TextFormField(
+                  controller: _gapCtrl,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    label: _requiredLabel('Gap Realisasi (hari)'),
+                    prefixIcon: const Icon(Icons.timelapse_outlined),
+                    hintText: 'Contoh: 2',
+                    helperText: 'Jeda minimal realisasi pada jadwal.',
+                  ),
+                  validator: (v) {
+                    if (!_showGapField) return null;
+                    final n = int.tryParse((v ?? '').trim());
+                    if (n == null || n < 0) {
+                      return 'Gap wajib angka bulat minimal 0';
+                    }
+                    return null;
+                  },
+                ),
+              ],
               const SizedBox(height: 14),
               TextFormField(
                 controller: _targetCtrl,
@@ -1566,6 +1688,44 @@ class _JadwalFormState extends State<_JadwalForm> {
                   labelText: 'Catatan (opsional)',
                   prefixIcon: Icon(Icons.notes_outlined),
                   alignLabelWithHint: true,
+                ),
+              ),
+              const SizedBox(height: 14),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Row(
+                      children: [
+                        Icon(Icons.summarize_outlined,
+                            size: 16, color: AppColors.primary),
+                        SizedBox(width: 6),
+                        Text(
+                          'Ringkasan Jadwal',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      _buildJadwalSummary(),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        height: 1.4,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 24),

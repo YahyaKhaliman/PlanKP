@@ -1,3 +1,5 @@
+// ignore_for_file: deprecated_member_use
+
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -125,10 +127,13 @@ class _InventarisScreenState extends State<InventarisScreen> {
                             controller: _search,
                             decoration: InputDecoration(
                               hintText: 'Cari nama inventaris...',
-                              prefixIcon: const Icon(Icons.search, size: 20, color: AppColors.textSecondary),
+                              prefixIcon: const Icon(Icons.search,
+                                  size: 20, color: AppColors.textSecondary),
                               suffixIcon: _search.text.isNotEmpty
                                   ? IconButton(
-                                      icon: const Icon(Icons.clear, size: 20, color: AppColors.textSecondary),
+                                      icon: const Icon(Icons.clear,
+                                          size: 20,
+                                          color: AppColors.textSecondary),
                                       onPressed: () {
                                         _search.clear();
                                         _onSearchChanged('');
@@ -138,18 +143,22 @@ class _InventarisScreenState extends State<InventarisScreen> {
                                   : null,
                               filled: true,
                               fillColor: Colors.white,
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                              contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 14),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(16),
-                                borderSide: const BorderSide(color: AppColors.border),
+                                borderSide:
+                                    const BorderSide(color: AppColors.border),
                               ),
                               enabledBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(16),
-                                borderSide: const BorderSide(color: AppColors.border),
+                                borderSide:
+                                    const BorderSide(color: AppColors.border),
                               ),
                               focusedBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(16),
-                                borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+                                borderSide: const BorderSide(
+                                    color: AppColors.primary, width: 1.5),
                               ),
                             ),
                             onChanged: (v) {
@@ -404,8 +413,8 @@ class _InventarisGroupCardState extends State<_InventarisGroupCard>
                     onTap: () => widget.onAddItem(widget.jenisId),
                     borderRadius: BorderRadius.circular(12),
                     child: Container(
-                      padding:
-                          const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 6),
                       decoration: BoxDecoration(
                         color: AppColors.primary,
                         borderRadius: BorderRadius.circular(12),
@@ -478,8 +487,6 @@ class _InventarisCard extends StatelessWidget {
     required this.pabrikLabel,
     required this.onEdit,
   });
-
-
 
   Color _kategoriColor(String k) {
     switch (k.toUpperCase()) {
@@ -558,12 +565,19 @@ class _InventarisCard extends StatelessWidget {
                     ),
                     const SizedBox(width: 6),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 5, vertical: 1.5),
                       decoration: BoxDecoration(
-                        color: (item.invIsActive ? AppColors.success : AppColors.danger).withValues(alpha: 0.08),
+                        color: (item.invIsActive
+                                ? AppColors.success
+                                : AppColors.danger)
+                            .withValues(alpha: 0.08),
                         borderRadius: BorderRadius.circular(4),
                         border: Border.all(
-                          color: (item.invIsActive ? AppColors.success : AppColors.danger).withValues(alpha: 0.25),
+                          color: (item.invIsActive
+                                  ? AppColors.success
+                                  : AppColors.danger)
+                              .withValues(alpha: 0.25),
                           width: 0.5,
                         ),
                       ),
@@ -572,7 +586,9 @@ class _InventarisCard extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 8,
                           fontWeight: FontWeight.w800,
-                          color: item.invIsActive ? AppColors.success : AppColors.danger,
+                          color: item.invIsActive
+                              ? AppColors.success
+                              : AppColors.danger,
                         ),
                       ),
                     ),
@@ -589,7 +605,9 @@ class _InventarisCard extends StatelessWidget {
                 const SizedBox(height: 3),
                 Row(
                   children: [
-                    Icon(Icons.info_outline, size: 12, color: AppColors.textSecondary.withValues(alpha: 0.7)),
+                    Icon(Icons.info_outline,
+                        size: 12,
+                        color: AppColors.textSecondary.withValues(alpha: 0.7)),
                     const SizedBox(width: 4),
                     Expanded(
                       child: Text(
@@ -619,7 +637,11 @@ class _InventarisCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
-                  item.invKondisi.contains('Sering') ? 'Baik (Sering)' : (item.invKondisi.contains('Jarang') ? 'Baik (Jarang)' : item.invKondisi),
+                  item.invKondisi.contains('Sering')
+                      ? 'Baik (Sering)'
+                      : (item.invKondisi.contains('Jarang')
+                          ? 'Baik (Jarang)'
+                          : item.invKondisi),
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w800,
@@ -630,7 +652,8 @@ class _InventarisCard extends StatelessWidget {
               IconButton(
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
-                icon: const Icon(Icons.edit_outlined, size: 18, color: AppColors.textSecondary),
+                icon: const Icon(Icons.edit_outlined,
+                    size: 18, color: AppColors.textSecondary),
                 onPressed: onEdit,
               ),
             ],
@@ -685,6 +708,7 @@ class _InventarisFormState extends State<_InventarisForm> {
   String _kategori = '';
   String _kondisi = 'Baik (Sering digunakan)';
   bool _isActive = true;
+  bool _jenisHasExistingInventaris = false;
 
   static const _kondisiList = [
     'Baik (Sering digunakan)',
@@ -693,9 +717,12 @@ class _InventarisFormState extends State<_InventarisForm> {
     'Rusak'
   ];
 
+  bool get _isCreateMode => widget.item == null;
+
   @override
   void initState() {
     super.initState();
+    _namaCtrl.addListener(_handleNamaChanged);
     final d = widget.item;
     if (d != null) {
       _noCtrl.text = d.invNo;
@@ -721,11 +748,113 @@ class _InventarisFormState extends State<_InventarisForm> {
         _jenisCtrl.text = jenis.jenisNama;
         _kategori = jenis.jenisKategori.trim();
       }
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || _jenisId == null) return;
+        _autoGenerateNoNamaForJenis(_jenisId!);
+      });
     }
+  }
+
+  Future<void> _autoGenerateNoNamaForJenis(int jenisId) async {
+    if (!_isCreateMode) return;
+    final provider = context.read<MasterProvider>();
+    await provider.fetchInventaris(
+      jenis: '$jenisId',
+      showLoading: false,
+      updateKategoriMap: false,
+    );
+    if (!mounted) return;
+
+    final items = provider.inventarisList
+        .where((e) => e.invJenisId == jenisId)
+        .toList(growable: false);
+    _jenisHasExistingInventaris = items.isNotEmpty;
+
+    int maxNoNumber = 0;
+    int noWidth = 3;
+    String noPrefix = '';
+    int maxNamaNumber = 0;
+    String namaPrefix = '';
+
+    final noPattern = RegExp(r'^(.*?)(\d+)$');
+    final namaPattern = RegExp(r'^(.*?)(\d+)$');
+
+    for (final item in items) {
+      final no = item.invNo.trim();
+      final noMatch = noPattern.firstMatch(no);
+      if (noMatch != null) {
+        final prefix = noMatch.group(1) ?? '';
+        final numberRaw = noMatch.group(2) ?? '';
+        final n = int.tryParse(numberRaw) ?? 0;
+        if (n >= maxNoNumber) {
+          maxNoNumber = n;
+          noPrefix = prefix;
+          noWidth = numberRaw.length > noWidth ? numberRaw.length : noWidth;
+        }
+      }
+
+      final nama = item.invNama.trim();
+      final namaMatch = namaPattern.firstMatch(nama);
+      if (namaMatch != null) {
+        final prefix = (namaMatch.group(1) ?? '').trimRight();
+        final n = int.tryParse(namaMatch.group(2) ?? '') ?? 0;
+        if (n >= maxNamaNumber) {
+          maxNamaNumber = n;
+          namaPrefix = prefix;
+        }
+      } else if (namaPrefix.isEmpty && nama.isNotEmpty) {
+        namaPrefix = nama;
+      }
+    }
+
+    final jenisNama = _jenisCtrl.text.trim();
+    if (noPrefix.isEmpty) {
+      final fallbackBase =
+          _namaCtrl.text.trim().isNotEmpty ? _namaCtrl.text.trim() : jenisNama;
+      final normalized = fallbackBase
+          .toUpperCase()
+          .replaceAll(RegExp(r'[^A-Z0-9]+'), '_')
+          .replaceAll(RegExp(r'_+'), '_')
+          .replaceAll(RegExp(r'^_|_$'), '');
+      noPrefix = normalized.isEmpty ? 'INV_' : '${normalized}_';
+    }
+    if (namaPrefix.isEmpty) {
+      namaPrefix = jenisNama.isEmpty ? 'Inventaris' : jenisNama;
+    }
+
+    final nextNo = maxNoNumber + 1;
+    final nextNama = maxNamaNumber + 1;
+
+    setState(() {
+      _noCtrl.text = '$noPrefix${nextNo.toString().padLeft(noWidth, '0')}';
+      _namaCtrl.text = maxNamaNumber > 0 ? '$namaPrefix $nextNama' : namaPrefix;
+    });
+  }
+
+  String _buildNoPrefixFromNama(String value) {
+    final normalized = value
+        .toUpperCase()
+        .replaceAll(RegExp(r'[^A-Z0-9]+'), '_')
+        .replaceAll(RegExp(r'_+'), '_')
+        .replaceAll(RegExp(r'^_|_$'), '');
+    return normalized.isEmpty ? 'INV_' : '${normalized}_';
+  }
+
+  void _handleNamaChanged() {
+    if (!_isCreateMode || _jenisId == null) return;
+    if (_jenisHasExistingInventaris) return;
+
+    final nama = _namaCtrl.text.trim();
+    if (nama.isEmpty) return;
+
+    final suggestion = '${_buildNoPrefixFromNama(nama)}001';
+    if (_noCtrl.text.trim() == suggestion) return;
+    _noCtrl.text = suggestion;
   }
 
   @override
   void dispose() {
+    _namaCtrl.removeListener(_handleNamaChanged);
     _noCtrl.dispose();
     _namaCtrl.dispose();
     _jenisCtrl.dispose();
@@ -876,7 +1005,8 @@ class _InventarisFormState extends State<_InventarisForm> {
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppColors.border.withValues(alpha: 0.8)),
+                    border: Border.all(
+                        color: AppColors.border.withValues(alpha: 0.8)),
                   ),
                   child: SwitchListTile(
                     value: _isActive,
@@ -896,18 +1026,27 @@ class _InventarisFormState extends State<_InventarisForm> {
                       _isActive ? 'Inventaris aktif' : 'Inventaris tidak aktif',
                       style: TextStyle(
                         fontSize: 12,
-                        color: _isActive ? AppColors.success : AppColors.textSecondary,
+                        color: _isActive
+                            ? AppColors.success
+                            : AppColors.textSecondary,
                       ),
                     ),
                     secondary: Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: (_isActive ? AppColors.primary : AppColors.textSecondary).withValues(alpha: 0.08),
+                        color: (_isActive
+                                ? AppColors.primary
+                                : AppColors.textSecondary)
+                            .withValues(alpha: 0.08),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Icon(
-                        _isActive ? Icons.check_circle_outline_rounded : Icons.cancel_outlined,
-                        color: _isActive ? AppColors.primary : AppColors.textSecondary,
+                        _isActive
+                            ? Icons.check_circle_outline_rounded
+                            : Icons.cancel_outlined,
+                        color: _isActive
+                            ? AppColors.primary
+                            : AppColors.textSecondary,
                         size: 20,
                       ),
                     ),
@@ -1045,6 +1184,7 @@ class _InventarisFormState extends State<_InventarisForm> {
         _jenisCtrl.text = result.jenisNama;
         _kategori = result.jenisKategori.trim();
       });
+      await _autoGenerateNoNamaForJenis(result.jenisId);
     }
   }
 

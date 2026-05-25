@@ -812,14 +812,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                 ],
               ),
-              if (!isDesktop)
-                TextButton(
-                  onPressed: () => _showAllStepsBottomSheet(context, steps),
-                  child: const Text("Lihat Semua",
-                      style: TextStyle(
-                          color: AppColors.primary,
-                          fontWeight: FontWeight.bold)),
-                ),
             ],
           ),
         ),
@@ -1119,53 +1111,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   const TextStyle(fontSize: 11, color: AppColors.textSecondary),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showAllStepsBottomSheet(
-      BuildContext context, List<Map<String, dynamic>> steps) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        height: MediaQuery.of(context).size.height * 0.6,
-        decoration: const BoxDecoration(
-          color: _pageBg,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                      color: Colors.grey[300],
-                      borderRadius: BorderRadius.circular(2))),
-            ),
-            const SizedBox(height: 20),
-            const Text("Semua Langkah Persiapan",
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 20),
-            Expanded(
-              child: GridView.builder(
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 12,
-                  mainAxisSpacing: 12,
-                  mainAxisExtent: 110,
-                ),
-                itemCount: steps.length,
-                itemBuilder: (_, i) =>
-                    _buildStepCard(steps[i], isFullWidth: true),
-              ),
             ),
           ],
         ),
