@@ -272,6 +272,21 @@ class _RealisasiHistoryScreenState extends State<RealisasiHistoryScreen> {
               holidayDays: holidayDays,
             );
 
+            final crossMonthWeeks = <int>{};
+            for (final r in filteredMonthRealisasi) {
+              final frekuensi = (r.jadwal?['jdw_frekuensi'] ?? '').toString();
+              if (frekuensi == 'Mingguan') {
+                final hasOtherMonth = p.realisasiList.any((other) =>
+                    other.realWeekNumber == r.realWeekNumber &&
+                    other.realTahun == r.realTahun &&
+                    other.realBulan != r.realBulan);
+                if (hasOtherMonth) {
+                  crossMonthWeeks.add(r.realWeekNumber);
+                }
+              }
+            }
+            final sortedCrossMonthWeeks = crossMonthWeeks.toList()..sort();
+
             return Center(
               child: ConstrainedBox(
                 constraints: BoxConstraints(maxWidth: maxContentWidth),
@@ -356,6 +371,36 @@ class _RealisasiHistoryScreenState extends State<RealisasiHistoryScreen> {
                         ),
                       ),
                     ),
+                    if (sortedCrossMonthWeeks.isNotEmpty)
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: EdgeInsets.fromLTRB(
+                              horizontalPadding, 0, horizontalPadding, 10),
+                          child: Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFFF7ED),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: const Color(0xFFFED7AA)),
+                            ),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('⚠️ ', style: TextStyle(fontSize: 14)),
+                                Expanded(
+                                  child: Text(
+                                    'Catatan: Terdapat realisasi jadwal Mingguan pada minggu ke-${sortedCrossMonthWeeks.join(', ')} yang dicatat lintas bulan. Progress mingguan tetap dihitung sebagai 1 periode.',
+                                    style: const TextStyle(
+                                        fontSize: 12,
+                                        color: Color(0xFF92400E),
+                                        height: 1.5),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
                     SliverToBoxAdapter(
                       child: Padding(
                         padding: EdgeInsets.fromLTRB(
