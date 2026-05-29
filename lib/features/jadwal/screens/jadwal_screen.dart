@@ -30,6 +30,7 @@ class JadwalScreen extends StatefulWidget {
 class _JadwalScreenState extends State<JadwalScreen> {
   String? _selectedFrekuensi;
   bool _isSummaryCollapsed = false;
+  bool _isGapGuideExpanded = false;
 
   bool _onScrollNotification(ScrollNotification notification) {
     if (notification.metrics.axis != Axis.vertical) return false;
@@ -346,6 +347,156 @@ class _JadwalScreenState extends State<JadwalScreen> {
     );
   }
 
+  Widget _buildGapGuideCard() {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border.withValues(alpha: 0.6)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          InkWell(
+            onTap: () =>
+                setState(() => _isGapGuideExpanded = !_isGapGuideExpanded),
+            borderRadius: BorderRadius.circular(16),
+            child: Padding(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              child: Row(
+                children: [
+                  Container(
+                    width: 30,
+                    height: 30,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(Icons.help_outline_rounded,
+                        size: 16, color: AppColors.primary),
+                  ),
+                  const SizedBox(width: 10),
+                  const Expanded(
+                    child: Text(
+                      'Panduan Penggunaan Gap Hari',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                  ),
+                  Icon(
+                    _isGapGuideExpanded
+                        ? Icons.keyboard_arrow_up_rounded
+                        : Icons.keyboard_arrow_down_rounded,
+                    size: 20,
+                    color: AppColors.textSecondary,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (_isGapGuideExpanded) ...[
+            const Divider(height: 1, indent: 14, endIndent: 14),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Gap Hari mengontrol kapan realisasi boleh dilakukan. '
+                    'Ada dua jenis gap yang bekerja secara berbeda:',
+                    style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                        height: 1.5),
+                  ),
+                  const SizedBox(height: 10),
+                  Table(
+                    border: TableBorder.all(
+                      color: const Color(0xFFE2E8F0),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    columnWidths: const {
+                      0: FlexColumnWidth(2),
+                      1: FlexColumnWidth(3),
+                    },
+                    children: [
+                      const TableRow(
+                        decoration: BoxDecoration(
+                          color: Color(0xFFF1F5F9),
+                        ),
+                        children: [
+                          Padding(
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 8),
+                            child: Text('Kebutuhan',
+                                style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.textSecondary)),
+                          ),
+                          Padding(
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 8),
+                            child: Text('Gunakan',
+                                style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.textSecondary)),
+                          ),
+                        ],
+                      ),
+                      _guideRow(
+                        'Cegah mesin diservis terlalu sering',
+                        '⚙  Menu Jenis → Gap per Inventaris',
+                      ),
+                      _guideRow(
+                        'Cegah jadwal dilakukan terlalu sering',
+                        '📅  Form Jadwal → Gap Realisasi',
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  static TableRow _guideRow(String kebutuhan, String solusi) {
+    return TableRow(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          child: Text(kebutuhan,
+              style: const TextStyle(
+                  fontSize: 11, color: AppColors.textPrimary, height: 1.4)),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          child: Text(solusi,
+              style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.primary,
+                  height: 1.4)),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
@@ -418,6 +569,7 @@ class _JadwalScreenState extends State<JadwalScreen> {
                                   key: const ValueKey('summary-visible'),
                                   children: [
                                     _buildSummaryTable(jadwalAktif),
+                                    if (isAdmin) _buildGapGuideCard(),
                                     const SizedBox(height: 16),
                                   ],
                                 ),
