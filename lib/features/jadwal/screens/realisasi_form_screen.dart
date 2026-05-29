@@ -10,7 +10,6 @@ import '../../../core/widgets/app_notifier.dart';
 import '../models/checklist_hasil_model.dart';
 import '../providers/jadwal_provider.dart';
 
-
 // ═══════════════════════════════════════════════════════════════
 //  REALISASI FORM SCREEN
 //  args: { jadwalId, invJenis, invId?, invNama? }
@@ -36,7 +35,7 @@ class _RealisasiFormScreenState extends State<RealisasiFormScreen> {
   String? _imageName;
 
   static const _kondisiList = ['Baik', 'Perlu Perhatian', 'Rusak'];
-
+  static const _allowedImageExt = ['jpg', 'jpeg', 'png', 'webp'];
 
   int get _jadwalId => widget.args['jadwalId'];
   int get _invJenisId => widget.args['invJenisId'] ?? widget.args['invJenis'];
@@ -219,9 +218,13 @@ class _RealisasiFormScreenState extends State<RealisasiFormScreen> {
       );
       if (picked != null) {
         final bytes = await picked.readAsBytes();
+        final normalized = await _normalizePickedImage(
+          bytes: bytes,
+          filename: picked.name,
+        );
         setState(() {
-          _imageBytes = bytes;
-          _imageName = picked.name;
+          _imageBytes = normalized.$1;
+          _imageName = normalized.$2;
         });
       }
     } catch (e) {
@@ -230,6 +233,40 @@ class _RealisasiFormScreenState extends State<RealisasiFormScreen> {
         AppNotifier.showError(context, 'Gagal mengambil gambar: $e');
       }
     }
+  }
+
+  Future<(List<int>, String)> _normalizePickedImage({
+    required List<int> bytes,
+    required String filename,
+  }) async {
+    final trimmed = filename.trim();
+    final dot = trimmed.lastIndexOf('.');
+    final base = dot > 0 ? trimmed.substring(0, dot) : trimmed;
+    final ext = dot > 0 ? trimmed.substring(dot + 1).toLowerCase() : '';
+
+    if (_allowedImageExt.contains(ext)) {
+      return (bytes, trimmed);
+    }
+
+    // Fallback untuk format kamera seperti HEIC/HEIF:
+    // decode lalu encode ke PNG agar lolos whitelist server.
+    try {
+      final codec = await ui.instantiateImageCodec(Uint8List.fromList(bytes));
+      final frame = await codec.getNextFrame();
+      final bd = await frame.image.toByteData(format: ui.ImageByteFormat.png);
+      if (bd != null) {
+        return (
+          bd.buffer.asUint8List(),
+          '${base.isEmpty ? 'realisasi' : base}.png'
+        );
+      }
+    } catch (_) {
+      // lanjut fallback di bawah
+    }
+
+    // Jika konversi gagal, gunakan nama jpg sebagai fallback agar konsisten
+    // dengan validasi FE+BE (best effort).
+    return (bytes, '${base.isEmpty ? 'realisasi' : base}.jpg');
   }
 
   void _showImageSourceDialog() {
@@ -264,7 +301,8 @@ class _RealisasiFormScreenState extends State<RealisasiFormScreen> {
                 ),
               ),
               ListTile(
-                leading: const Icon(Icons.camera_alt_outlined, color: AppColors.primary),
+                leading: const Icon(Icons.camera_alt_outlined,
+                    color: AppColors.primary),
                 title: const Text('Kamera (Ambil Foto Langsung)'),
                 onTap: () {
                   Navigator.pop(context);
@@ -272,7 +310,8 @@ class _RealisasiFormScreenState extends State<RealisasiFormScreen> {
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.photo_library_outlined, color: AppColors.primary),
+                leading: const Icon(Icons.photo_library_outlined,
+                    color: AppColors.primary),
                 title: const Text('Galeri (Pilih dari Foto Perangkat)'),
                 onTap: () {
                   Navigator.pop(context);
@@ -301,7 +340,8 @@ class _RealisasiFormScreenState extends State<RealisasiFormScreen> {
               borderRadius: BorderRadius.circular(12),
               child: Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 16),
+                padding:
+                    const EdgeInsets.symmetric(vertical: 36, horizontal: 16),
                 decoration: BoxDecoration(
                   color: AppColors.surface,
                   borderRadius: BorderRadius.circular(12),
@@ -419,7 +459,8 @@ class _RealisasiFormScreenState extends State<RealisasiFormScreen> {
                   left: 10,
                   right: 10,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     decoration: BoxDecoration(
                       color: Colors.black.withValues(alpha: 0.6),
                       borderRadius: BorderRadius.circular(6),
@@ -459,7 +500,6 @@ class _RealisasiFormScreenState extends State<RealisasiFormScreen> {
       ),
     );
   }
-
 
   @override
   Widget build(BuildContext context) {

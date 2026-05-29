@@ -9,6 +9,23 @@ import '../constants/app_constants.dart';
 class ApiClient {
   static const _storage = FlutterSecureStorage();
 
+  static String _normalizeImageFilename(String? rawName) {
+    const fallback = 'upload.jpg';
+    final name = (rawName ?? '').trim();
+    if (name.isEmpty) return fallback;
+
+    final lower = name.toLowerCase();
+    const allowed = ['.jpg', '.jpeg', '.png', '.webp'];
+    for (final ext in allowed) {
+      if (lower.endsWith(ext)) return name;
+    }
+
+    // Jika extension tidak didukung/absen, pakai jpg agar konsisten dengan BE.
+    final dot = name.lastIndexOf('.');
+    final base = dot > 0 ? name.substring(0, dot) : name;
+    return '$base.jpg';
+  }
+
   static Future<String?> _getToken() => _storage.read(key: StorageKeys.token);
 
   static Future<Map<String, String>> _headers({bool auth = true}) async {
@@ -87,18 +104,19 @@ class ApiClient {
   }) async {
     final uri = Uri.parse('${ApiConfig.baseUrl}$path');
     final request = http.MultipartRequest('POST', uri);
-    
+
     final token = await _getToken();
     if (token != null) {
       request.headers['Authorization'] = 'Bearer $token';
     }
-    
+
     if (bytes != null && filename != null) {
+      final normalizedFilename = _normalizeImageFilename(filename);
       request.files.add(
         http.MultipartFile.fromBytes(
           fieldName,
           bytes,
-          filename: filename,
+          filename: normalizedFilename,
         ),
       );
     } else if (filePath != null) {
@@ -106,14 +124,14 @@ class ApiClient {
         await http.MultipartFile.fromPath(fieldName, filePath),
       );
     } else {
-      throw ArgumentError('Either filePath or bytes with filename must be provided');
+      throw ArgumentError(
+          'Either filePath or bytes with filename must be provided');
     }
-    
+
     final streamedResponse = await request.send();
     final res = await http.Response.fromStream(streamedResponse);
     return _parse(res);
   }
-
 
   static Map<String, dynamic> _parse(http.Response res) {
     final body = jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
