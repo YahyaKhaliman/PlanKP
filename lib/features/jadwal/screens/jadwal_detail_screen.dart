@@ -313,10 +313,15 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
     required int progressPct,
   }) {
     final jadwal = context.read<JadwalProvider>().jadwalDetail!;
+    final jenisGapHari =
+        master.jenisById(jadwal.jdwJenisId)?.jenisGapHari ?? 0;
+    final jadwalGapHari = jadwal.jdwGapHari;
+    final showJadwalGap =
+        jadwal.jdwFrekuensi == 'Mingguan' || jadwal.jdwFrekuensi == 'Bulanan';
 
     return _sectionCard(
       title: 'Informasi Jadwal',
-      subtitle: 'Detail informasi jadwal',
+      subtitle: 'Detail konfigurasi dan periode jadwal',
       child: Column(
         children: [
           _infoRow('Jenis Inventaris', jenisNama),
@@ -334,10 +339,120 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
           _infoRow('Capaian Per Jadwal', '$progressPct%'),
           if (jadwal.jdwNotes != null && jadwal.jdwNotes!.trim().isNotEmpty)
             _infoRow('Catatan', jadwal.jdwNotes!),
+          const Padding(
+            padding: EdgeInsets.only(bottom: 12),
+            child: Divider(height: 1),
+          ),
+          // ── Kartu Gap Jadwal ──────────────────────────────────
+          if (showJadwalGap)
+            _gapCard(
+              icon: Icons.timelapse_outlined,
+              title: 'Gap Jadwal',
+              subtitle: jadwalGapHari == 0
+                  ? 'Tidak ada jeda — jadwal dapat direalisasikan kapan saja.'
+                  : 'Realisasi jeda $jadwalGapHari hari per ${jadwal.jdwFrekuensi}.',
+              note: jadwalGapHari > 0
+                  ? '⚠ Dengan gap > 0 dan target banyak unit, pastikan jadwal tidak terblokir. '
+                      'Pertimbangkan set 0 jika menargetkan banyak unit sekaligus.'
+                  : null,
+              color: jadwalGapHari > 0
+                  ? const Color(0xFFF97316)
+                  : const Color(0xFF16A34A),
+              bgColor: jadwalGapHari > 0
+                  ? const Color(0xFFFFF7ED)
+                  : const Color(0xFFF0FDF4),
+              borderColor: jadwalGapHari > 0
+                  ? const Color(0xFFFED7AA)
+                  : const Color(0xFFBBF7D0),
+            ),
+          if (showJadwalGap) const SizedBox(height: 10),
+          // ── Kartu Gap per Mesin ───────────────────────────────
+          _gapCard(
+            icon: Icons.schedule_outlined,
+            title: 'Gap per Mesin (dari Jenis)',
+            subtitle: jenisGapHari == 0
+                ? 'Tidak ada jeda — mesin yang sama bisa di-maintenance kapan saja.'
+                : 'Mesin yang sama dapat di-maintenance dengan jeda $jenisGapHari hari.',
+            note: null,
+            color: jenisGapHari > 0
+                ? AppColors.primary
+                : AppColors.textSecondary,
+            bgColor: jenisGapHari > 0
+                ? AppColors.primary.withValues(alpha: 0.06)
+                : const Color(0xFFF8FAFC),
+            borderColor: jenisGapHari > 0
+                ? AppColors.primary.withValues(alpha: 0.2)
+                : const Color(0xFFE2E8F0),
+          ),
         ],
       ),
     );
   }
+
+  Widget _gapCard({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required String? note,
+    required Color color,
+    required Color bgColor,
+    required Color borderColor,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: borderColor),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, size: 16, color: color),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: color,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: color,
+                      height: 1.4,
+                    ),
+                  ),
+                  if (note != null) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      note,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Color(0xFFC2410C),
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
 
   Widget _buildInventarisSection(
     BuildContext context, {
@@ -415,7 +530,7 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
-                                      '${inv['inv_no'] ?? '-'} · ${master.displayPabrik(inv['inv_pabrik_kode']?.toString())}',
+                                      '${inv['inv_serial_number'] ?? inv['inv_no'] ?? '-'} · ${master.displayPabrik(inv['inv_pabrik_kode']?.toString())}',
                                       style: const TextStyle(
                                         fontSize: 12,
                                         color: AppColors.textSecondary,

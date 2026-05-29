@@ -156,22 +156,7 @@ class _RealisasiFormScreenState extends State<RealisasiFormScreen> {
       return;
     }
 
-    final okTtd = await p.saveTtd(
-      real.realId,
-      ttdData.picNama,
-      'data:image/png;base64,${ttdData.signatureBase64}',
-    );
-    if (!mounted) {
-      return;
-    }
-    if (!okTtd) {
-      setState(() => _submitting = false);
-      await AppNotifier.showError(
-          context, p.error ?? 'Gagal menyimpan tanda tangan');
-      return;
-    }
-
-    // Jika user mengupload foto bukti
+    // Jika user mengupload foto bukti (lakukan sebelum TTD agar status masih 'Draft')
     if (_imageBytes != null && _imageName != null) {
       final okFoto = await p.uploadRealisasiFoto(
         real.realId,
@@ -187,6 +172,21 @@ class _RealisasiFormScreenState extends State<RealisasiFormScreen> {
             context, p.error ?? 'Gagal mengunggah foto bukti realisasi');
         return;
       }
+    }
+
+    final okTtd = await p.saveTtd(
+      real.realId,
+      ttdData.picNama,
+      'data:image/png;base64,${ttdData.signatureBase64}',
+    );
+    if (!mounted) {
+      return;
+    }
+    if (!okTtd) {
+      setState(() => _submitting = false);
+      await AppNotifier.showError(
+          context, p.error ?? 'Gagal menyimpan tanda tangan');
+      return;
     }
 
     setState(() => _submitting = false);
@@ -726,8 +726,11 @@ class _RealisasiFormScreenState extends State<RealisasiFormScreen> {
   Widget _buildHeroCard() {
     final metaItems = <Widget>[];
     if ((_invNo ?? '').trim().isNotEmpty) {
-      metaItems
-          .add(_metaChip(Icons.format_list_numbered_rounded, _invNo!.trim()));
+      final displayNo = _invNo!.trim();
+      metaItems.add(_metaChip(
+        Icons.format_list_numbered_rounded,
+        displayNo.toLowerCase().startsWith('sn:') ? displayNo : 'SN: $displayNo',
+      ));
     }
     if ((_invMerk ?? '').trim().isNotEmpty) {
       metaItems.add(

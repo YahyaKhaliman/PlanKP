@@ -205,11 +205,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final normalizedQuery = query.trim().toLowerCase();
       if (normalizedQuery.isEmpty) return true;
 
-      final nomor = (inv['inv_no'] ?? '').toString().toLowerCase();
+      final sn = (inv['inv_serial_number'] ?? '').toString().toLowerCase();
       final nama = (inv['inv_nama'] ?? '').toString().toLowerCase();
       final pic = resolvePicName(inv).toLowerCase();
 
-      return nomor.contains(normalizedQuery) ||
+      return sn.contains(normalizedQuery) ||
           nama.contains(normalizedQuery) ||
           pic.contains(normalizedQuery);
     }
@@ -260,7 +260,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       const SizedBox(height: 10),
                       TextField(
                         decoration: const InputDecoration(
-                          hintText: 'Cari no inventaris, nama, atau PIC',
+                          hintText: 'Cari serial number, nama, atau PIC',
                           prefixIcon: Icon(Icons.search),
                         ),
                         onChanged: (value) {
@@ -289,7 +289,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                       .toString()
                                       .toUpperCase();
                                   final pabrik = inv['inv_pabrik_kode'] ?? '-';
-                                  final nomor = inv['inv_no'] ?? '-';
+                                  final sn = inv['inv_serial_number'] ?? '-';
                                   final picName = resolvePicName(inv);
                                   return Card(
                                     margin: EdgeInsets.zero,
@@ -321,7 +321,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                           crossAxisAlignment:
                                               CrossAxisAlignment.start,
                                           children: [
-                                            Text('$merk · $nomor',
+                                            Text('$merk · $sn',
                                                 style: const TextStyle(
                                                     fontSize: 12,
                                                     color:
@@ -442,7 +442,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         'invJenisNama': jenis?.jenisNama ?? 'ID $invJenisId',
         'invId': invId,
         'invNama': inv['inv_nama'],
-        'invNo': inv['inv_no'],
+        'invNo': inv['inv_serial_number'] ?? inv['inv_no'],
         'invMerk': inv['inv_merk'],
         'invKondisi': inv['inv_kondisi'],
         'invPicNama': inv['pic_user']?['user_nama'] ?? inv['inv_pic'],

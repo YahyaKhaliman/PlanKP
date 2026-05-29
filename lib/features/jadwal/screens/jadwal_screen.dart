@@ -199,7 +199,7 @@ class _JadwalScreenState extends State<JadwalScreen> {
       'invJenisNama': jenis?.jenisNama ?? 'ID $invJenisId',
       'invId': inv['inv_id'],
       'invNama': inv['inv_nama'],
-      'invNo': inv['inv_no'],
+      'invNo': inv['inv_serial_number'] ?? inv['inv_no'],
       'invKondisi': inv['inv_kondisi'],
       'invPicNama': inv['pic_user']?['user_nama'] ?? inv['inv_pic'],
     });
@@ -516,11 +516,11 @@ class _InventarisPickerSheetState extends State<_InventarisPickerSheet> {
     final normalizedQuery = query.trim().toLowerCase();
     if (normalizedQuery.isEmpty) return true;
 
-    final nomor = (inv['inv_no'] ?? '').toString().toLowerCase();
+    final sn = (inv['inv_serial_number'] ?? '').toString().toLowerCase();
     final nama = (inv['inv_nama'] ?? '').toString().toLowerCase();
     final pic = _resolvePicName(inv).toLowerCase();
 
-    return nomor.contains(normalizedQuery) ||
+    return sn.contains(normalizedQuery) ||
         nama.contains(normalizedQuery) ||
         pic.contains(normalizedQuery);
   }
@@ -564,7 +564,7 @@ class _InventarisPickerSheetState extends State<_InventarisPickerSheet> {
               const SizedBox(height: 10),
               TextField(
                 decoration: InputDecoration(
-                  hintText: 'Cari no inventaris, nama, atau PIC...',
+                  hintText: 'Cari serial number, nama, atau PIC...',
                   prefixIcon: const Icon(Icons.search,
                       size: 20, color: AppColors.textSecondary),
                   filled: true,
@@ -609,39 +609,39 @@ class _InventarisPickerSheetState extends State<_InventarisPickerSheet> {
                           final merk =
                               (inv['inv_merk'] ?? '-').toString().toUpperCase();
                           final pabrik = inv['inv_pabrik_kode'] ?? '-';
-                          final nomor = inv['inv_no'] ?? '-';
+                          final sn = inv['inv_serial_number'] ?? '-';
                           final picName = _resolvePicName(inv);
-
-                          return Card(
-                            margin: EdgeInsets.zero,
-                            child: ListTile(
-                              contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 14, vertical: 10),
-                              leading: CircleAvatar(
-                                radius: 20,
-                                backgroundColor:
-                                    AppColors.primary.withValues(alpha: 0.12),
-                                child: const Icon(
-                                  Icons.inventory_2_outlined,
-                                  color: AppColors.primary,
-                                  size: 20,
-                                ),
-                              ),
-                              title: Text(
-                                inv['inv_nama'] ?? '-',
-                                style: const TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.textPrimary,
-                                ),
-                              ),
-                              subtitle: Padding(
-                                padding: const EdgeInsets.only(top: 6),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      '$merk · $nomor',
+ 
+                           return Card(
+                             margin: EdgeInsets.zero,
+                             child: ListTile(
+                               contentPadding: const EdgeInsets.symmetric(
+                                   horizontal: 14, vertical: 10),
+                               leading: CircleAvatar(
+                                 radius: 20,
+                                 backgroundColor:
+                                     AppColors.primary.withValues(alpha: 0.12),
+                                 child: const Icon(
+                                   Icons.inventory_2_outlined,
+                                   color: AppColors.primary,
+                                   size: 20,
+                                 ),
+                               ),
+                               title: Text(
+                                 inv['inv_nama'] ?? '-',
+                                 style: const TextStyle(
+                                   fontSize: 15,
+                                   fontWeight: FontWeight.w700,
+                                   color: AppColors.textPrimary,
+                                 ),
+                               ),
+                               subtitle: Padding(
+                                 padding: const EdgeInsets.only(top: 6),
+                                 child: Column(
+                                   crossAxisAlignment: CrossAxisAlignment.start,
+                                   children: [
+                                     Text(
+                                       '$merk · $sn',
                                       style: const TextStyle(
                                         fontSize: 12,
                                         color: AppColors.textSecondary,
@@ -1016,23 +1016,39 @@ class _JadwalFormState extends State<_JadwalForm> {
   static const _frekuensiList = ['Harian', 'Mingguan', 'Bulanan'];
   bool get _showGapField => _frekuensi == 'Mingguan' || _frekuensi == 'Bulanan';
 
-  String _buildJadwalSummary() {
-    final judul = _judulCtrl.text.trim().isEmpty ? '-' : _judulCtrl.text.trim();
+  Widget _buildJadwalSummaryWidget(BuildContext context) {
+    final master = context.read<MasterProvider>();
     final jenis = _jenisCtrl.text.trim().isEmpty ? '-' : _jenisCtrl.text.trim();
-    final pelaksanaIdText =
-        _assignedToUserId != null ? '#$_assignedToUserId' : 'belum dipilih';
+    final jenisGapHari = _jenisId != null
+        ? (master.jenisById(_jenisId!)?.jenisGapHari ?? 0)
+        : 0;
     final target = int.tryParse(_targetCtrl.text.trim()) ?? 0;
     final lokasi = _pabrikCodes.isEmpty ? '-' : _pabrikCodes.join(', ');
     final mulai = _tglMulai != null ? _fmtDateDisplay(_tglMulai) : '-';
-    final selesai =
-        _tglSelesai != null ? _fmtDateDisplay(_tglSelesai) : 'tanpa batas';
-    final gap = _showGapField ? (int.tryParse(_gapCtrl.text.trim()) ?? 0) : 0;
+    final selesai = _tglSelesai != null ? _fmtDateDisplay(_tglSelesai) : 'Tanpa batas';
+    final jadwalGap = _showGapField ? (int.tryParse(_gapCtrl.text.trim()) ?? 0) : 0;
 
-    final gapText = _showGapField ? ' | Gap realisasi: $gap hari' : '';
+    // Resolusi nama pelaksana dari UserModel
+    final userList = master.userList;
+    final pelaksana = _assignedToUserId != null
+        ? (userList
+                .where((u) => u.userId == _assignedToUserId)
+                .map((u) => u.userNama)
+                .firstOrNull ??
+            '#$_assignedToUserId')
+        : 'Belum dipilih';
 
-    return 'Rencana: "$judul" | Jenis: $jenis | Frekuensi: $_frekuensi$gapText | '
-        'Target: ${target > 0 ? target : '-'} unit/$_frekuensi | Mulai: $mulai | Selesai: $selesai | '
-        'Lokasi: $lokasi | Pelaksana: $pelaksanaIdText';
+    return _SummaryWidget(
+      jenis: jenis,
+      frekuensi: _frekuensi,
+      target: target,
+      lokasi: lokasi,
+      mulai: mulai,
+      selesai: selesai,
+      jadwalGapHari: jadwalGap,
+      jenisGapHari: jenisGapHari,
+      pelaksana: pelaksana,
+    );
   }
 
   @override
@@ -1568,6 +1584,33 @@ class _JadwalFormState extends State<_JadwalForm> {
               ),
               if (_showGapField) ...[
                 const SizedBox(height: 14),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF0F4FF),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                        color: AppColors.primary.withValues(alpha: 0.2)),
+                  ),
+                  child: const Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(Icons.info_outline,
+                          size: 16, color: AppColors.primary),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Atur jeda hari antar realisasi jadwal ini.',
+                          style: TextStyle(
+                              fontSize: 12,
+                              color: AppColors.primary,
+                              height: 1.5),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 10),
                 TextFormField(
                   controller: _gapCtrl,
                   keyboardType: TextInputType.number,
@@ -1575,7 +1618,9 @@ class _JadwalFormState extends State<_JadwalForm> {
                     label: _requiredLabel('Gap Realisasi (hari)'),
                     prefixIcon: const Icon(Icons.timelapse_outlined),
                     hintText: 'Contoh: 2',
-                    helperText: 'Jeda minimal realisasi pada jadwal.',
+                    helperText:
+                        'Jarak minimal antar pelaksanaan jadwal. Isi 0 jika ingin memeriksa banyak unit dalam periode yang sama.',
+                    helperMaxLines: 2,
                   ),
                   validator: (v) {
                     if (!_showGapField) return null;
@@ -1692,10 +1737,10 @@ class _JadwalFormState extends State<_JadwalForm> {
               ),
               const SizedBox(height: 14),
               Container(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
                   color: const Color(0xFFF8FAFC),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: const Color(0xFFE2E8F0)),
                 ),
                 child: Column(
@@ -1709,22 +1754,15 @@ class _JadwalFormState extends State<_JadwalForm> {
                         Text(
                           'Ringkasan Jadwal',
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: 13,
                             fontWeight: FontWeight.w700,
                             color: AppColors.primary,
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 6),
-                    Text(
-                      _buildJadwalSummary(),
-                      style: const TextStyle(
-                        fontSize: 12,
-                        height: 1.4,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
+                    const SizedBox(height: 10),
+                    _buildJadwalSummaryWidget(context),
                   ],
                 ),
               ),
@@ -1761,6 +1799,145 @@ class _JadwalFormState extends State<_JadwalForm> {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+// ═══════════════════════════════════════════════════════════════
+//  RINGKASAN JADWAL WIDGET (Visual Preview Realtime)
+// ═══════════════════════════════════════════════════════════════
+class _SummaryWidget extends StatelessWidget {
+  final String jenis;
+  final String frekuensi;
+  final int target;
+  final String lokasi;
+  final String mulai;
+  final String selesai;
+  final int jadwalGapHari;
+  final int jenisGapHari;
+  final String pelaksana;
+
+  const _SummaryWidget({
+    required this.jenis,
+    required this.frekuensi,
+    required this.target,
+    required this.lokasi,
+    required this.mulai,
+    required this.selesai,
+    required this.jadwalGapHari,
+    required this.jenisGapHari,
+    required this.pelaksana,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final showJadwalGap = frekuensi == 'Mingguan' || frekuensi == 'Bulanan';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _row(Icons.category_outlined, 'Jenis Inventaris', jenis),
+        _row(Icons.person_outline, 'Pelaksana', pelaksana),
+        _row(Icons.repeat_outlined, 'Frekuensi', frekuensi),
+        _row(Icons.flag_outlined, 'Target',
+            target > 0 ? '$target unit per $frekuensi' : '-'),
+        _row(Icons.location_on_outlined, 'Lokasi / Pabrik', lokasi),
+        _row(Icons.calendar_today_outlined, 'Mulai', mulai),
+        _row(Icons.event_outlined, 'Selesai', selesai),
+        if (showJadwalGap)
+          _rowWithNote(
+            Icons.timelapse_outlined,
+            'Gap Jadwal',
+            jadwalGapHari == 0
+                ? 'Tidak ada (dapat realisasi kapan saja)'
+                : 'Realisasi jeda $jadwalGapHari hari per $frekuensi',
+            jadwalGapHari > 0
+                ? '⚠ Jika target > 1 unit, isi 0 agar tidak terblokir'
+                : null,
+            jadwalGapHari > 0
+                ? const Color(0xFFF97316)
+                : const Color(0xFF16A34A),
+          ),
+        _rowWithNote(
+          Icons.schedule_outlined,
+          'Gap per Mesin',
+          jenisGapHari == 0
+              ? 'Tidak ada (mesin yang sama bisa di maintenance kapan saja)'
+              : 'Mesin yang sama dapat di maintenance dengan jeda $jenisGapHari hari',
+          null,
+          jenisGapHari > 0 ? AppColors.primary : AppColors.textSecondary,
+        ),
+      ],
+    );
+  }
+
+  Widget _row(IconData icon, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 14, color: AppColors.textSecondary),
+          const SizedBox(width: 6),
+          SizedBox(
+            width: 120,
+            child: Text(
+              '$label:',
+              style: const TextStyle(
+                  fontSize: 12,
+                  color: AppColors.textSecondary,
+                  fontWeight: FontWeight.w600),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(
+                  fontSize: 12, color: AppColors.textPrimary),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _rowWithNote(
+      IconData icon, String label, String value, String? note, Color color) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 6),
+          SizedBox(
+            width: 120,
+            child: Text(
+              '$label:',
+              style: TextStyle(
+                  fontSize: 12,
+                  color: color,
+                  fontWeight: FontWeight.w600),
+            ),
+          ),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  value,
+                  style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.w600),
+                ),
+                if (note != null)
+                  Text(
+                    note,
+                    style: const TextStyle(
+                        fontSize: 11, color: Colors.orange, height: 1.4),
+                  ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -527,6 +527,30 @@ class _JenisFormState extends State<_JenisForm> {
                   ),
                 ],
                 const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.primarySoft,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+                  ),
+                  child: const Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(Icons.info_outline, size: 16, color: AppColors.primary),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Atur jeda waktu (hari) agar satu unit mesin tidak diservis dua kali terlalu berdekatan. '
+                          'Contoh: isi 30 berarti setiap mesin baru bisa diservis lagi setelah 30 hari. '
+                          'Isi 0 jika tidak ada pembatasan.',
+                          style: TextStyle(fontSize: 12, color: AppColors.primary, height: 1.5),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 10),
                 TextFormField(
                   controller: _gapHariCtrl,
                   keyboardType: TextInputType.number,
@@ -534,7 +558,7 @@ class _JenisFormState extends State<_JenisForm> {
                     labelText: 'Gap Hari Realisasi per Inventaris',
                     hintText: '0',
                     helperText:
-                        'Isi 0 untuk jadwal Harian & Mingguan. Isi untuk jadwal Bulanan.',
+                        'Jarak waktu minimal (hari) sebelum satu mesin yang sama dapat diservis kembali.',
                     helperMaxLines: 2,
                     prefixIcon: Icon(Icons.calendar_today_outlined),
                   ),
