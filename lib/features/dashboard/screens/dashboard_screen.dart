@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/widgets/app_notifier.dart';
+import '../../../core/utils/date_formatter.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../../features/master/providers/master_provider.dart';
 import '../../jadwal/models/jadwal_model.dart';
@@ -431,6 +432,30 @@ class _DashboardScreenState extends State<DashboardScreen> {
         : int.tryParse('$invJenisRaw') ?? jadwal.jdwJenisId;
     final invIdRaw = inv['inv_id'];
     final invId = invIdRaw is int ? invIdRaw : int.tryParse('$invIdRaw');
+
+    if (invId != null) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const Center(child: CircularProgressIndicator()),
+      );
+
+      final p = context.read<JadwalProvider>();
+      final today = DateFormatter.toApi(DateTime.now());
+      final isEligible =
+          await p.checkRealisasiEligibility(jadwal.jdwId, invId, today);
+
+      if (!mounted) return;
+      Navigator.pop(context); // Tutup loading
+
+      if (!isEligible) {
+        if (p.error != null) {
+          AppNotifier.showWarning(context, p.error!);
+        }
+        return;
+      }
+    }
+
     final jenis = context.read<MasterProvider>().jenisById(invJenisId);
 
     await Navigator.pushNamed(
@@ -1422,22 +1447,32 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   int _getRemainingDaysDiff(JadwalModel j) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    
+    // 1. Jika belum mulai (tanggal mulai di masa depan), hitung selisih ke tanggal mulai
+    final startDate = _parseDateOnly(j.jdwTglMulai);
+    if (startDate != null && startDate.isAfter(today)) {
+      return startDate.difference(today).inDays;
+    }
+
+    // 2. Jika jadwal Mingguan/Bulanan dan belum terpenuhi, berarti harus dikerjakan periode ini
     if (!j.jdwPeriodFulfilled &&
         (j.jdwFrekuensi == 'Mingguan' || j.jdwFrekuensi == 'Bulanan')) {
       return 0;
     }
 
+    // 3. Gunakan sisa hari dari backend jika ada
     if (j.jdwDaysRemaining != null) {
       return j.jdwDaysRemaining!;
     }
 
+    // 4. Fallback jika tidak ada daysRemaining dari backend
     final fallbackDate = _parseDateOnly(j.jdwNextDueDate ?? j.jdwTglMulai);
     if (fallbackDate == null) {
       return 0;
     }
 
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
     return fallbackDate.difference(today).inDays;
   }
 

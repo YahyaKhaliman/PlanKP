@@ -5,6 +5,8 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/api_client.dart';
 import '../providers/auth_provider.dart';
 import '../../../core/widgets/app_notifier.dart';
+import '../../../core/utils/uppercase_formatter.dart';
+import 'package:flutter/services.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -77,7 +79,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final auth = context.read<AuthProvider>();
     if (auth.loading) return;
     final ok = await auth.register(
-      userNama: _namaCtrl.text.trim(),
+      userNama: _namaCtrl.text.trim().toUpperCase(),
       userPassword: _passwordCtrl.text,
       userDivisi: _divisiCtrl.text.trim(),
       userCabang: _selectedCabang!,
@@ -167,7 +169,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           ),
           const SizedBox(height: 18),
           const Text(
-            'Buat Akun',
+            'BUAT AKUN',
             style: TextStyle(
               fontSize: 34,
               fontWeight: FontWeight.w800,
@@ -202,7 +204,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const Text(
-              'Registrasi',
+              'REGISTRASI',
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.w700,
@@ -212,9 +214,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
             const SizedBox(height: 24),
             _buildInputField(
               controller: _namaCtrl,
-              label: 'Nama Lengkap',
+              label: 'NAMA LENGKAP',
               icon: Icons.person_outline_rounded,
-              textCapitalization: TextCapitalization.words,
+              textCapitalization: TextCapitalization.characters,
+              inputFormatters: [UpperCaseTextFormatter()],
               validator: (v) =>
                   v == null || v.trim().isEmpty ? 'Nama wajib diisi' : null,
             ),
@@ -229,7 +232,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             ),
             const SizedBox(height: 14),
             _buildDropdownField<String>(
-              label: 'Divisi',
+              label: 'DIVISI',
               icon: Icons.account_tree_outlined,
               value: _divisiCtrl.text.isNotEmpty &&
                       _divisiOptions.contains(_divisiCtrl.text)
@@ -259,7 +262,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                   )
                 : _buildDropdownField<String>(
-                    label: 'Cabang',
+                    label: 'CABANG',
                     icon: Icons.business_outlined,
                     value: _selectedCabang,
                     items: _pabrikList
@@ -278,7 +281,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             const SizedBox(height: 14),
             _buildInputField(
               controller: _passwordCtrl,
-              label: 'Password',
+              label: 'PASSWORD',
               icon: Icons.lock_outline_rounded,
               isPassword: true,
               obscure: _obscure,
@@ -307,7 +310,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             strokeWidth: 2.5, color: Colors.white),
                       )
                     : const Text(
-                        'Daftar Sekarang',
+                        'DAFTAR SEKARANG',
                         style: TextStyle(
                             fontWeight: FontWeight.w700, fontSize: 15),
                       ),
@@ -330,6 +333,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     VoidCallback? onToggle,
     TextCapitalization textCapitalization = TextCapitalization.none,
     TextInputType? keyboardType,
+    List<TextInputFormatter>? inputFormatters,
     String? Function(String?)? validator,
   }) {
     return TextFormField(
@@ -338,6 +342,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       validator: validator,
       keyboardType: keyboardType,
       textCapitalization: textCapitalization,
+      inputFormatters: inputFormatters,
       style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600),
       decoration: InputDecoration(
         labelText: label,
@@ -416,7 +421,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         const Text(
-          'Sudah punya akun?',
+          'SUDAH PUNYA AKUN?',
           style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w500, fontSize: 14),
         ),
         TextButton(
@@ -425,7 +430,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 8),
           ),
           child: const Text(
-            'Login',
+            'LOGIN',
             style: TextStyle(
               fontWeight: FontWeight.w700,
               fontSize: 14,

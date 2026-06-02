@@ -9,6 +9,8 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/update/update_checker.dart';
 import '../providers/auth_provider.dart';
 import '../../../core/widgets/app_notifier.dart';
+import '../../../core/utils/uppercase_formatter.dart';
+import 'package:flutter/services.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -133,7 +135,7 @@ class _LoginScreenState extends State<LoginScreen> {
     final auth = context.read<AuthProvider>();
     if (auth.loading) return;
 
-    final ok = await auth.login(_usernameCtrl.text.trim(), _passCtrl.text);
+    final ok = await auth.login(_usernameCtrl.text.trim().toUpperCase(), _passCtrl.text);
     if (ok && mounted) {
       try {
         final prefs = await SharedPreferences.getInstance();
@@ -273,7 +275,7 @@ class _LoginScreenState extends State<LoginScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const Text(
-              'Login',
+              'LOGIN',
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.w700,
@@ -283,8 +285,10 @@ class _LoginScreenState extends State<LoginScreen> {
             const SizedBox(height: 24),
             _buildInputField(
               controller: _usernameCtrl,
-              label: 'Username',
+              label: 'USERNAME',
               icon: Icons.alternate_email_rounded,
+              textCapitalization: TextCapitalization.characters,
+              inputFormatters: [UpperCaseTextFormatter()],
               validator: (v) => (v == null || v.trim().isEmpty)
                   ? 'Username wajib diisi'
                   : null,
@@ -292,7 +296,7 @@ class _LoginScreenState extends State<LoginScreen> {
             const SizedBox(height: 16),
             _buildInputField(
               controller: _passCtrl,
-              label: 'Password',
+              label: 'PASSWORD',
               icon: Icons.lock_outline_rounded,
               isPassword: true,
               obscure: _obscure,
@@ -328,7 +332,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     });
                   },
                   child: const Text(
-                    'Ingat Saya',
+                    'INGAT SAYA',
                     style: TextStyle(
                       color: AppColors.textSecondary,
                       fontWeight: FontWeight.w600,
@@ -358,7 +362,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             strokeWidth: 2.5, color: Colors.white),
                       )
                     : const Text(
-                        'Masuk',
+                        'MASUK',
                         style: TextStyle(
                             fontWeight: FontWeight.w700, fontSize: 15),
                       ),
@@ -399,12 +403,16 @@ class _LoginScreenState extends State<LoginScreen> {
     bool isPassword = false,
     bool obscure = false,
     VoidCallback? onToggle,
+    TextCapitalization textCapitalization = TextCapitalization.none,
+    List<TextInputFormatter>? inputFormatters,
     String? Function(String?)? validator,
   }) {
     return TextFormField(
       controller: controller,
       obscureText: obscure,
       validator: validator,
+      textCapitalization: textCapitalization,
+      inputFormatters: inputFormatters,
       style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600),
       decoration: InputDecoration(
         labelText: label,
@@ -448,7 +456,7 @@ class _LoginScreenState extends State<LoginScreen> {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         const Text(
-          'Belum punya akun?',
+          'BELUM PUNYA AKUN?',
           style: TextStyle(
               color: AppColors.textSecondary,
               fontWeight: FontWeight.w500,
@@ -460,7 +468,7 @@ class _LoginScreenState extends State<LoginScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 8),
           ),
           child: const Text(
-            'Daftar Sekarang',
+            'DAFTAR SEKARANG',
             style: TextStyle(
               fontWeight: FontWeight.w700,
               fontSize: 14,

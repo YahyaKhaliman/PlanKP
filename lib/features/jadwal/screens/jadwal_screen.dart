@@ -193,12 +193,35 @@ class _JadwalScreenState extends State<JadwalScreen> {
   Future<void> _openRealisasiFromInventaris(
       JadwalModel jadwal, Map<String, dynamic> inv) async {
     final invJenisId = inv['inv_jenis_id'] ?? jadwal.jdwJenisId;
+    final invId = inv['inv_id'];
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    final p = context.read<JadwalProvider>();
+    final today = DateFormatter.toApi(DateTime.now());
+    final isEligible =
+        await p.checkRealisasiEligibility(jadwal.jdwId, invId, today);
+
+    if (!mounted) return;
+    Navigator.pop(context); // Tutup loading
+
+    if (!isEligible) {
+      if (p.error != null) {
+        AppNotifier.showWarning(context, p.error!);
+      }
+      return;
+    }
+
     final jenis = context.read<MasterProvider>().jenisById(invJenisId);
     await Navigator.pushNamed(context, AppRoutes.realisasiForm, arguments: {
       'jadwalId': jadwal.jdwId,
       'invJenisId': invJenisId,
       'invJenisNama': jenis?.jenisNama ?? 'ID $invJenisId',
-      'invId': inv['inv_id'],
+      'invId': invId,
       'invNama': inv['inv_nama'],
       'invNo': inv['inv_serial_number'] ?? inv['inv_no'],
       'invKondisi': inv['inv_kondisi'],

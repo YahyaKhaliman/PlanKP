@@ -350,6 +350,21 @@ class JadwalProvider extends ChangeNotifier {
     }
   }
 
+  Future<bool> checkRealisasiEligibility(int jadwalId, int invId, String tgl) async {
+    try {
+      await ApiClient.post('${ApiConfig.realisasi}/check-eligibility', {
+        'real_jadwal_id': jadwalId,
+        'real_inv_id': invId,
+        'real_tgl': tgl,
+      });
+      _setError(null);
+      return true;
+    } on ApiException catch (e) {
+      _setError(e.message);
+      return false;
+    }
+  }
+
   Future<RealisasiModel?> createRealisasi(Map<String, dynamic> body) async {
     try {
       final res = await ApiClient.post(ApiConfig.realisasi, body);
