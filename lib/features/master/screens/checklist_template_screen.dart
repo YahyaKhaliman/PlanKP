@@ -906,15 +906,6 @@ class _ChecklistTab extends StatelessWidget {
           tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
           maintainState: true,
           title: Row(children: [
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Icon(Icons.folder_open_rounded, size: 18, color: AppColors.primary),
-            ),
-            const SizedBox(width: 12),
             Expanded(
               child: Text(jenisLabel,
                   style: const TextStyle(
@@ -923,38 +914,23 @@ class _ChecklistTab extends StatelessWidget {
                       color: AppColors.textPrimary)),
             ),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
               decoration: BoxDecoration(
                 color: AppColors.primarySoft,
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(6),
               ),
-              child: Text('${list.length} item',
+              child: Text('${list.length}',
                   style: const TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w800,
                       color: AppColors.primary)),
             ),
-            const SizedBox(width: 10),
-            InkWell(
-              onTap: () => openBulkForm('$jenisId', list),
-              borderRadius: BorderRadius.circular(12),
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: AppColors.primary,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Row(mainAxisSize: MainAxisSize.min, children: [
-                  Icon(Icons.add, size: 14, color: Colors.white),
-                  SizedBox(width: 4),
-                  Text('Tambah',
-                      style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w800,
-                          color: Colors.white)),
-                ]),
-              ),
+            const SizedBox(width: 6),
+            IconButton(
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+              onPressed: () => openBulkForm('$jenisId', list),
+              icon: const Icon(Icons.add_circle_outline, size: 20, color: AppColors.primary),
             ),
           ]),
           children: [
@@ -970,79 +946,79 @@ class _ChecklistTab extends StatelessWidget {
 
   Widget _buildChecklistItemCard(ChecklistTemplateModel item) {
     final hasKeterangan = item.ctKeterangan != null && item.ctKeterangan!.trim().isNotEmpty;
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border.withValues(alpha: 0.5)),
-      ),
-      child: Row(
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+      child: Column(
         children: [
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Center(
-              child: Text(
-                '${item.ctUrutan}',
-                style: const TextStyle(
-                  fontWeight: FontWeight.w800,
-                  fontSize: 12,
-                  color: AppColors.primary,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 9),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Text(
-                  item.ctItem,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 14,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                if (hasKeterangan) ...[
-                  const SizedBox(height: 3),
-                  Text(
-                    item.ctKeterangan!,
+                // Nomor urut
+                SizedBox(
+                  width: 22,
+                  child: Text(
+                    '${item.ctUrutan}',
                     style: const TextStyle(
+                      fontWeight: FontWeight.w700,
                       fontSize: 12,
                       color: AppColors.textSecondary,
                     ),
+                    textAlign: TextAlign.center,
                   ),
-                ],
+                ),
+                const SizedBox(width: 10),
+                // Nama + keterangan
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        item.ctItem,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13.5,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      if (hasKeterangan) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          item.ctKeterangan!,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: AppColors.textSecondary,
+                            height: 1.3,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                // Aksi
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      icon: const Icon(Icons.edit_outlined, size: 16, color: AppColors.textSecondary),
+                      onPressed: () => openSingleForm(item),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      icon: const Icon(Icons.delete_outline, size: 16, color: AppColors.danger),
+                      onPressed: () => confirmDelete(item),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
-          const SizedBox(width: 8),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              IconButton(
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-                icon: const Icon(Icons.edit_outlined, size: 18, color: AppColors.textSecondary),
-                onPressed: () => openSingleForm(item),
-              ),
-              const SizedBox(width: 10),
-              IconButton(
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-                icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.danger),
-                onPressed: () => confirmDelete(item),
-              ),
-            ],
-          ),
+          const Divider(height: 1, color: AppColors.border, indent: 32),
         ],
       ),
     );

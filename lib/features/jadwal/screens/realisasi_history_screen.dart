@@ -11,6 +11,8 @@ import '../../auth/providers/auth_provider.dart';
 import '../models/jadwal_model.dart';
 import '../models/realisasi_model.dart';
 import '../providers/jadwal_provider.dart';
+import '../../../core/widgets/app_notifier.dart';
+import '../widgets/realisasi_detail_sheet.dart';
 
 class RealisasiHistoryScreen extends StatefulWidget {
   const RealisasiHistoryScreen({super.key});
@@ -59,6 +61,25 @@ class _RealisasiHistoryScreenState extends State<RealisasiHistoryScreen> {
       _selectedDay = null;
     });
     context.read<JadwalProvider>().fetchHariLiburForMonth(_selectedMonth);
+  }
+
+  Future<void> _showRealisasiDetail(
+      BuildContext context, RealisasiModel item) async {
+    final provider = context.read<JadwalProvider>();
+    await provider.fetchRealisasiDetail(item.realId);
+    if (!mounted) return;
+
+    final detail = provider.realisasiDetail;
+    if (detail == null) {
+      await AppNotifier.showError(context, 'Detail realisasi tidak ditemukan');
+      return;
+    }
+
+    await RealisasiDetailSheet.show(
+      context,
+      detail: detail,
+      title: 'Detail Realisasi Unit',
+    );
   }
 
   // Meta item untuk popup detail hari
@@ -158,6 +179,7 @@ class _RealisasiHistoryScreenState extends State<RealisasiHistoryScreen> {
                               ),
                               child: ListTile(
                                 dense: true,
+                                onTap: () => _showRealisasiDetail(context, item),
                                 contentPadding: const EdgeInsets.symmetric(
                                     horizontal: 12, vertical: 4),
                                 leading: const Icon(Icons.task_alt_rounded,
@@ -191,6 +213,18 @@ class _RealisasiHistoryScreenState extends State<RealisasiHistoryScreen> {
                                       ],
                                     ),
                                   ],
+                                ),
+                                trailing: OutlinedButton(
+                                  onPressed: () => _showRealisasiDetail(context, item),
+                                  style: OutlinedButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                    minimumSize: Size.zero,
+                                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                    foregroundColor: AppColors.textSecondary,
+                                    side: const BorderSide(color: AppColors.border),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                                  ),
+                                  child: const Text('Detail', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
                                 ),
                               ),
                             );
@@ -600,6 +634,15 @@ class _RealisasiHistoryScreenState extends State<RealisasiHistoryScreen> {
         targetCount: target, doneCount: realisasiList.length);
   }
 
+  DateTime? _findNextWorkingDay(DateTime date, DateTime limit, Set<int> holidays) {
+    var d = date;
+    while (holidays.contains(d.day)) {
+      d = d.add(const Duration(days: 1));
+      if (d.isAfter(limit)) return null;
+    }
+    return d;
+  }
+
   List<DateTime> _effectiveScheduleDatesInMonth(
       JadwalModel j, DateTime start, DateTime end, Set<int> holidays) {
     final jStart = DateTime.tryParse(j.jdwTglMulai);
@@ -623,12 +666,19 @@ class _RealisasiHistoryScreenState extends State<RealisasiHistoryScreen> {
     } else if (j.jdwFrekuensi == 'Mingguan') {
       var curr = jStart;
       while (!curr.isAfter(rangeEnd)) {
-        if (!curr.isBefore(rangeStart) && !holidays.contains(curr.day))
-          dates.add(curr);
+        if (!curr.isBefore(rangeStart)) {
+          final nextWork = _findNextWorkingDay(curr, rangeEnd, holidays);
+          if (nextWork != null) {
+            dates.add(nextWork);
+          }
+        }
         curr = curr.add(const Duration(days: 7));
       }
     } else if (j.jdwFrekuensi == 'Bulanan') {
-      if (!holidays.contains(rangeStart.day)) dates.add(rangeStart);
+      final nextWork = _findNextWorkingDay(rangeStart, rangeEnd, holidays);
+      if (nextWork != null) {
+        dates.add(nextWork);
+      }
     }
     return dates;
   }

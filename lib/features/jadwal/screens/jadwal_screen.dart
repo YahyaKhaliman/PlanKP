@@ -816,14 +816,23 @@ class _InventarisPickerSheetState extends State<_InventarisPickerSheet> {
                                    crossAxisAlignment: CrossAxisAlignment.start,
                                    children: [
                                      Text(
+                                       'No: ${inv['inv_no'] ?? '-'}',
+                                       style: const TextStyle(
+                                         fontSize: 13,
+                                         fontWeight: FontWeight.w600,
+                                         color: AppColors.primary,
+                                       ),
+                                     ),
+                                     const SizedBox(height: 4),
+                                     Text(
                                        '$merk · $sn',
-                                      style: const TextStyle(
-                                        fontSize: 12,
-                                        color: AppColors.textSecondary,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 2),
+                                       style: const TextStyle(
+                                         fontSize: 12,
+                                         color: AppColors.textSecondary,
+                                         fontWeight: FontWeight.w600,
+                                       ),
+                                     ),
+                                     const SizedBox(height: 2),
                                     Row(
                                       children: [
                                         const Icon(
@@ -912,39 +921,87 @@ class _JadwalCard extends StatelessWidget {
   final VoidCallback onEdit;
   final VoidCallback onDelete;
   final void Function(String) onStatusChange;
-  const _JadwalCard(
-      {required this.jadwal,
-      required this.jenisNama,
-      this.pabrikLabel,
-      required this.isAdmin,
-      required this.isUser,
-      required this.onTap,
-      required this.onEdit,
-      required this.onDelete,
-      required this.onStatusChange});
 
-  String _buildWhenLabel() {
-    if ((jadwal.jdwNextDueDate ?? '').trim().isNotEmpty) {
-      return 'Jatuh tempo ${DateFormatter.toDisplay(jadwal.jdwNextDueDate)}';
-    }
+  const _JadwalCard({
+    required this.jadwal,
+    required this.jenisNama,
+    this.pabrikLabel,
+    required this.isAdmin,
+    required this.isUser,
+    required this.onTap,
+    required this.onEdit,
+    required this.onDelete,
+    required this.onStatusChange,
+  });
 
-    final daysRemaining = jadwal.jdwDaysRemaining;
-    if (daysRemaining != null) {
-      if (daysRemaining < 0) return 'Terlambat ${daysRemaining.abs()} hari';
-      if (daysRemaining == 0) return 'Jatuh tempo hari ini';
-      return '$daysRemaining hari lagi';
-    }
-
-    final mulai = DateFormatter.toDisplay(jadwal.jdwTglMulai, fallback: '-');
-    final selesai = jadwal.jdwTglSelesai;
-    if ((selesai ?? '').trim().isNotEmpty) {
-      return 'Mulai $mulai–${DateFormatter.toDisplay(selesai)}';
-    }
-    return 'Mulai $mulai';
+  Color _colorForDivisi(String? divisiRaw) {
+    final divisi = (divisiRaw ?? '').toLowerCase();
+    if (divisi == 'it') return Colors.indigo;
+    if (divisi == 'ga') return Colors.orange.shade700;
+    if (divisi == 'driver') return Colors.teal.shade700;
+    return AppColors.primary;
   }
 
-  String _buildQuickDescription(int target) {
-    final whenLabel = _buildWhenLabel();
+  IconData _iconForDivisi(String? divisiRaw) {
+    final divisi = (divisiRaw ?? '').toLowerCase();
+    if (divisi == 'it') return Icons.support_agent_rounded;
+    if (divisi == 'ga') return Icons.precision_manufacturing_outlined;
+    if (divisi == 'driver') return Icons.local_shipping_outlined;
+    return Icons.event_note;
+  }
+
+  String _getRemainingDays(JadwalModel j) {
+    final diff = _getRemainingDaysDiff(j);
+    if (diff < 0) return 'Terlewat ${-diff} hari';
+    if (diff == 0) return 'Hari ini';
+    if (diff == 1) return 'Besok';
+    return '$diff hari lagi';
+  }
+
+  int _getRemainingDaysDiff(JadwalModel j) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    
+    final startDate = DateTime.tryParse(j.jdwTglMulai);
+    if (startDate != null && startDate.isAfter(today)) {
+      return startDate.difference(today).inDays;
+    }
+    
+    if (!j.jdwPeriodFulfilled && (j.jdwFrekuensi == 'Mingguan' || j.jdwFrekuensi == 'Bulanan')) {
+      return 0;
+    }
+    
+    if (j.jdwDaysRemaining != null) return j.jdwDaysRemaining!;
+    
+    final fallbackDate = DateTime.tryParse(j.jdwNextDueDate ?? j.jdwTglMulai);
+    if (fallbackDate == null) return 0;
+    
+    return fallbackDate.difference(today).inDays;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final rem = _getRemainingDays(jadwal);
+    final divisiColor = _colorForDivisi(jadwal.jdwDivisi);
+    final icon = _iconForDivisi(jadwal.jdwDivisi);
+
+    Color badgeBg;
+    Color badgeText;
+    if (rem.contains('Terlewat')) {
+      badgeBg = AppColors.danger.withValues(alpha: 0.08);
+      badgeText = AppColors.danger;
+    } else if (rem == 'Hari ini') {
+      badgeBg = AppColors.warning.withValues(alpha: 0.08);
+      badgeText = AppColors.warning;
+    } else {
+      badgeBg = AppColors.success.withValues(alpha: 0.08);
+      badgeText = AppColors.success;
+    }
+
+    final target = jadwal.jdwTarget ?? jadwal.jdwTotalUnit ?? 0;
+    final selesai = jadwal.jdwSelesaiUnit ?? 0;
+    final double progressPercent = target > 0 ? (selesai / target).clamp(0.0, 1.0) : 0.0;
+
     final assignedNama = jadwal.assignedNama.trim();
     final hasAssigned = assignedNama.isNotEmpty && assignedNama != '-';
     final hasPabrik = (pabrikLabel ?? '').trim().isNotEmpty;
@@ -952,18 +1009,8 @@ class _JadwalCard extends StatelessWidget {
     final teknisiText = hasAssigned ? assignedNama : 'belum ditentukan';
     final lokasiText = hasPabrik ? pabrikLabel!.trim() : 'semua lokasi terkait';
 
-    return 'Pemeliharaan $jenisNama frekuensi ${jadwal.jdwFrekuensi} di $lokasiText. '
-        'Pelaksana: $teknisiText. $whenLabel. Target: $target unit per ${jadwal.jdwFrekuensi.toLowerCase()}.';
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final target = jadwal.jdwTarget ?? jadwal.jdwTotalUnit ?? 0;
-    final selesai = jadwal.jdwSelesaiUnit ?? 0;
-    final pct = target > 0 ? (selesai / target * 100) : 0;
-    final quickDescription = _buildQuickDescription(target);
-
     return Container(
+      margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
@@ -976,152 +1023,232 @@ class _JadwalCard extends StatelessWidget {
           ),
         ],
       ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(20),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withValues(alpha: 0.08),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Icon(Icons.event_note_rounded,
-                          color: AppColors.primary, size: 20),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            jadwal.jdwJudul,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w800,
-                              fontSize: 15,
-                              color: AppColors.textPrimary,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            '$jenisNama · ${jadwal.jdwFrekuensi}',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: AppColors.textSecondary,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            quickDescription,
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: AppColors.textSecondary,
-                              height: 1.35,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                LinearProgressIndicator(
-                  value: target > 0 ? (selesai / target).clamp(0.0, 1.0) : 0,
-                  minHeight: 8,
-                  backgroundColor: AppColors.primary.withValues(alpha: 0.08),
-                  color: pct >= 100 ? AppColors.success : AppColors.primary,
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      '$selesai/$target Unit',
-                      style: const TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    Text(
-                      '${pct.round()}% Capaian',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w800,
-                        color:
-                            pct >= 100 ? AppColors.success : AppColors.primary,
-                      ),
-                    ),
-                  ],
-                ),
-                if (isUser) ...[
-                  const SizedBox(height: 14),
-                  _actionBtn(
-                    Icons.playlist_add_check_circle_outlined,
-                    'Lakukan Realisasi',
-                    AppColors.primary,
-                    onTap,
-                  ),
-                ],
-                if (isAdmin) ...[
-                  const Padding(
-                    padding: EdgeInsets.only(top: 12),
-                    child: Divider(height: 1, color: AppColors.border),
-                  ),
-                  const SizedBox(height: 8),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onTap,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      TextButton.icon(
-                        onPressed: onEdit,
-                        style: TextButton.styleFrom(
-                          foregroundColor: AppColors.warning,
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 6),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: divisiColor.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(14),
                         ),
-                        icon: const Icon(Icons.edit_rounded, size: 14),
-                        label: const Text(
-                          'Edit',
-                          style: TextStyle(
-                              fontSize: 12, fontWeight: FontWeight.w700),
+                        child: Icon(icon, size: 22, color: divisiColor),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              jadwal.jdwJudul,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w800,
+                                fontSize: 15,
+                                color: AppColors.textPrimary,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 4),
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey.shade100,
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    jadwal.jdwFrekuensi.toUpperCase(),
+                                    style: TextStyle(
+                                      fontSize: 9,
+                                      color: Colors.grey.shade700,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  jenisNama.toUpperCase(),
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: divisiColor,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(width: 4),
-                      TextButton.icon(
-                        onPressed: onDelete,
-                        style: TextButton.styleFrom(
-                          foregroundColor: AppColors.danger,
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 6),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: badgeBg,
+                          borderRadius: BorderRadius.circular(99),
                         ),
-                        icon: const Icon(Icons.delete_rounded, size: 14),
-                        label: const Text(
-                          'Hapus',
+                        child: Text(
+                          rem,
                           style: TextStyle(
-                              fontSize: 12, fontWeight: FontWeight.w700),
+                            color: badgeText,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 11,
+                          ),
                         ),
                       ),
                     ],
-                  )
-                ]
-              ],
+                  ),
+                  
+                  // Baris Detail Terstruktur
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      const Icon(Icons.person_outline, size: 14, color: AppColors.textSecondary),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          'Pelaksana: $teknisiText',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textSecondary,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 3),
+                  Row(
+                    children: [
+                      const Icon(Icons.factory_outlined, size: 14, color: AppColors.textSecondary),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          'Lokasi: $lokasiText',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textSecondary,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Progres Unit',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey.shade600,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      Text(
+                        '$selesai / $target Unit selesai',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(99),
+                    child: LinearProgressIndicator(
+                      value: progressPercent,
+                      minHeight: 8,
+                      backgroundColor: Colors.grey.shade100,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        progressPercent == 1.0
+                            ? AppColors.success
+                            : (progressPercent > 0.5
+                                ? AppColors.primary
+                                : AppColors.warning),
+                      ),
+                    ),
+                  ),
+
+                  if (isUser) ...[
+                    const SizedBox(height: 14),
+                    _actionBtn(
+                      Icons.playlist_add_check_circle_outlined,
+                      'Lakukan Realisasi',
+                      AppColors.primary,
+                      onTap,
+                    ),
+                  ],
+
+                  if (isAdmin) ...[
+                    const Padding(
+                      padding: EdgeInsets.only(top: 12),
+                      child: Divider(height: 1, color: AppColors.border),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton.icon(
+                          onPressed: onEdit,
+                          style: TextButton.styleFrom(
+                            foregroundColor: AppColors.warning,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 6),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          icon: const Icon(Icons.edit_rounded, size: 14),
+                          label: const Text(
+                            'Edit',
+                            style: TextStyle(
+                                fontSize: 12, fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        TextButton.icon(
+                          onPressed: onDelete,
+                          style: TextButton.styleFrom(
+                            foregroundColor: AppColors.danger,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 6),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          icon: const Icon(Icons.delete_rounded, size: 14),
+                          label: const Text(
+                            'Hapus',
+                            style: TextStyle(
+                                fontSize: 12, fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                      ],
+                    )
+                  ]
+                ],
+              ),
             ),
           ),
         ),

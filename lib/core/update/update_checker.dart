@@ -90,7 +90,7 @@ class UpdateChecker {
 
       if (response.statusCode < 200 || response.statusCode >= 300) {
         return AppUpdateCheckResult(
-          status: AppUpdateStatus.upToDate,
+          status: AppUpdateStatus.failedCheck,
           currentVersion: packageInfo.version,
           currentBuildNumber: currentBuild,
         );

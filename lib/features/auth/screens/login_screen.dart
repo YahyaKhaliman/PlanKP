@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/update/update_checker.dart';
+import '../../../core/update/update_service.dart';
 import '../providers/auth_provider.dart';
 import '../../../core/widgets/app_notifier.dart';
 import '../../../core/utils/uppercase_formatter.dart';
@@ -24,7 +25,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _usernameCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
-  final UpdateChecker _updateChecker = UpdateChecker();
+  final UpdateService _updateService = UpdateService.instance;
   bool _rememberMe = false;
   bool _obscure = true;
   String _appVersionLabel = 'Versi -';
@@ -65,8 +66,10 @@ class _LoginScreenState extends State<LoginScreen> {
     } catch (_) {}
 
     try {
-      final result = await _updateChecker.checkForUpdate();
-      if (!mounted) return;
+      // Gunakan cached result dari UpdateService jika sudah tersedia,
+      // atau lakukan pengecekan baru (throttle berlaku secara global)
+      final result = await _updateService.checkForUpdate();
+      if (!mounted || result == null) return;
 
       setState(() {
         switch (result.status) {

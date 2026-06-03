@@ -354,19 +354,9 @@ class _InventarisGroupCardState extends State<_InventarisGroupCard>
             borderRadius: BorderRadius.circular(20),
             onTap: widget.onToggle,
             child: Padding(
-              padding: const EdgeInsets.all(14),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               child: Row(
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(Icons.folder_open_rounded,
-                        size: 20, color: AppColors.primary),
-                  ),
-                  const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -393,14 +383,13 @@ class _InventarisGroupCardState extends State<_InventarisGroupCard>
                     ),
                   ),
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                     decoration: BoxDecoration(
                       color: AppColors.primarySoft,
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
-                      '${widget.items.length} item',
+                      '${widget.items.length}',
                       style: const TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w800,
@@ -408,35 +397,14 @@ class _InventarisGroupCardState extends State<_InventarisGroupCard>
                       ),
                     ),
                   ),
-                  const SizedBox(width: 10),
-                  InkWell(
-                    onTap: () => widget.onAddItem(widget.jenisId),
-                    borderRadius: BorderRadius.circular(12),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.add, size: 14, color: Colors.white),
-                          SizedBox(width: 4),
-                          Text(
-                            'Tambah',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w800,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                  const SizedBox(width: 6),
+                  IconButton(
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    onPressed: () => widget.onAddItem(widget.jenisId),
+                    icon: const Icon(Icons.add_circle_outline, size: 20, color: AppColors.primary),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 4),
                   RotationTransition(
                     turns: _iconTurns,
                     child: const Icon(
@@ -457,7 +425,6 @@ class _InventarisGroupCardState extends State<_InventarisGroupCard>
                   ? Column(
                       children: [
                         const Divider(height: 1, color: AppColors.border),
-                        const SizedBox(height: 4),
                         ...widget.items.map(
                           (item) => _InventarisCard(
                             item: item,
@@ -466,7 +433,7 @@ class _InventarisGroupCardState extends State<_InventarisGroupCard>
                             onEdit: () => widget.onEditItem(item),
                           ),
                         ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 8),
                       ],
                     )
                   : const SizedBox.shrink(),
@@ -508,167 +475,84 @@ class _InventarisCard extends StatelessWidget {
     final merk = merkRaw.isEmpty ? '-' : merkRaw;
     final pic = picRaw.isEmpty ? '-' : picRaw;
 
-    Color badgeBg;
-    Color badgeText;
-    if (item.invKondisi.contains('Rusak')) {
-      badgeBg = AppColors.danger.withValues(alpha: 0.08);
-      badgeText = AppColors.danger;
-    } else if (item.invKondisi.contains('Perhatian')) {
-      badgeBg = AppColors.warning.withValues(alpha: 0.08);
-      badgeText = AppColors.warning;
-    } else {
-      badgeBg = AppColors.success.withValues(alpha: 0.08);
-      badgeText = AppColors.success;
-    }
+    final isInactive = !item.invIsActive;
 
-    final categoryIcon = _kategoriIcon(item.invKategori);
-    final categoryColor = _kategoriColor(item.invKategori);
-
-    final cardWidget = Container(
-      margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border.withValues(alpha: 0.5)),
-      ),
+    Widget row = Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: categoryColor.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(categoryIcon, size: 20, color: categoryColor),
-          ),
-          const SizedBox(width: 12),
+          // Nama inventaris — menonjol
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
-                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Flexible(
                       child: Text(
                         item.invNama,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 14,
-                          color: AppColors.textPrimary,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13.5,
+                          color: isInactive
+                              ? AppColors.textSecondary
+                              : AppColors.textPrimary,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    const SizedBox(width: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 5, vertical: 1.5),
-                      decoration: BoxDecoration(
-                        color: (item.invIsActive
-                                ? AppColors.success
-                                : AppColors.danger)
-                            .withValues(alpha: 0.08),
-                        borderRadius: BorderRadius.circular(4),
-                        border: Border.all(
-                          color: (item.invIsActive
-                                  ? AppColors.success
-                                  : AppColors.danger)
-                              .withValues(alpha: 0.25),
-                          width: 0.5,
+                    if (isInactive) ...[
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                        decoration: BoxDecoration(
+                          color: AppColors.danger.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: const Text(
+                          'nonaktif',
+                          style: TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.danger,
+                          ),
                         ),
                       ),
-                      child: Text(
-                        item.invIsActive ? 'aktif' : 'nonaktif',
-                        style: TextStyle(
-                          fontSize: 8,
-                          fontWeight: FontWeight.w800,
-                          color: item.invIsActive
-                              ? AppColors.success
-                              : AppColors.danger,
-                        ),
-                      ),
-                    ),
+                    ],
                   ],
                 ),
-                const SizedBox(height: 3),
+                const SizedBox(height: 2),
                 Text(
-                  'No: ${item.invNo}${item.invPabrikKode != null ? ' · $pabrikLabel' : ''}',
+                  'No: ${item.invNo}${item.invPabrikKode != null ? ' · $pabrikLabel' : ''} · $merk · PIC: $pic',
                   style: const TextStyle(
-                    fontSize: 12,
+                    fontSize: 11,
                     color: AppColors.textSecondary,
                   ),
-                ),
-                const SizedBox(height: 3),
-                Row(
-                  children: [
-                    Icon(Icons.info_outline,
-                        size: 12,
-                        color: AppColors.textSecondary.withValues(alpha: 0.7)),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: Text(
-                        'Merk: $merk · PIC: $pic',
-                        style: const TextStyle(
-                          fontSize: 11,
-                          color: AppColors.textSecondary,
-                          fontWeight: FontWeight.w500,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 8),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: badgeBg,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  item.invKondisi.contains('Sering')
-                      ? 'Baik (Sering)'
-                      : (item.invKondisi.contains('Jarang')
-                          ? 'Baik (Jarang)'
-                          : item.invKondisi),
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w800,
-                    color: badgeText,
-                  ),
-                ),
-              ),
-              IconButton(
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-                icon: const Icon(Icons.edit_outlined,
-                    size: 18, color: AppColors.textSecondary),
-                onPressed: onEdit,
-              ),
-            ],
+          // Kondisi badge
+          _KondisiBadge(kondisi: item.invKondisi),
+          const SizedBox(width: 6),
+          IconButton(
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+            icon: const Icon(Icons.edit_outlined, size: 16, color: AppColors.textSecondary),
+            onPressed: onEdit,
           ),
         ],
       ),
     );
 
-    if (!item.invIsActive) {
-      return Opacity(
-        opacity: 0.65,
-        child: cardWidget,
-      );
+    if (isInactive) {
+      return Opacity(opacity: 0.6, child: row);
     }
-    return cardWidget;
+    return row;
   }
 
   IconData _kategoriIcon(String k) {
@@ -682,6 +566,46 @@ class _InventarisCard extends StatelessWidget {
       default:
         return Icons.inventory_2_outlined;
     }
+  }
+}
+
+class _KondisiBadge extends StatelessWidget {
+  final String kondisi;
+  const _KondisiBadge({required this.kondisi});
+
+  @override
+  Widget build(BuildContext context) {
+    Color bg;
+    Color fg;
+    String label;
+
+    if (kondisi.contains('Rusak')) {
+      bg = AppColors.danger.withValues(alpha: 0.08);
+      fg = AppColors.danger;
+      label = 'Rusak';
+    } else if (kondisi.contains('Perhatian')) {
+      bg = AppColors.warning.withValues(alpha: 0.08);
+      fg = AppColors.warning;
+      label = 'Perhatian';
+    } else if (kondisi.contains('Jarang')) {
+      bg = AppColors.success.withValues(alpha: 0.08);
+      fg = AppColors.success;
+      label = 'Jarang';
+    } else {
+      bg = AppColors.success.withValues(alpha: 0.08);
+      fg = AppColors.success;
+      label = 'Baik';
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(label,
+          style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: fg)),
+    );
   }
 }
 

@@ -4,10 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:awesome_dialog/awesome_dialog.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'core/theme/app_theme.dart';
 import 'core/constants/app_constants.dart';
 import 'core/update/update_checker.dart';
+import 'core/update/update_downloader.dart';
+import 'core/update/update_service.dart';
 import 'core/widgets/app_notifier.dart';
 import 'features/auth/providers/auth_provider.dart';
 import 'features/master/providers/master_provider.dart';
@@ -110,21 +111,18 @@ class MainAppWrapper extends StatefulWidget {
 }
 
 class _MainAppWrapperState extends State<MainAppWrapper> with WidgetsBindingObserver {
-  final UpdateChecker _updateChecker = UpdateChecker();
+  final UpdateService _updateService = UpdateService.instance;
   bool _isChecking = false;
-  DateTime? _lastCheckTime;
   bool _dialogOpen = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    // Pemicu 1: Cek saat startup pertama kali (dengan delay 1.5s agar tidak bentrok dengan redirect _AuthGate)
+    // Pemicu 1: Cek saat startup pertama kali (delay 1.5s agar tidak bentrok dengan _AuthGate)
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Future.delayed(const Duration(milliseconds: 1500), () {
-        if (mounted) {
-          _triggerUpdateCheck();
-        }
+        if (mounted) _triggerUpdateCheck();
       });
     });
   }
@@ -137,7 +135,7 @@ class _MainAppWrapperState extends State<MainAppWrapper> with WidgetsBindingObse
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // Pemicu 2: Cek saat kembali dari background (Foreground trigger)
+    // Pemicu 2: Cek saat kembali dari background
     if (state == AppLifecycleState.resumed) {
       _triggerUpdateCheck();
     }
@@ -145,30 +143,27 @@ class _MainAppWrapperState extends State<MainAppWrapper> with WidgetsBindingObse
 
   Future<void> _triggerUpdateCheck() async {
     if (_isChecking || _dialogOpen) return;
-
-    final now = DateTime.now();
-    // Throttling: Jangan cek kembali jika belum lewat 30 detik
-    if (_lastCheckTime != null && now.difference(_lastCheckTime!).inSeconds < 30) {
-      return;
-    }
-
     _isChecking = true;
-    _lastCheckTime = now;
 
     try {
-      final updateResult = await _updateChecker.checkForUpdate();
-      if (mounted && updateResult.hasUpdate && updateResult.manifest != null) {
+      // Throttle & skip sudah dihandle di dalam UpdateService
+      final result = await _updateService.checkForUpdate();
+      if (mounted &&
+          result != null &&
+          result.hasUpdate &&
+          result.manifest != null) {
         _dialogOpen = true;
-        await _showUpdateDialog(updateResult.manifest!);
+        await _showUpdateDialog(result.manifest!);
         _dialogOpen = false;
       }
     } catch (e) {
-      debugPrint('[AutoUpdate] Error checking update: $e');
+      debugPrint('[AutoUpdate] Error: $e');
     } finally {
       _isChecking = false;
     }
   }
 
+  // ─── Dialog 1: Pemberitahuan Update Tersedia ───
   Future<void> _showUpdateDialog(AppUpdateManifest manifest) async {
     final context = navigatorKey.currentContext;
     if (context == null) return;
@@ -229,7 +224,11 @@ class _MainAppWrapperState extends State<MainAppWrapper> with WidgetsBindingObse
                     child: AnimatedButton(
                       text: 'Nanti Saja',
                       color: Colors.grey.shade300,
-                      pressEvent: () => Navigator.of(context).pop(),
+                      pressEvent: () async {
+                        // Simpan skip agar tidak ditanya lagi untuk versi ini
+                        await _updateService.skipVersion(manifest.buildNumber);
+                        if (context.mounted) Navigator.of(context).pop();
+                      },
                       isFixedHeight: false,
                     ),
                   ),
@@ -239,23 +238,9 @@ class _MainAppWrapperState extends State<MainAppWrapper> with WidgetsBindingObse
                   child: AnimatedButton(
                     text: 'Update Sekarang',
                     color: AppColors.primary,
-                    pressEvent: () async {
+                    pressEvent: () {
                       Navigator.of(context).pop();
-
-                      // Buka tautan unduhan langsung di browser eksternal dengan cache buster
-                      String downloadUrl = manifest.url;
-                      if (downloadUrl.contains('?')) {
-                        downloadUrl += '&t=${DateTime.now().millisecondsSinceEpoch}';
-                      } else {
-                        downloadUrl += '?t=${DateTime.now().millisecondsSinceEpoch}';
-                      }
-                      final uri = Uri.parse(downloadUrl);
-                      if (await canLaunchUrl(uri)) {
-                        await launchUrl(uri, mode: LaunchMode.externalApplication);
-                      }
-
-                      // Tampilkan Panduan Pemasangan Manual agar file APK mudah ditemukan dan dipasang
-                      _showManualInstallDialog(manifest.url, manifest.version);
+                      _startDownloadAndInstall(manifest);
                     },
                     isFixedHeight: false,
                   ),
@@ -268,7 +253,256 @@ class _MainAppWrapperState extends State<MainAppWrapper> with WidgetsBindingObse
     ).show();
   }
 
-  void _showManualInstallDialog(String downloadUrl, String versionName) {
+  // ─── Proses Download + Install (In-App) ───
+  Future<void> _startDownloadAndInstall(AppUpdateManifest manifest) async {
+    final context = navigatorKey.currentContext;
+    if (context == null) return;
+
+    // Cek dulu apakah file sudah ada di lokal
+    final existingPath = await _updateService.checkLocalApk(
+      downloadUrl: manifest.url,
+      versionName: manifest.version,
+    );
+
+    if (existingPath != null && context.mounted) {
+      // File sudah ada → tampilkan dialog "File ditemukan" lalu coba install
+      _showLocalFileFoundDialog(manifest, existingPath);
+      return;
+    }
+
+    // File belum ada → tampilkan dialog download progress
+    if (context.mounted) {
+      _showDownloadProgressDialog(manifest);
+    }
+  }
+
+  // ─── Dialog 2: File APK Sudah Ada di Lokal ───
+  void _showLocalFileFoundDialog(
+      AppUpdateManifest manifest, String filePath) {
+    final context = navigatorKey.currentContext;
+    if (context == null) return;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.green.shade50,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.check_circle,
+                    color: Colors.green.shade600, size: 40),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'File Update Ditemukan!',
+                style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimary),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'File PlanKP-v${manifest.version}.apk sudah tersedia di penyimpanan Anda.',
+                style: const TextStyle(
+                    fontSize: 13, color: AppColors.textSecondary),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () {
+                        Navigator.of(ctx).pop();
+                        // Download ulang (abaikan file lama)
+                        _showDownloadProgressDialog(manifest);
+                      },
+                      style: OutlinedButton.styleFrom(
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      child: const Text('Unduh Ulang'),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () async {
+                        Navigator.of(ctx).pop();
+                        // Langsung coba install dari file lokal
+                        final result =
+                            await _updateService.downloadAndInstall(
+                          manifest: manifest,
+                        );
+                        _handleInstallResult(result, manifest);
+                      },
+                      icon: const Icon(Icons.install_mobile, size: 18),
+                      label: const Text('Pasang'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ─── Dialog 3: Download Progress ───
+  void _showDownloadProgressDialog(AppUpdateManifest manifest) {
+    final context = navigatorKey.currentContext;
+    if (context == null) return;
+
+    final progressNotifier = ValueNotifier<int>(0);
+    bool isCancelled = false;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => PopScope(
+        canPop: false,
+        child: Dialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: ValueListenableBuilder<int>(
+              valueListenable: progressNotifier,
+              builder: (_, percent, __) => Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.download_rounded,
+                        color: AppColors.primary, size: 36),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Mengunduh Pembaruan...',
+                    style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'PlanKP-v${manifest.version}.apk',
+                    style: const TextStyle(
+                        fontSize: 12, color: AppColors.textSecondary),
+                  ),
+                  const SizedBox(height: 20),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: LinearProgressIndicator(
+                      value: percent / 100,
+                      minHeight: 10,
+                      backgroundColor: Colors.grey.shade200,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        percent < 100 ? AppColors.primary : Colors.green,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '$percent%',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: percent < 100
+                          ? AppColors.textSecondary
+                          : Colors.green,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton(
+                      onPressed: () {
+                        isCancelled = true;
+                        Navigator.of(ctx).pop();
+                      },
+                      style: OutlinedButton.styleFrom(
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      child: const Text('Batalkan'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    // Mulai download
+    _updateService
+        .downloadAndInstall(
+      manifest: manifest,
+      onProgress: (percent) {
+        if (!isCancelled) progressNotifier.value = percent;
+      },
+    )
+        .then((result) {
+      // Tutup dialog progress jika masih terbuka
+      final navContext = navigatorKey.currentContext;
+      if (navContext != null && !isCancelled) {
+        Navigator.of(navContext, rootNavigator: true).pop();
+      }
+      if (!isCancelled) {
+        _handleInstallResult(result, manifest);
+      }
+    });
+  }
+
+  // ─── Handle Hasil Install ───
+  void _handleInstallResult(
+      AppUpdateDownloadResult result, AppUpdateManifest manifest) {
+    switch (result.status) {
+      case AppUpdateDownloadStatus.downloadedOpenedInstaller:
+      case AppUpdateDownloadStatus.alreadyDownloaded:
+        // Berhasil membuka installer — tidak perlu tindakan tambahan
+        break;
+      case AppUpdateDownloadStatus.openedBrowserFallback:
+        // Fallback ke browser berhasil → tampilkan panduan manual
+        _showManualInstallGuide(manifest.url, manifest.version);
+        break;
+      case AppUpdateDownloadStatus.downloadedOpenedFolder:
+      case AppUpdateDownloadStatus.failedNetwork:
+      case AppUpdateDownloadStatus.failedOther:
+        // Gagal total → tampilkan panduan manual juga
+        _showManualInstallGuide(manifest.url, manifest.version);
+        break;
+    }
+  }
+
+  // ─── Dialog 4: Panduan Install Manual (Fallback Terakhir) ───
+  void _showManualInstallGuide(String downloadUrl, String versionName) {
     final context = navigatorKey.currentContext;
     if (context == null) return;
 
@@ -285,20 +519,23 @@ class _MainAppWrapperState extends State<MainAppWrapper> with WidgetsBindingObse
             children: [
               const Row(
                 children: [
-                  Icon(Icons.download_for_offline, color: AppColors.primary, size: 30),
+                  Icon(Icons.download_for_offline,
+                      color: AppColors.primary, size: 30),
                   SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      'Unduhan Dimulai',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      'Panduan Pemasangan',
+                      style:
+                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: 16),
               const Text(
-                'File pembaruan APK sedang diunduh oleh Web Browser Anda langsung ke penyimpanan telepon.',
-                style: TextStyle(fontSize: 14, color: AppColors.textPrimary),
+                'File APK sedang diunduh oleh browser. Ikuti langkah berikut untuk memasang pembaruan:',
+                style:
+                    TextStyle(fontSize: 13, color: AppColors.textPrimary),
               ),
               const SizedBox(height: 16),
               Container(
@@ -311,22 +548,17 @@ class _MainAppWrapperState extends State<MainAppWrapper> with WidgetsBindingObse
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Langkah Pemasangan Manual:',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13,
-                        color: Colors.blueAccent,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    _buildStepRow('1', 'Tunggu unduhan selesai di bar notifikasi browser Anda.'),
+                    _buildStepRow('1',
+                        'Tunggu unduhan selesai di bar notifikasi browser Anda.'),
                     const SizedBox(height: 6),
-                    _buildStepRow('2', 'Buka aplikasi File Manager / File Saya / Files di HP Anda.'),
+                    _buildStepRow('2',
+                        'Buka aplikasi File Manager / File Saya di HP Anda.'),
                     const SizedBox(height: 6),
-                    _buildStepRow('3', 'Masuk ke folder Downloads / Unduhan publik.'),
+                    _buildStepRow(
+                        '3', 'Masuk ke folder Downloads / Unduhan.'),
                     const SizedBox(height: 6),
-                    _buildStepRow('4', 'Cari dan klik file APK PlanKP yang baru saja diunduh untuk memasangnya secara manual.'),
+                    _buildStepRow('4',
+                        'Cari dan klik file APK PlanKP untuk memasangnya.'),
                   ],
                 ),
               ),
@@ -336,15 +568,18 @@ class _MainAppWrapperState extends State<MainAppWrapper> with WidgetsBindingObse
                   Expanded(
                     child: OutlinedButton.icon(
                       onPressed: () async {
-                        await Clipboard.setData(ClipboardData(text: downloadUrl));
+                        await Clipboard.setData(
+                            ClipboardData(text: downloadUrl));
                         if (ctx.mounted) {
-                          AppNotifier.showSuccess(ctx, 'Link unduhan disalin ke clipboard');
+                          AppNotifier.showSuccess(
+                              ctx, 'Link unduhan disalin ke clipboard');
                         }
                       },
                       icon: const Icon(Icons.copy, size: 16),
                       label: const Text('Salin Link'),
                       style: OutlinedButton.styleFrom(
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
                         padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
                     ),
@@ -356,7 +591,8 @@ class _MainAppWrapperState extends State<MainAppWrapper> with WidgetsBindingObse
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
                         foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
                         padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
                       child: const Text('Tutup'),
@@ -386,7 +622,10 @@ class _MainAppWrapperState extends State<MainAppWrapper> with WidgetsBindingObse
           alignment: Alignment.center,
           child: Text(
             num,
-            style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+            style: const TextStyle(
+                color: Colors.white,
+                fontSize: 11,
+                fontWeight: FontWeight.bold),
           ),
         ),
         Expanded(
