@@ -318,9 +318,6 @@ class JadwalProvider extends ChangeNotifier {
     }
   }
 
-  /// Fetch realisasi for a specific jadwal WITHOUT modifying [realisasiList].
-  /// Use this when you only need the result temporarily (e.g. inventory picker)
-  /// so that the dashboard's "remaining days" calculation is not disrupted.
   Future<List<RealisasiModel>> fetchRealisasiByJadwal(int jadwalId,
       {String? status}) async {
     try {
@@ -329,6 +326,17 @@ class JadwalProvider extends ChangeNotifier {
         if (status != null) 'status': status,
       };
       final res = await ApiClient.get(ApiConfig.realisasi, query: query);
+      return ((res['data']['items'] ?? res['data']) as List)
+          .map((e) => RealisasiModel.fromJson(e))
+          .toList();
+    } on ApiException {
+      return [];
+    }
+  }
+
+  Future<List<RealisasiModel>> fetchDraftRealisasi() async {
+    try {
+      final res = await ApiClient.get(ApiConfig.realisasi, query: {'status': 'Draft'});
       return ((res['data']['items'] ?? res['data']) as List)
           .map((e) => RealisasiModel.fromJson(e))
           .toList();
@@ -372,6 +380,16 @@ class JadwalProvider extends ChangeNotifier {
     } on ApiException catch (e) {
       _setError(e.message);
       return null;
+    }
+  }
+
+  Future<bool> updateRealisasi(int realId, Map<String, dynamic> body) async {
+    try {
+      await ApiClient.put('${ApiConfig.realisasi}/$realId', body);
+      return true;
+    } on ApiException catch (e) {
+      _setError(e.message);
+      return false;
     }
   }
 

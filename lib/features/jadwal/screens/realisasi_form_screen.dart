@@ -33,6 +33,7 @@ class _RealisasiFormScreenState extends State<RealisasiFormScreen> {
   String? _invPicNama;
   List<int>? _imageBytes;
   String? _imageName;
+  int? _realId;
 
   static const _kondisiList = ['Baik', 'Perlu Perhatian', 'Rusak'];
   static const _allowedImageExt = ['jpg', 'jpeg', 'png', 'webp'];
@@ -45,6 +46,7 @@ class _RealisasiFormScreenState extends State<RealisasiFormScreen> {
   @override
   void initState() {
     super.initState();
+    _realId = widget.args['realId'];
     _invNo = widget.args['invNo'];
     _invMerk = widget.args['invMerk'];
     _invKondisiAwal = widget.args['invKondisi'];
@@ -61,6 +63,31 @@ class _RealisasiFormScreenState extends State<RealisasiFormScreen> {
   Future<void> _loadTemplate() async {
     final p = context.read<JadwalProvider>();
     try {
+      if (_realId != null) {
+        // Melanjutkan draft realisasi yang sudah ada
+        await p.fetchRealisasiDetail(_realId!);
+        final detail = p.realisasiDetail;
+        if (detail != null && mounted) {
+          setState(() {
+            _kondisi = detail.realKondisiAkhir ?? 'Baik';
+            _ketCtrl.text = detail.realKeterangan ?? '';
+            _checklistItems = detail.hasilChecklist.map((hc) {
+              return ChecklistInputModel(
+                ctId: hc.hcCtId,
+                ctItem: hc.itemNama,
+                ctUrutan: hc.urutan,
+              )
+                ..hasil = hc.hcHasil
+                ..kondisi = hc.hcKondisi
+                ..keterangan = hc.hcKeterangan;
+            }).toList();
+            _loadingTemplate = false;
+          });
+          return;
+        }
+      }
+
+      // Alur normal: load template checklist baru
       final items = await p.fetchTemplate(_invJenisId);
 
       if (!mounted) return;
@@ -96,11 +123,11 @@ class _RealisasiFormScreenState extends State<RealisasiFormScreen> {
       return;
     }
 
-    final belumDipilih = _checklistItems
-        .where((item) => item.hasil != 'OK' && item.hasil != 'NK');
+    final belumDipilih = _checklistItems.where((item) =>
+        item.hasil != 'OK' && item.hasil != 'NK' && item.hasil != 'N/A');
     if (belumDipilih.isNotEmpty) {
       await AppNotifier.showWarning(context,
-          'Pilih hasil OK/NK untuk semua item checklist terlebih dahulu');
+          'Pilih hasil OK/NK/Tidak Ada untuk semua item checklist terlebih dahulu');
       return;
     }
 
@@ -134,21 +161,33 @@ class _RealisasiFormScreenState extends State<RealisasiFormScreen> {
     };
 
     setState(() => _submitting = true);
-    final real = await p.createRealisasi(body);
-    if (!mounted) {
-      return;
-    }
-    if (real == null) {
-      setState(() => _submitting = false);
-      await AppNotifier.showError(
-          context, p.error ?? 'Gagal membuat data realisasi');
-      return;
+
+    int targetRealId;
+    if (_realId != null) {
+      targetRealId = _realId!;
+      final okUpdate = await p.updateRealisasi(targetRealId, {
+        'real_kondisi_akhir': _kondisi,
+        'real_keterangan': _ketCtrl.text.trim().isEmpty ? null : _ketCtrl.text.trim(),
+      });
+      if (!okUpdate) {
+        if (!mounted) return;
+        setState(() => _submitting = false);
+        await AppNotifier.showError(context, p.error ?? 'Gagal memperbarui realisasi');
+        return;
+      }
+    } else {
+      final real = await p.createRealisasi(body);
+      if (real == null) {
+        if (!mounted) return;
+        setState(() => _submitting = false);
+        await AppNotifier.showError(context, p.error ?? 'Gagal membuat data realisasi');
+        return;
+      }
+      targetRealId = real.realId;
     }
 
-    final okChecklist = await p.saveChecklist(real.realId, _checklistItems);
-    if (!mounted) {
-      return;
-    }
+    final okChecklist = await p.saveChecklist(targetRealId, _checklistItems);
+    if (!mounted) return;
     if (!okChecklist) {
       setState(() => _submitting = false);
       await AppNotifier.showError(
@@ -159,13 +198,11 @@ class _RealisasiFormScreenState extends State<RealisasiFormScreen> {
     // Jika user mengupload foto bukti (lakukan sebelum TTD agar status masih 'Draft')
     if (_imageBytes != null && _imageName != null) {
       final okFoto = await p.uploadRealisasiFoto(
-        real.realId,
+        targetRealId,
         bytes: _imageBytes,
         filename: _imageName,
       );
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
       if (!okFoto) {
         setState(() => _submitting = false);
         await AppNotifier.showError(
@@ -175,13 +212,11 @@ class _RealisasiFormScreenState extends State<RealisasiFormScreen> {
     }
 
     final okTtd = await p.saveTtd(
-      real.realId,
+      targetRealId,
       ttdData.picNama,
       'data:image/png;base64,${ttdData.signatureBase64}',
     );
-    if (!mounted) {
-      return;
-    }
+    if (!mounted) return;
     if (!okTtd) {
       setState(() => _submitting = false);
       await AppNotifier.showError(
@@ -191,9 +226,101 @@ class _RealisasiFormScreenState extends State<RealisasiFormScreen> {
 
     setState(() => _submitting = false);
     await AppNotifier.showSuccess(context, 'Realisasi berhasil diselesaikan');
-    if (!mounted) {
+    if (!mounted) return;
+    Navigator.pop(context);
+  }
+
+  Future<void> _saveAsDraft() async {
+    if (_checklistItems.isEmpty) {
+      await AppNotifier.showWarning(context, 'Template checklist kosong');
       return;
     }
+
+    final belumDipilih = _checklistItems.where((item) =>
+        item.hasil != 'OK' && item.hasil != 'NK' && item.hasil != 'N/A');
+    if (belumDipilih.isNotEmpty) {
+      await AppNotifier.showWarning(context,
+          'Pilih hasil OK/NK/Tidak Ada untuk semua item checklist terlebih dahulu');
+      return;
+    }
+
+    final nkTanpaKondisi = _checklistItems.where((item) =>
+        item.hasil == 'NK' && (item.kondisi == null || item.kondisi!.isEmpty));
+    if (nkTanpaKondisi.isNotEmpty) {
+      await AppNotifier.showWarning(
+          context, 'Pilih kondisi untuk setiap item yang tidak sesuai (NK)');
+      return;
+    }
+
+    final p = context.read<JadwalProvider>();
+    final now = DateTime.now();
+    final tgl = DateFormatter.toApi(now);
+    final jamMulai =
+        '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:00';
+
+    final body = {
+      'real_jadwal_id': _jadwalId,
+      'real_inv_id': _invId,
+      'real_tgl': tgl,
+      'real_jam_mulai': jamMulai,
+      'real_kondisi_akhir': _kondisi,
+      'real_keterangan':
+          _ketCtrl.text.trim().isEmpty ? null : _ketCtrl.text.trim(),
+    };
+
+    setState(() => _submitting = true);
+
+    int targetRealId;
+    if (_realId != null) {
+      targetRealId = _realId!;
+      final okUpdate = await p.updateRealisasi(targetRealId, {
+        'real_kondisi_akhir': _kondisi,
+        'real_keterangan': _ketCtrl.text.trim().isEmpty ? null : _ketCtrl.text.trim(),
+      });
+      if (!okUpdate) {
+        if (!mounted) return;
+        setState(() => _submitting = false);
+        await AppNotifier.showError(context, p.error ?? 'Gagal memperbarui realisasi');
+        return;
+      }
+    } else {
+      final real = await p.createRealisasi(body);
+      if (real == null) {
+        if (!mounted) return;
+        setState(() => _submitting = false);
+        await AppNotifier.showError(context, p.error ?? 'Gagal membuat data realisasi');
+        return;
+      }
+      targetRealId = real.realId;
+    }
+
+    final okChecklist = await p.saveChecklist(targetRealId, _checklistItems);
+    if (!mounted) return;
+    if (!okChecklist) {
+      setState(() => _submitting = false);
+      await AppNotifier.showError(
+          context, p.error ?? 'Gagal menyimpan checklist realisasi');
+      return;
+    }
+
+    if (_imageBytes != null && _imageName != null) {
+      final okFoto = await p.uploadRealisasiFoto(
+        targetRealId,
+        bytes: _imageBytes,
+        filename: _imageName,
+      );
+      if (!mounted) return;
+      if (!okFoto) {
+        setState(() => _submitting = false);
+        await AppNotifier.showError(
+            context, p.error ?? 'Gagal mengunggah foto bukti realisasi');
+        return;
+      }
+    }
+
+    setState(() => _submitting = false);
+    await AppNotifier.showSuccess(context, 'Realisasi berhasil disimpan sebagai Draft');
+    if (!mounted) return;
     Navigator.pop(context);
   }
 
@@ -203,6 +330,7 @@ class _RealisasiFormScreenState extends State<RealisasiFormScreen> {
       barrierDismissible: false,
       builder: (_) => _TtdDialog(
         defaultPicNama: _invPicNama,
+        checklistItems: _checklistItems,
       ),
     );
   }
@@ -683,32 +811,67 @@ class _RealisasiFormScreenState extends State<RealisasiFormScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           // const Text(
-                          //   'Penyelesaian Realisasi',
-                          //   style: TextStyle(
-                          //       fontWeight: FontWeight.w700, fontSize: 14),
-                          // ),
-                          // const SizedBox(height: 4),
-                          const Text(
-                            'Lanjutkan Tanda Tangan PIC untuk menyimpan realisasi.',
+                                                     const Text(
+                            'Pilih simpan sebagai Draft (Tunda TTD) atau lanjutkan Tanda Tangan PIC untuk menyelesaikan realisasi.',
                             style: TextStyle(
                                 fontSize: 12, color: AppColors.textSecondary),
                           ),
                           const SizedBox(height: 14),
-                          ElevatedButton.icon(
-                            onPressed:
-                                p.loading || _submitting ? null : _proceedToTtd,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.success,
-                            ),
-                            icon: p.loading || _submitting
-                                ? const SizedBox(
-                                    height: 18,
-                                    width: 18,
-                                    child: CircularProgressIndicator(
-                                        color: Colors.white, strokeWidth: 2),
-                                  )
-                                : const Icon(Icons.draw_outlined),
-                            label: const Text('Lanjut Tanda Tangan PIC'),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: OutlinedButton.icon(
+                                  onPressed: p.loading || _submitting
+                                      ? null
+                                      : _saveAsDraft,
+                                  style: OutlinedButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(vertical: 12),
+                                    minimumSize: const Size(double.infinity, 48),
+                                    side: const BorderSide(color: AppColors.primary, width: 1.5),
+                                    foregroundColor: AppColors.primary,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                  icon: p.loading || _submitting
+                                      ? const SizedBox(
+                                          height: 16,
+                                          width: 16,
+                                          child: CircularProgressIndicator(
+                                              strokeWidth: 2),
+                                        )
+                                      : const Icon(Icons.save_outlined, size: 18),
+                                  label: const Text('Simpan Draft', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: ElevatedButton.icon(
+                                  onPressed: p.loading || _submitting
+                                      ? null
+                                      : _proceedToTtd,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppColors.success,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(vertical: 12),
+                                    minimumSize: const Size(double.infinity, 48),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    elevation: 0,
+                                  ),
+                                  icon: p.loading || _submitting
+                                      ? const SizedBox(
+                                          height: 16,
+                                          width: 16,
+                                          child: CircularProgressIndicator(
+                                              color: Colors.white, strokeWidth: 2),
+                                        )
+                                      : const Icon(Icons.draw_outlined, size: 18),
+                                  label: const Text('Tanda Tangan PIC', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
@@ -930,9 +1093,20 @@ class _ChecklistItemCardState extends State<_ChecklistItemCard> {
           ]),
           const SizedBox(height: 12),
           Row(
-              children: ['OK', 'NK'].map((h) {
+              children: ['OK', 'NK', 'N/A'].map((h) {
             final sel = item.hasil == h;
-            final color = h == 'OK' ? AppColors.success : AppColors.danger;
+            Color color;
+            String label;
+            if (h == 'OK') {
+              color = AppColors.success;
+              label = 'OK';
+            } else if (h == 'NK') {
+              color = AppColors.danger;
+              label = 'NK';
+            } else {
+              color = Colors.grey.shade600;
+              label = 'Tidak Ada';
+            }
             return Expanded(
                 child: Padding(
               padding: const EdgeInsets.only(right: 6),
@@ -953,7 +1127,7 @@ class _ChecklistItemCardState extends State<_ChecklistItemCard> {
                     border: Border.all(color: sel ? color : Colors.transparent),
                   ),
                   child: Center(
-                      child: Text(h,
+                      child: Text(label,
                           style: TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w700,
@@ -962,11 +1136,31 @@ class _ChecklistItemCardState extends State<_ChecklistItemCard> {
               ),
             ));
           }).toList()),
-          if (item.hasil != 'OK' && item.hasil != 'NK') ...[
+          if (item.hasil != 'OK' && item.hasil != 'NK' && item.hasil != 'N/A') ...[
             const SizedBox(height: 8),
             const Text(
-              'Pilih hasil pemeriksaan (OK/NK).',
+              'Pilih hasil pemeriksaan (OK/NK/Tidak Ada).',
               style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+            ),
+          ],
+          if (item.hasil == 'N/A') ...[
+            const SizedBox(height: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade600.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.remove_circle_outline,
+                      size: 14, color: Colors.grey.shade600),
+                  const SizedBox(width: 4),
+                  Text('Item tidak ada di lapangan (N/A)',
+                      style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
+                ],
+              ),
             ),
           ],
           if (item.hasil == 'OK') ...[
@@ -1037,8 +1231,10 @@ class _ChecklistItemCardState extends State<_ChecklistItemCard> {
 // ═══════════════════════════════════════════════════════════════
 class _TtdDialog extends StatefulWidget {
   final String? defaultPicNama;
+  final List<ChecklistInputModel> checklistItems;
   const _TtdDialog({
     this.defaultPicNama,
+    required this.checklistItems,
   });
   @override
   State<_TtdDialog> createState() => _TtdDialogState();
@@ -1051,6 +1247,7 @@ class _TtdDialogState extends State<_TtdDialog> {
   List<Offset?> _currentStroke = [];
   bool _hasSignature = false;
   bool _submitting = false;
+  bool _confirmSummary = false;
 
   @override
   void initState() {
@@ -1142,6 +1339,13 @@ class _TtdDialogState extends State<_TtdDialog> {
     if (!_formKey.currentState!.validate()) {
       return;
     }
+    if (!_confirmSummary) {
+      await AppNotifier.showWarning(
+        context,
+        'Harap setujui konfirmasi pemeriksaan dan kesiapan PIC sebelum menandatangani',
+      );
+      return;
+    }
     if (!_hasSignature) {
       await AppNotifier.showWarning(context, 'Tanda tangan belum dibuat');
       return;
@@ -1214,6 +1418,122 @@ class _TtdDialogState extends State<_TtdDialog> {
                     }
                     return null;
                   },
+                ),
+                const SizedBox(height: 16),
+
+                // Rangkuman hasil checklist pemeriksaan (Hanya di FE)
+                const Text(
+                  'Rangkuman Hasil Pemeriksaan',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Container(
+                  constraints: const BoxConstraints(maxHeight: 140),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Scrollbar(
+                    thumbVisibility: true,
+                    child: ListView.separated(
+                      shrinkWrap: true,
+                      padding: const EdgeInsets.all(12),
+                      itemCount: widget.checklistItems.length,
+                      separatorBuilder: (_, __) => const Divider(height: 8),
+                      itemBuilder: (context, index) {
+                        final item = widget.checklistItems[index];
+                        Color badgeColor;
+                        String statusText;
+                        if (item.hasil == 'OK') {
+                          badgeColor = AppColors.success;
+                          statusText = 'OK';
+                        } else if (item.hasil == 'NK') {
+                          badgeColor = AppColors.warning;
+                          statusText = 'NK (${item.kondisi ?? "Sedang"})';
+                        } else {
+                          badgeColor = Colors.grey.shade600;
+                          statusText = 'N/A';
+                        }
+
+                        return Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                item.ctItem,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.textPrimary,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: badgeColor.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                statusText,
+                                style: TextStyle(
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w800,
+                                  color: badgeColor,
+                                ),
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                // Checkbox Persetujuan Tunggal
+                Container(
+                  decoration: BoxDecoration(
+                    color: AppColors.primarySoft,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: AppColors.primary.withValues(alpha: 0.15),
+                    ),
+                  ),
+                  child: CheckboxListTile(
+                    value: _confirmSummary,
+                    onChanged: (val) {
+                      setState(() => _confirmSummary = val ?? false);
+                    },
+                    title: const Text(
+                      'Pernyataan Persetujuan PIC',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    subtitle: const Text(
+                      'Saya menyatakan bahwa seluruh rangkuman pemeriksaan di atas telah sesuai.',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: AppColors.textSecondary,
+                        height: 1.3,
+                      ),
+                    ),
+                    activeColor: AppColors.primary,
+                    dense: true,
+                    controlAffinity: ListTileControlAffinity.leading,
+                  ),
                 ),
                 const SizedBox(height: 16),
 

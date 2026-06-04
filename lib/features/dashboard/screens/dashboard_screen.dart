@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:awesome_dialog/awesome_dialog.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/widgets/app_notifier.dart';
@@ -25,6 +26,29 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   static const _pageBg = Color(0xFFF8FAFC);
+  bool _hasCheckedPendingTtd = false;
+
+  void _showPendingTtdDialog(List<RealisasiModel> drafts) {
+    AwesomeDialog(
+      context: context,
+      dialogType: DialogType.warning,
+      animType: AnimType.bottomSlide,
+      title: 'Tanda Tangan Tertunda',
+      desc: 'Anda memiliki ${drafts.length} realisasi pemeliharaan yang belum ditandatangani oleh PIC. Harap segera menyelesaikan tanda tangan.',
+      btnCancelText: 'Nanti',
+      btnOkText: 'Lihat Riwayat',
+      btnCancelOnPress: () {},
+      btnOkOnPress: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const RealisasiHistoryScreen(initialTab: 'Draft'),
+            settings: const RouteSettings(name: '/realisasi/history'),
+          ),
+        );
+      },
+    ).show();
+  }
 
   int _isoWeekNumber(DateTime date) {
     final d = DateTime.utc(date.year, date.month, date.day);
@@ -141,6 +165,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
     await p.fetchRealisasi(status: 'Selesai');
     if (!mounted) return;
     await context.read<MasterProvider>().fetchJenis();
+
+    if (!isAdmin && !_hasCheckedPendingTtd) {
+      _hasCheckedPendingTtd = true;
+      final drafts = await p.fetchDraftRealisasi();
+      if (drafts.isNotEmpty && mounted) {
+        _showPendingTtdDialog(drafts);
+      }
+    }
   }
 
   String _userName(Map<String, dynamic>? user) =>
@@ -1281,12 +1313,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      label,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 15,
-                        color: AppColors.textPrimary,
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        label,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 15,
+                          color: AppColors.textPrimary,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 2),
@@ -1426,12 +1462,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               size: 18,
                             ),
                           ),
-                          Text(
-                            "$pendingTasks",
-                            style: const TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w900,
-                              color: AppColors.textPrimary,
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              "$pendingTasks",
+                              textAlign: TextAlign.end,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w900,
+                                color: AppColors.textPrimary,
+                              ),
                             ),
                           ),
                         ],
@@ -1486,12 +1527,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               size: 18,
                             ),
                           ),
-                          Text(
-                            "$doneBulanIni / $totalTargetBulanIni",
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w900,
-                              color: AppColors.textPrimary,
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              "$doneBulanIni / $totalTargetBulanIni",
+                              textAlign: TextAlign.end,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w900,
+                                color: AppColors.textPrimary,
+                              ),
                             ),
                           ),
                         ],

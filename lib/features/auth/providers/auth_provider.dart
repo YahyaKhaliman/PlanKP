@@ -3,6 +3,7 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/utils/api_client.dart';
 
@@ -36,9 +37,16 @@ class AuthProvider extends ChangeNotifier {
     _error = null;
     notifyListeners();
     try {
+      final packageInfo = await PackageInfo.fromPlatform();
+      final String appVersion = '${packageInfo.version}+${packageInfo.buildNumber}';
+
       final res = await ApiClient.post(
         ApiConfig.login,
-        {'user_nama': user_nama, 'user_password': user_password},
+        {
+          'user_nama': user_nama,
+          'user_password': user_password,
+          'app_version': appVersion,
+        },
         auth: false,
       );
       final token = res['data']['token'] as String;

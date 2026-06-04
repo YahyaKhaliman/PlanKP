@@ -13,9 +13,12 @@ import '../models/realisasi_model.dart';
 import '../providers/jadwal_provider.dart';
 import '../../../core/widgets/app_notifier.dart';
 import '../widgets/realisasi_detail_sheet.dart';
+import '../../../core/constants/app_constants.dart';
+import '../../../core/utils/date_formatter.dart';
 
 class RealisasiHistoryScreen extends StatefulWidget {
-  const RealisasiHistoryScreen({super.key});
+  final String? initialTab;
+  const RealisasiHistoryScreen({super.key, this.initialTab});
 
   @override
   State<RealisasiHistoryScreen> createState() => _RealisasiHistoryScreenState();
@@ -25,11 +28,32 @@ class _RealisasiHistoryScreenState extends State<RealisasiHistoryScreen> {
   DateTime _selectedMonth = DateTime(DateTime.now().year, DateTime.now().month);
   int? _selectedDay;
   int? _selectedUserId;
+  String _activeTab = 'Selesai'; // 'Selesai' atau 'Draft' (Menunggu TTD)
+  List<RealisasiModel> _draftRealisasiList = [];
+  bool _loadingDraft = false;
 
   @override
   void initState() {
     super.initState();
+    if (widget.initialTab != null) {
+      _activeTab = widget.initialTab!;
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadData());
+  }
+
+  Future<void> _loadDraftData() async {
+    setState(() => _loadingDraft = true);
+    try {
+      final provider = context.read<JadwalProvider>();
+      final drafts = await provider.fetchDraftRealisasi();
+      setState(() {
+        _draftRealisasiList = drafts;
+      });
+    } catch (e) {
+      debugPrint('[LOAD DRAFT ERROR] $e');
+    } finally {
+      setState(() => _loadingDraft = false);
+    }
   }
 
   Future<void> _loadData() async {
@@ -37,14 +61,18 @@ class _RealisasiHistoryScreenState extends State<RealisasiHistoryScreen> {
     final isAdmin = auth.user?['user_jabatan'] == 'admin';
     final provider = context.read<JadwalProvider>();
 
-    if (isAdmin) {
-      await provider.fetchJadwalByDivisi();
-      await provider.fetchRealisasi(status: 'Selesai', byDivisi: true);
+    if (_activeTab == 'Selesai') {
+      if (isAdmin) {
+        await provider.fetchJadwalByDivisi();
+        await provider.fetchRealisasi(status: 'Selesai', byDivisi: true);
+      } else {
+        await provider.fetchJadwalByUser();
+        await provider.fetchRealisasi(status: 'Selesai');
+      }
+      await provider.fetchHariLiburForMonth(_selectedMonth);
     } else {
-      await provider.fetchJadwalByUser();
-      await provider.fetchRealisasi(status: 'Selesai');
+      await _loadDraftData();
     }
-    await provider.fetchHariLiburForMonth(_selectedMonth);
   }
 
   void _previousMonth() {
@@ -63,8 +91,7 @@ class _RealisasiHistoryScreenState extends State<RealisasiHistoryScreen> {
     context.read<JadwalProvider>().fetchHariLiburForMonth(_selectedMonth);
   }
 
-  Future<void> _showRealisasiDetail(
-      BuildContext context, RealisasiModel item) async {
+  Future<void> _showRealisasiDetail(RealisasiModel item) async {
     final provider = context.read<JadwalProvider>();
     await provider.fetchRealisasiDetail(item.realId);
     if (!mounted) return;
@@ -179,7 +206,7 @@ class _RealisasiHistoryScreenState extends State<RealisasiHistoryScreen> {
                               ),
                               child: ListTile(
                                 dense: true,
-                                onTap: () => _showRealisasiDetail(context, item),
+                                onTap: () => _showRealisasiDetail(item),
                                 contentPadding: const EdgeInsets.symmetric(
                                     horizontal: 12, vertical: 4),
                                 leading: const Icon(Icons.task_alt_rounded,
@@ -215,7 +242,7 @@ class _RealisasiHistoryScreenState extends State<RealisasiHistoryScreen> {
                                   ],
                                 ),
                                 trailing: OutlinedButton(
-                                  onPressed: () => _showRealisasiDetail(context, item),
+                                  onPressed: () => _showRealisasiDetail(item),
                                   style: OutlinedButton.styleFrom(
                                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                     minimumSize: Size.zero,
@@ -265,7 +292,8 @@ class _RealisasiHistoryScreenState extends State<RealisasiHistoryScreen> {
         onRefresh: _loadData,
         child: Consumer<JadwalProvider>(
           builder: (_, p, __) {
-            if (p.loading) {
+            final isLoading = _activeTab == 'Selesai' ? p.loading : _loadingDraft;
+            if (isLoading) {
               return const AppShimmer(
                 child: SingleChildScrollView(
                   physics: NeverScrollableScrollPhysics(),
@@ -282,44 +310,51 @@ class _RealisasiHistoryScreenState extends State<RealisasiHistoryScreen> {
               );
             }
 
-            final monthRealisasi =
-                _filterRealisasiByMonth(p.realisasiList, _selectedMonth);
-            final filteredJadwal =
-                _filterJadwalBySelectedUser(p.jadwalList, _selectedUserId);
-            final filteredMonthRealisasi =
-                _filterRealisasiBySelectedUser(monthRealisasi, _selectedUserId);
-            final holidayDays = p.getHolidayDaysForMonth(_selectedMonth);
+            List<RealisasiModel> monthRealisasi = [];
+            List<JadwalModel> filteredJadwal = [];
+            List<RealisasiModel> filteredMonthRealisasi = [];
+            Set<int> holidayDays = {};
+            _MonthlyHistoryMetrics metrics = _MonthlyHistoryMetrics(targetCount: 0, doneCount: 0);
+            List<_UserFilterItem> userItems = [];
+            _MonthlyRecapData recapData = _MonthlyRecapData(groups: []);
+            List<int> sortedCrossMonthWeeks = [];
 
-            final metrics = _buildMonthlyMetrics(
-              jadwalList: filteredJadwal,
-              realisasiList: filteredMonthRealisasi,
-              month: _selectedMonth,
-              holidayDays: holidayDays,
-            );
+            if (_activeTab == 'Selesai') {
+              monthRealisasi = _filterRealisasiByMonth(p.realisasiList, _selectedMonth);
+              filteredJadwal = _filterJadwalBySelectedUser(p.jadwalList, _selectedUserId);
+              filteredMonthRealisasi = _filterRealisasiBySelectedUser(monthRealisasi, _selectedUserId);
+              holidayDays = p.getHolidayDaysForMonth(_selectedMonth);
 
-            final userItems =
-                _buildUserFilterItems(p.jadwalList, p.realisasiList);
-            final recapData = _buildRecapData(
-              jadwalList: filteredJadwal,
-              realisasiList: filteredMonthRealisasi,
-              month: _selectedMonth,
-              holidayDays: holidayDays,
-            );
+              metrics = _buildMonthlyMetrics(
+                jadwalList: filteredJadwal,
+                realisasiList: filteredMonthRealisasi,
+                month: _selectedMonth,
+                holidayDays: holidayDays,
+              );
 
-            final crossMonthWeeks = <int>{};
-            for (final r in filteredMonthRealisasi) {
-              final frekuensi = (r.jadwal?['jdw_frekuensi'] ?? '').toString();
-              if (frekuensi == 'Mingguan') {
-                final hasOtherMonth = p.realisasiList.any((other) =>
-                    other.realWeekNumber == r.realWeekNumber &&
-                    other.realTahun == r.realTahun &&
-                    other.realBulan != r.realBulan);
-                if (hasOtherMonth) {
-                  crossMonthWeeks.add(r.realWeekNumber);
+              userItems = _buildUserFilterItems(p.jadwalList, p.realisasiList);
+              recapData = _buildRecapData(
+                jadwalList: filteredJadwal,
+                realisasiList: filteredMonthRealisasi,
+                month: _selectedMonth,
+                holidayDays: holidayDays,
+              );
+
+              final crossMonthWeeks = <int>{};
+              for (final r in filteredMonthRealisasi) {
+                final frekuensi = (r.jadwal?['jdw_frekuensi'] ?? '').toString();
+                if (frekuensi == 'Mingguan') {
+                  final hasOtherMonth = p.realisasiList.any((other) =>
+                      other.realWeekNumber == r.realWeekNumber &&
+                      other.realTahun == r.realTahun &&
+                      other.realBulan != r.realBulan);
+                  if (hasOtherMonth) {
+                    crossMonthWeeks.add(r.realWeekNumber);
+                  }
                 }
               }
+              sortedCrossMonthWeeks = crossMonthWeeks.toList()..sort();
             }
-            final sortedCrossMonthWeeks = crossMonthWeeks.toList()..sort();
 
             return Center(
               child: ConstrainedBox(
@@ -327,38 +362,179 @@ class _RealisasiHistoryScreenState extends State<RealisasiHistoryScreen> {
                 child: CustomScrollView(
                   physics: const AlwaysScrollableScrollPhysics(),
                   slivers: [
+                    // Tab Selector
                     SliverToBoxAdapter(
                       child: Padding(
                         padding: EdgeInsets.fromLTRB(
-                            horizontalPadding, 16, horizontalPadding, 10),
-                        child: LayoutBuilder(
-                          builder: (_, constraints) {
-                            final canUseSingleRow =
-                                isAdmin && constraints.maxWidth >= 840;
+                            horizontalPadding, 16, horizontalPadding, 8),
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: AppColors.surface,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: AppColors.border),
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: InkWell(
+                                  onTap: () {
+                                    setState(() {
+                                      _activeTab = 'Selesai';
+                                    });
+                                    _loadData();
+                                  },
+                                  borderRadius: BorderRadius.circular(9),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(vertical: 10),
+                                    decoration: BoxDecoration(
+                                      color: _activeTab == 'Selesai'
+                                          ? AppColors.primary
+                                          : Colors.transparent,
+                                      borderRadius: BorderRadius.circular(9),
+                                    ),
+                                    child: Center(
+                                      child: Text(
+                                        'Selesai',
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w700,
+                                          color: _activeTab == 'Selesai'
+                                              ? Colors.white
+                                              : AppColors.textSecondary,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              Expanded(
+                                child: InkWell(
+                                  onTap: () {
+                                    setState(() {
+                                      _activeTab = 'Draft';
+                                    });
+                                    _loadData();
+                                  },
+                                  borderRadius: BorderRadius.circular(9),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(vertical: 10),
+                                    decoration: BoxDecoration(
+                                      color: _activeTab == 'Draft'
+                                          ? AppColors.primary
+                                          : Colors.transparent,
+                                      borderRadius: BorderRadius.circular(9),
+                                    ),
+                                    child: Center(
+                                      child: Row(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Text(
+                                            'Menunggu TTD',
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w700,
+                                              color: _activeTab == 'Draft'
+                                                  ? Colors.white
+                                                  : AppColors.textSecondary,
+                                            ),
+                                          ),
+                                          if (_draftRealisasiList.isNotEmpty) ...[
+                                            const SizedBox(width: 6),
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                              decoration: BoxDecoration(
+                                                color: _activeTab == 'Draft'
+                                                    ? Colors.white
+                                                    : AppColors.primary,
+                                                borderRadius: BorderRadius.circular(10),
+                                              ),
+                                              child: Text(
+                                                '${_draftRealisasiList.length}',
+                                                style: TextStyle(
+                                                  fontSize: 10,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: _activeTab == 'Draft'
+                                                      ? AppColors.primary
+                                                      : Colors.white,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
 
-                            if (!isAdmin) {
-                              return _MonthSwitcher(
-                                monthLabel: _monthLabel(_selectedMonth),
-                                onPrevious: _previousMonth,
-                                onNext: _nextMonth,
-                              );
-                            }
+                    if (_activeTab == 'Selesai') ...[
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: EdgeInsets.fromLTRB(
+                              horizontalPadding, 16, horizontalPadding, 10),
+                          child: LayoutBuilder(
+                            builder: (_, constraints) {
+                              final canUseSingleRow =
+                                  isAdmin && constraints.maxWidth >= 840;
 
-                            if (canUseSingleRow) {
-                              return Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                              if (!isAdmin) {
+                                return _MonthSwitcher(
+                                  monthLabel: _monthLabel(_selectedMonth),
+                                  onPrevious: _previousMonth,
+                                  onNext: _nextMonth,
+                                );
+                              }
+
+                              if (canUseSingleRow) {
+                                return Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Expanded(
+                                      flex: 6,
+                                      child: _MonthSwitcher(
+                                        monthLabel: _monthLabel(_selectedMonth),
+                                        onPrevious: _previousMonth,
+                                        onNext: _nextMonth,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      flex: 5,
+                                      child: _UserFilterCard(
+                                        selectedUserId: _selectedUserId,
+                                        users: userItems,
+                                        onChanged: (value) {
+                                          setState(() {
+                                            _selectedUserId = value;
+                                            _selectedDay = null;
+                                          });
+                                        },
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              }
+
+                              return Wrap(
+                                spacing: 10,
+                                runSpacing: 10,
                                 children: [
-                                  Expanded(
-                                    flex: 6,
+                                  SizedBox(
+                                    width: constraints.maxWidth,
                                     child: _MonthSwitcher(
                                       monthLabel: _monthLabel(_selectedMonth),
                                       onPrevious: _previousMonth,
                                       onNext: _nextMonth,
                                     ),
                                   ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    flex: 5,
+                                  SizedBox(
+                                    width: constraints.maxWidth,
                                     child: _UserFilterCard(
                                       selectedUserId: _selectedUserId,
                                       users: userItems,
@@ -372,123 +548,257 @@ class _RealisasiHistoryScreenState extends State<RealisasiHistoryScreen> {
                                   ),
                                 ],
                               );
-                            }
-
-                            return Wrap(
-                              spacing: 10,
-                              runSpacing: 10,
-                              children: [
-                                SizedBox(
-                                  width: constraints.maxWidth,
-                                  child: _MonthSwitcher(
-                                    monthLabel: _monthLabel(_selectedMonth),
-                                    onPrevious: _previousMonth,
-                                    onNext: _nextMonth,
-                                  ),
-                                ),
-                                SizedBox(
-                                  width: constraints.maxWidth,
-                                  child: _UserFilterCard(
-                                    selectedUserId: _selectedUserId,
-                                    users: userItems,
-                                    onChanged: (value) {
-                                      setState(() {
-                                        _selectedUserId = value;
-                                        _selectedDay = null;
-                                      });
-                                    },
-                                  ),
-                                ),
-                              ],
-                            );
-                          },
+                            },
+                          ),
                         ),
                       ),
-                    ),
-                    if (sortedCrossMonthWeeks.isNotEmpty)
+                      if (sortedCrossMonthWeeks.isNotEmpty)
+                        SliverToBoxAdapter(
+                          child: Padding(
+                            padding: EdgeInsets.fromLTRB(
+                                horizontalPadding, 0, horizontalPadding, 10),
+                            child: Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFFF7ED),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: const Color(0xFFFED7AA)),
+                              ),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text('⚠️ ', style: TextStyle(fontSize: 14)),
+                                  Expanded(
+                                    child: Text(
+                                      'Catatan: Terdapat realisasi jadwal Mingguan pada minggu ke-${sortedCrossMonthWeeks.join(', ')} yang dicatat lintas bulan. Progress mingguan tetap dihitung sebagai 1 periode.',
+                                      style: const TextStyle(
+                                          fontSize: 12,
+                                          color: Color(0xFF92400E),
+                                          height: 1.5),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
                       SliverToBoxAdapter(
                         child: Padding(
                           padding: EdgeInsets.fromLTRB(
-                              horizontalPadding, 0, horizontalPadding, 10),
-                          child: Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFFFF7ED),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: const Color(0xFFFED7AA)),
+                              horizontalPadding, 10, horizontalPadding, 10),
+                          child: _SummaryCard(
+                              monthLabel: _monthLabel(_selectedMonth),
+                              metrics: metrics),
+                        ),
+                      ),
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: EdgeInsets.fromLTRB(
+                              horizontalPadding, 4, horizontalPadding, 10),
+                          child: _MonthlyDatePreview(
+                            month: _selectedMonth,
+                            realisasiList: filteredMonthRealisasi,
+                            holidayDays: holidayDays,
+                            selectedDay: _selectedDay,
+                            onDayTap: (day) => _showDayRealisasiPopup(
+                              day: day,
+                              filteredMonthRealisasi: filteredMonthRealisasi,
                             ),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text('⚠️ ', style: TextStyle(fontSize: 14)),
-                                Expanded(
-                                  child: Text(
-                                    'Catatan: Terdapat realisasi jadwal Mingguan pada minggu ke-${sortedCrossMonthWeeks.join(', ')} yang dicatat lintas bulan. Progress mingguan tetap dihitung sebagai 1 periode.',
+                          ),
+                        ),
+                      ),
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: EdgeInsets.fromLTRB(
+                              horizontalPadding, 16, horizontalPadding, 8),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              SizedBox(
+                                width: double.infinity,
+                                child: Text(
+                                    'Penilaian ${_selectedUserId == null ? 'Semua User' : userItems.firstWhere((u) => u.userId == _selectedUserId, orElse: () => _UserFilterItem(userId: _selectedUserId ?? 0, userName: 'User')).userName} ${_monthLabel(_selectedMonth)}',
+                                    textAlign: TextAlign.center,
                                     style: const TextStyle(
-                                        fontSize: 12,
-                                        color: Color(0xFF92400E),
-                                        height: 1.5),
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 15)),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: EdgeInsets.fromLTRB(
+                              horizontalPadding, 4, horizontalPadding, 100),
+                          child: _MonthlyRecapTableCard(
+                            data: recapData,
+                          ),
+                        ),
+                      ),
+                    ],
+
+                    if (_activeTab == 'Draft') ...[
+                      if (_draftRealisasiList.isEmpty)
+                        const SliverFillRemaining(
+                          hasScrollBody: false,
+                          child: Center(
+                            child: EmptyState(
+                              message: 'Tidak ada realisasi yang menunggu TTD PIC',
+                            ),
+                          ),
+                        )
+                      else
+                        SliverPadding(
+                          padding: EdgeInsets.fromLTRB(
+                              horizontalPadding, 8, horizontalPadding, 100),
+                          sliver: SliverList(
+                            delegate: SliverChildBuilderDelegate(
+                              (context, index) {
+                                final item = _draftRealisasiList[index];
+                                final title = (item.jadwal?['jdw_judul'] ?? '')
+                                    .toString()
+                                    .trim();
+                                final tglString = DateFormatter.toDisplay(item.realTgl);
+                                final jamMulai = item.realJamMulai ?? '-';
+                                final invNama = item.invNama ?? '-';
+                                final jdwId = item.realJadwalId;
+                                final invJenisId = item.jadwal?['jdw_inv_jenis_id'] ?? 0;
+                                final invId = item.realInvId;
+
+                                return Card(
+                                  margin: const EdgeInsets.only(bottom: 12),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                    side: BorderSide(
+                                        color: AppColors.border.withValues(alpha: 0.8)),
                                   ),
-                                ),
-                              ],
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(16),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(
+                                                  horizontal: 8, vertical: 4),
+                                              decoration: BoxDecoration(
+                                                color: AppColors.warning
+                                                    .withValues(alpha: 0.1),
+                                                borderRadius:
+                                                    BorderRadius.circular(6),
+                                              ),
+                                              child: const Text(
+                                                'Menunggu TTD PIC',
+                                                style: TextStyle(
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: AppColors.warning,
+                                                ),
+                                              ),
+                                            ),
+                                            Text(
+                                              tglString,
+                                              style: const TextStyle(
+                                                fontSize: 12,
+                                                color: AppColors.textSecondary,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 12),
+                                        Text(
+                                          title.isEmpty
+                                              ? 'Jadwal #$jdwId'
+                                              : title,
+                                          style: const TextStyle(
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w700,
+                                            color: AppColors.textPrimary,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Row(
+                                          children: [
+                                            const Icon(Icons.inventory_2_outlined,
+                                                size: 14,
+                                                color: AppColors.textSecondary),
+                                            const SizedBox(width: 6),
+                                            Expanded(
+                                              child: Text(
+                                                'Aset: $invNama',
+                                                style: const TextStyle(
+                                                    fontSize: 13,
+                                                    color: AppColors.textSecondary),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Row(
+                                          children: [
+                                            const Icon(Icons.access_time,
+                                                size: 14,
+                                                color: AppColors.textSecondary),
+                                            const SizedBox(width: 6),
+                                            Text(
+                                              'Jam Mulai: $jamMulai',
+                                              style: const TextStyle(
+                                                  fontSize: 13,
+                                                  color: AppColors.textSecondary),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 16),
+                                        SizedBox(
+                                          width: double.infinity,
+                                          child: ElevatedButton.icon(
+                                            onPressed: () async {
+                                              await Navigator.pushNamed(
+                                                context,
+                                                AppRoutes.realisasiForm,
+                                                arguments: {
+                                                  'realId': item.realId,
+                                                  'jadwalId': jdwId,
+                                                  'invJenisId': invJenisId,
+                                                  'invId': invId,
+                                                  'invNama': invNama,
+                                                },
+                                              );
+                                              _loadData();
+                                            },
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: AppColors.primary,
+                                              padding: const EdgeInsets.symmetric(
+                                                  vertical: 12),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(10),
+                                              ),
+                                            ),
+                                            icon: const Icon(Icons.border_color,
+                                                size: 16),
+                                            label: const Text(
+                                              'Lanjutkan & TTD PIC',
+                                              style: TextStyle(
+                                                  fontSize: 13,
+                                                  fontWeight: FontWeight.bold),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
+                              childCount: _draftRealisasiList.length,
                             ),
                           ),
                         ),
-                      ),
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: EdgeInsets.fromLTRB(
-                            horizontalPadding, 10, horizontalPadding, 10),
-                        child: _SummaryCard(
-                            monthLabel: _monthLabel(_selectedMonth),
-                            metrics: metrics),
-                      ),
-                    ),
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: EdgeInsets.fromLTRB(
-                            horizontalPadding, 4, horizontalPadding, 10),
-                        child: _MonthlyDatePreview(
-                          month: _selectedMonth,
-                          realisasiList: filteredMonthRealisasi,
-                          holidayDays: holidayDays,
-                          selectedDay: _selectedDay,
-                          onDayTap: (day) => _showDayRealisasiPopup(
-                            day: day,
-                            filteredMonthRealisasi: filteredMonthRealisasi,
-                          ),
-                        ),
-                      ),
-                    ),
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: EdgeInsets.fromLTRB(
-                            horizontalPadding, 16, horizontalPadding, 8),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            SizedBox(
-                              width: double.infinity,
-                              child: Text(
-                                  'Penilaian ${_selectedUserId == null ? 'Semua User' : userItems.firstWhere((u) => u.userId == _selectedUserId, orElse: () => _UserFilterItem(userId: _selectedUserId ?? 0, userName: 'User')).userName} ${_monthLabel(_selectedMonth)}',
-                                  textAlign: TextAlign.center,
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 15)),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: EdgeInsets.fromLTRB(
-                            horizontalPadding, 4, horizontalPadding, 100),
-                        child: _MonthlyRecapTableCard(
-                          data: recapData,
-                        ),
-                      ),
-                    ),
+                    ],
                   ],
                 ),
               ),
