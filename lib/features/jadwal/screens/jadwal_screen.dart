@@ -1307,6 +1307,7 @@ class _JadwalFormState extends State<_JadwalForm> {
   String? _divisi;
   final List<String> _pabrikCodes = [];
   String? _selectedPabrikValue;
+  final _pabrikDropdownKey = GlobalKey<FormFieldState<String>>();
   int? _assignedToUserId;
   String _frekuensi = 'Harian';
   DateTime? _tglMulai;
@@ -1538,12 +1539,16 @@ class _JadwalFormState extends State<_JadwalForm> {
       ),
     );
     if (result != null) {
-      setState(() {
-        _jenisId = result.jenisId;
-        _jenisCtrl.text = result.jenisNama;
-        // Divisi sudah otomatis dari auth user, tidak perlu diubah
-      });
-      await _syncTargetLimitForJenis(result.jenisId);
+      if (_jenisId != result.jenisId) {
+        setState(() {
+          _jenisId = result.jenisId;
+          _jenisCtrl.text = result.jenisNama;
+          _pabrikCodes.clear();
+          _selectedPabrikValue = null;
+        });
+        _pabrikDropdownKey.currentState?.didChange(null);
+        await _syncTargetLimitForJenis(result.jenisId);
+      }
     }
   }
 
@@ -1572,34 +1577,53 @@ class _JadwalFormState extends State<_JadwalForm> {
       return code;
     }
 
+    final filteredPabrikList = master.pabrikList.where((p) {
+      if (_jenisId != null) {
+        final allowedCodes = master.inventarisList
+            .map((inv) => inv.invPabrikKode)
+            .whereType<String>()
+            .toSet();
+        if (!allowedCodes.contains(p.pabKode)) return false;
+      }
+      return !_pabrikCodes.contains(p.pabKode);
+    }).toList();
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           DropdownButtonFormField<String>(
+            key: _pabrikDropdownKey,
             // ignore: deprecated_member_use
             value: _selectedPabrikValue,
             decoration: InputDecoration(
               label: _requiredLabel('Pabrik / Lokasi'),
               prefixIcon: const Icon(Icons.factory_outlined),
             ),
-            hint: const Text('Pilih pabrik/lokasi'),
-            items: master.pabrikList
-                .map((p) => DropdownMenuItem(
-                      value: p.pabKode,
-                      child: Text(p.displayLabel),
-                    ))
-                .toList(),
-            onChanged: (value) {
-              if (value == null) return;
-              setState(() {
-                if (!_pabrikCodes.contains(value)) {
-                  _pabrikCodes.add(value);
-                }
-                _selectedPabrikValue = null;
-              });
-            },
+            hint: Text(_jenisId == null
+                ? 'Pilih jenis inventaris dahulu'
+                : 'Pilih pabrik/lokasi'),
+            items: _jenisId == null
+                ? null
+                : filteredPabrikList
+                    .map((p) => DropdownMenuItem(
+                          value: p.pabKode,
+                          child: Text(p.displayLabel),
+                     ))
+                    .toList(),
+            onChanged: _jenisId == null
+                ? null
+                : (value) {
+                    if (value == null) return;
+                    setState(() {
+                      if (!_pabrikCodes.contains(value)) {
+                        _pabrikCodes.add(value);
+                      }
+                      _selectedPabrikValue = null;
+                    });
+                    _pabrikDropdownKey.currentState?.didChange(null);
+                  },
             validator: (_) {
               if (_pabrikCodes.isEmpty) {
                 return 'Pilih minimal satu pabrik';
