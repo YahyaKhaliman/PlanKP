@@ -220,25 +220,11 @@ class _JenisCard extends StatelessWidget {
     required this.onEdit,
   });
 
-  Color _kategoriColor(String k) {
-    switch (k.toUpperCase()) {
-      case 'IT':
-        return const Color(0xFF10B981);
-      case 'DRIVER':
-        return const Color(0xFF3B82F6);
-      case 'GA':
-        return const Color(0xFFF59E0B);
-      default:
-        return const Color(0xFF8B5CF6);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final isInactive = !jenis.jenisIsActive;
     final activeColor =
         jenis.jenisIsActive ? AppColors.success : AppColors.danger;
-    final categoryColor = _kategoriColor(jenis.jenisKategori);
 
     Widget cardContent = Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),

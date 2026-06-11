@@ -158,11 +158,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final p = context.read<JadwalProvider>();
 
     if (isAdmin) {
-      await p.fetchJadwal();
+      await p.fetchJadwalByDivisi();
     } else {
       await p.fetchJadwalByUser();
     }
-    await p.fetchRealisasi(status: 'Selesai');
+    await p.fetchRealisasi(status: 'Selesai', byDivisi: isAdmin);
     if (!mounted) return;
     await context.read<MasterProvider>().fetchJenis();
 
@@ -180,8 +180,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
   String _userInitial(Map<String, dynamic>? user) =>
       _userName(user).isNotEmpty ? _userName(user)[0].toUpperCase() : 'U';
 
-  void _nav(Widget screen) =>
-      Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
+  Future<void> _nav(Widget screen) async {
+    await Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
+    if (mounted) {
+      _loadData();
+    }
+  }
 
   void _tabToHistory(int index) {
     if (index == 1) {
@@ -203,11 +207,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final isAdmin = auth.user?['user_jabatan'] == 'admin';
 
     if (isAdmin) {
-      Navigator.pushNamed(
+      await Navigator.pushNamed(
         context,
         AppRoutes.jadwalDetail,
         arguments: jadwal.jdwId,
       );
+      if (mounted) {
+        _loadData();
+      }
       return;
     }
 
@@ -287,11 +294,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final normalizedQuery = query.trim().toLowerCase();
       if (normalizedQuery.isEmpty) return true;
 
+      final no = (inv['inv_no'] ?? '').toString().toLowerCase();
       final sn = (inv['inv_serial_number'] ?? '').toString().toLowerCase();
       final nama = (inv['inv_nama'] ?? '').toString().toLowerCase();
       final pic = resolvePicName(inv).toLowerCase();
 
-      return sn.contains(normalizedQuery) ||
+      return no.contains(normalizedQuery) ||
+          sn.contains(normalizedQuery) ||
           nama.contains(normalizedQuery) ||
           pic.contains(normalizedQuery);
     }
@@ -1582,6 +1591,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final rem = _getRemainingDays(item);
     final divisiColor = _colorForDivisi(item.jdwDivisi);
     final icon = _iconForDivisi(item.jdwDivisi);
+    final master = context.read<MasterProvider>();
+    final jenisNama = (item.jdwInvJenis ?? '').trim().isNotEmpty
+        ? item.jdwInvJenis!.trim()
+        : master.jenisById(item.jdwJenisId)?.jenisNama ?? 'Jenis tidak diketahui';
 
     Color badgeBg;
     Color badgeText;
@@ -1672,22 +1685,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                     borderRadius: BorderRadius.circular(6),
                                   ),
                                   child: Text(
-                                    item.jdwFrekuensi.toUpperCase(),
+                                    jenisNama.toUpperCase(),
                                     style: TextStyle(
-                                      fontSize: 9,
-                                      color: Colors.grey.shade700,
-                                      fontWeight: FontWeight.bold,
+                                      fontSize: 10,
+                                      color: divisiColor,
+                                      fontWeight: FontWeight.w800,
+                                      letterSpacing: 0.5,
                                     ),
                                   ),
                                 ),
                                 const SizedBox(width: 6),
                                 Text(
-                                  item.jdwDivisi.toUpperCase(),
+                                  item.jdwFrekuensi.toUpperCase(),
                                   style: TextStyle(
-                                    fontSize: 10,
-                                    color: divisiColor,
-                                    fontWeight: FontWeight.w800,
-                                    letterSpacing: 0.5,
+                                    fontSize: 9,
+                                    color: Colors.grey.shade700,
+                                    fontWeight: FontWeight.bold,
                                   ),
                                 ),
                               ],

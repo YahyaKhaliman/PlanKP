@@ -455,19 +455,6 @@ class _InventarisCard extends StatelessWidget {
     required this.onEdit,
   });
 
-  Color _kategoriColor(String k) {
-    switch (k.toUpperCase()) {
-      case 'IT':
-        return const Color(0xFF10B981);
-      case 'DRIVER':
-        return const Color(0xFF3B82F6);
-      case 'GA':
-        return const Color(0xFFF59E0B);
-      default:
-        return const Color(0xFF8B5CF6);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final merkRaw = item.invMerk?.trim() ?? '';
@@ -553,19 +540,6 @@ class _InventarisCard extends StatelessWidget {
       return Opacity(opacity: 0.6, child: row);
     }
     return row;
-  }
-
-  IconData _kategoriIcon(String k) {
-    switch (k.toUpperCase()) {
-      case 'IT':
-        return Icons.computer_outlined;
-      case 'DRIVER':
-        return Icons.local_shipping_outlined;
-      case 'GA':
-        return Icons.precision_manufacturing_outlined;
-      default:
-        return Icons.inventory_2_outlined;
-    }
   }
 }
 
