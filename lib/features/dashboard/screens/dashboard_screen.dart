@@ -282,241 +282,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
     JadwalModel jadwal,
     List<Map<String, dynamic>> inventarisList,
   ) {
-    String resolvePicName(Map<String, dynamic> inv) {
-      final picUser = inv['pic_user'];
-      if (picUser is Map && picUser['user_nama'] != null) {
-        return picUser['user_nama'].toString();
-      }
-      return (inv['inv_pic'] ?? '-').toString();
-    }
-
-    bool matchesSearch(Map<String, dynamic> inv, String query) {
-      final normalizedQuery = query.trim().toLowerCase();
-      if (normalizedQuery.isEmpty) return true;
-
-      final no = (inv['inv_no'] ?? '').toString().toLowerCase();
-      final sn = (inv['inv_serial_number'] ?? '').toString().toLowerCase();
-      final nama = (inv['inv_nama'] ?? '').toString().toLowerCase();
-      final pic = resolvePicName(inv).toLowerCase();
-
-      return no.contains(normalizedQuery) ||
-          sn.contains(normalizedQuery) ||
-          nama.contains(normalizedQuery) ||
-          pic.contains(normalizedQuery);
-    }
-
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) {
-        String searchQuery = '';
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            final filteredInventaris = inventarisList
-                .where((inv) => matchesSearch(inv, searchQuery))
-                .toList();
-
-            return Container(
-              decoration: const BoxDecoration(
-                color: _pageBg,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-              ),
-              child: SafeArea(
-                top: false,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: 42,
-                        height: 4,
-                        margin: const EdgeInsets.only(bottom: 12),
-                        decoration: BoxDecoration(
-                          color: Colors.grey[300],
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      ),
-                      const Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          'Pilih Unit untuk Realisasi',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      TextField(
-                        decoration: const InputDecoration(
-                          hintText: 'Cari serial number, nama, atau PIC',
-                          prefixIcon: Icon(Icons.search),
-                        ),
-                        onChanged: (value) {
-                          setModalState(() => searchQuery = value);
-                        },
-                      ),
-                      const SizedBox(height: 10),
-                      Flexible(
-                        child: filteredInventaris.isEmpty
-                            ? const Center(
-                                child: Text(
-                                  'Data inventaris tidak ditemukan',
-                                  style: TextStyle(
-                                    color: AppColors.textSecondary,
-                                  ),
-                                ),
-                              )
-                            : ListView.separated(
-                                shrinkWrap: true,
-                                itemCount: filteredInventaris.length,
-                                separatorBuilder: (_, __) =>
-                                    const SizedBox(height: 8),
-                                itemBuilder: (_, i) {
-                                  final inv = filteredInventaris[i];
-                                  final merk = (inv['inv_merk'] ?? '-')
-                                      .toString()
-                                      .toUpperCase();
-                                  final pabrik = inv['inv_pabrik_kode'] ?? '-';
-                                  final sn = inv['inv_serial_number'] ?? '-';
-                                  final picName = resolvePicName(inv);
-                                  return Card(
-                                    margin: EdgeInsets.zero,
-                                    child: ListTile(
-                                      contentPadding:
-                                          const EdgeInsets.symmetric(
-                                              horizontal: 14, vertical: 10),
-                                      leading: CircleAvatar(
-                                        radius: 20,
-                                        backgroundColor: AppColors.primary
-                                            .withValues(alpha: 0.12),
-                                        child: const Icon(
-                                          Icons.inventory_2_outlined,
-                                          color: AppColors.primary,
-                                          size: 20,
-                                        ),
-                                      ),
-                                      title: Text(
-                                        inv['inv_nama'] ?? '-',
-                                        style: const TextStyle(
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.w700,
-                                          color: AppColors.textPrimary,
-                                        ),
-                                      ),
-                                      subtitle: Padding(
-                                        padding: const EdgeInsets.only(top: 6),
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              'No: ${inv['inv_no'] ?? '-'}',
-                                              style: const TextStyle(
-                                                fontSize: 13,
-                                                fontWeight: FontWeight.w600,
-                                                color: AppColors.primary,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 4),
-                                            Text('$merk · $sn',
-                                                style: const TextStyle(
-                                                    fontSize: 12,
-                                                    color:
-                                                        AppColors.textSecondary,
-                                                    fontWeight:
-                                                        FontWeight.w600)),
-                                            const SizedBox(height: 2),
-                                            Row(
-                                              children: [
-                                                const Icon(
-                                                  Icons.person_outline,
-                                                  size: 14,
-                                                  color:
-                                                      AppColors.textSecondary,
-                                                ),
-                                                const SizedBox(width: 4),
-                                                Expanded(
-                                                  child: Text(
-                                                    'PIC: $picName',
-                                                    style: const TextStyle(
-                                                      fontSize: 12,
-                                                      color: AppColors
-                                                          .textSecondary,
-                                                    ),
-                                                    overflow:
-                                                        TextOverflow.ellipsis,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                            const SizedBox(height: 2),
-                                            Row(
-                                              children: [
-                                                const Icon(
-                                                  Icons.factory_outlined,
-                                                  size: 14,
-                                                  color:
-                                                      AppColors.textSecondary,
-                                                ),
-                                                const SizedBox(width: 4),
-                                                Text(
-                                                  pabrik,
-                                                  style: const TextStyle(
-                                                    fontSize: 12,
-                                                    color:
-                                                        AppColors.textSecondary,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                            const SizedBox(height: 4),
-                                            Container(
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                      horizontal: 8,
-                                                      vertical: 3),
-                                              decoration: BoxDecoration(
-                                                color: Colors.orange
-                                                    .withValues(alpha: 0.12),
-                                                borderRadius:
-                                                    BorderRadius.circular(999),
-                                              ),
-                                              child: const Text(
-                                                'Belum realisasi',
-                                                style: TextStyle(
-                                                  fontSize: 11,
-                                                  fontWeight: FontWeight.w600,
-                                                  color: Colors.orange,
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      trailing: const Icon(Icons.chevron_right),
-                                      onTap: () {
-                                        Navigator.pop(context);
-                                        _openRealisasiFromInventaris(
-                                          jadwal,
-                                          inv,
-                                        );
-                                      },
-                                    ),
-                                  );
-                                },
-                              ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          },
-        );
-      },
+      builder: (_) => _InventarisPickerSheet(
+        jadwal: jadwal,
+        inventarisList: inventarisList,
+        onSelected: (inv) {
+          Navigator.pop(context);
+          _openRealisasiFromInventaris(jadwal, inv);
+        },
+      ),
     );
   }
 
@@ -1845,5 +1622,324 @@ class _DashboardScreenState extends State<DashboardScreen> {
       return Colors.teal.shade700;
     }
     return AppColors.primary;
+  }
+}
+
+class _InventarisPickerSheet extends StatefulWidget {
+  final JadwalModel jadwal;
+  final List<Map<String, dynamic>> inventarisList;
+  final Function(Map<String, dynamic>) onSelected;
+
+  const _InventarisPickerSheet({
+    required this.jadwal,
+    required this.inventarisList,
+    required this.onSelected,
+  });
+
+  @override
+  State<_InventarisPickerSheet> createState() => _InventarisPickerSheetState();
+}
+
+class _InventarisPickerSheetState extends State<_InventarisPickerSheet> {
+  late final TextEditingController _searchCtrl;
+  late final FocusNode _focusNode;
+  late final DraggableScrollableController _sheetController;
+  String searchQuery = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _searchCtrl = TextEditingController();
+    _focusNode = FocusNode();
+    _sheetController = DraggableScrollableController();
+
+    _focusNode.addListener(() {
+      if (_focusNode.hasFocus) {
+        _sheetController.animateTo(
+          0.95,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    _focusNode.dispose();
+    _sheetController.dispose();
+    super.dispose();
+  }
+
+  String _resolvePicName(Map<String, dynamic> inv) {
+    final picUser = inv['pic_user'];
+    if (picUser is Map && picUser['user_nama'] != null) {
+      return picUser['user_nama'].toString();
+    }
+    return (inv['inv_pic'] ?? '-').toString();
+  }
+
+  bool _matchesSearch(Map<String, dynamic> inv, String query) {
+    final normalizedQuery = query.trim().toLowerCase();
+    if (normalizedQuery.isEmpty) return true;
+
+    final no = (inv['inv_no'] ?? '').toString().toLowerCase();
+    final sn = (inv['inv_serial_number'] ?? '').toString().toLowerCase();
+    final nama = (inv['inv_nama'] ?? '').toString().toLowerCase();
+    final pic = _resolvePicName(inv).toLowerCase();
+
+    return no.contains(normalizedQuery) ||
+        sn.contains(normalizedQuery) ||
+        nama.contains(normalizedQuery) ||
+        pic.contains(normalizedQuery);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final filteredInventaris = widget.inventarisList
+        .where((inv) => _matchesSearch(inv, searchQuery))
+        .toList();
+
+    return DraggableScrollableSheet(
+      controller: _sheetController,
+      initialChildSize: 0.6,
+      minChildSize: 0.4,
+      maxChildSize: 0.95,
+      expand: false,
+      builder: (context, scrollController) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: _DashboardScreenState._pageBg,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: SafeArea(
+            top: false,
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(
+                16,
+                12,
+                16,
+                16 + MediaQuery.of(context).viewInsets.bottom,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 42,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Pilih Unit untuk Realisasi',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: _searchCtrl,
+                    focusNode: _focusNode,
+                    textInputAction: TextInputAction.search,
+                    onSubmitted: (value) {
+                      FocusScope.of(context).unfocus();
+                      setState(() {
+                        searchQuery = value.trim();
+                      });
+                    },
+                    decoration: InputDecoration(
+                      hintText: 'Cari serial number, nama, atau PIC',
+                      suffixIcon: IconButton(
+                        icon: const Icon(Icons.search, color: AppColors.primary),
+                        onPressed: () {
+                          FocusScope.of(context).unfocus();
+                          setState(() {
+                            searchQuery = _searchCtrl.text.trim();
+                          });
+                        },
+                      ),
+                      filled: true,
+                      fillColor: Colors.white,
+                      contentPadding:
+                          const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: BorderSide.none,
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: BorderSide.none,
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide:
+                            const BorderSide(color: AppColors.primary, width: 1.5),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Flexible(
+                    child: filteredInventaris.isEmpty
+                        ? const Center(
+                            child: Text(
+                              'Data inventaris tidak ditemukan',
+                              style: TextStyle(
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          )
+                        : ListView.separated(
+                            controller: scrollController,
+                            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                            shrinkWrap: true,
+                            itemCount: filteredInventaris.length,
+                            separatorBuilder: (_, __) =>
+                                const SizedBox(height: 8),
+                            itemBuilder: (_, i) {
+                              final inv = filteredInventaris[i];
+                              final merk = (inv['inv_merk'] ?? '-')
+                                  .toString()
+                                  .toUpperCase();
+                              final pabrik = inv['inv_pabrik_kode'] ?? '-';
+                              final sn = inv['inv_serial_number'] ?? '-';
+                              final picName = _resolvePicName(inv);
+                              return Card(
+                                margin: EdgeInsets.zero,
+                                child: ListTile(
+                                  contentPadding:
+                                      const EdgeInsets.symmetric(
+                                          horizontal: 14, vertical: 10),
+                                  leading: CircleAvatar(
+                                    radius: 20,
+                                    backgroundColor: AppColors.primary
+                                        .withValues(alpha: 0.12),
+                                    child: const Icon(
+                                      Icons.inventory_2_outlined,
+                                      color: AppColors.primary,
+                                      size: 20,
+                                    ),
+                                  ),
+                                  title: Text(
+                                    inv['inv_nama'] ?? '-',
+                                    style: const TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.textPrimary,
+                                    ),
+                                  ),
+                                  subtitle: Padding(
+                                    padding: const EdgeInsets.only(top: 6),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'No: ${inv['inv_no'] ?? '-'}',
+                                          style: const TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w600,
+                                            color: AppColors.primary,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text('$merk · $sn',
+                                            style: const TextStyle(
+                                                fontSize: 12,
+                                                color:
+                                                    AppColors.textSecondary,
+                                                fontWeight:
+                                                    FontWeight.w600)),
+                                        const SizedBox(height: 2),
+                                        Row(
+                                          children: [
+                                            const Icon(
+                                              Icons.person_outline,
+                                              size: 14,
+                                              color:
+                                                  AppColors.textSecondary,
+                                            ),
+                                            const SizedBox(width: 4),
+                                            Expanded(
+                                              child: Text(
+                                                'PIC: $picName',
+                                                style: const TextStyle(
+                                                  fontSize: 12,
+                                                  color: AppColors
+                                                      .textSecondary,
+                                                ),
+                                                overflow:
+                                                    TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Row(
+                                          children: [
+                                            const Icon(
+                                              Icons.factory_outlined,
+                                              size: 14,
+                                              color:
+                                                  AppColors.textSecondary,
+                                            ),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              pabrik,
+                                              style: const TextStyle(
+                                                fontSize: 12,
+                                                color:
+                                                    AppColors.textSecondary,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Container(
+                                          padding:
+                                              const EdgeInsets.symmetric(
+                                                  horizontal: 8,
+                                                  vertical: 3),
+                                          decoration: BoxDecoration(
+                                            color: Colors.orange
+                                                .withValues(alpha: 0.12),
+                                            borderRadius:
+                                                BorderRadius.circular(999),
+                                          ),
+                                          child: const Text(
+                                            'Belum realisasi',
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.orange,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  trailing: const Icon(Icons.chevron_right),
+                                  onTap: () {
+                                    widget.onSelected(inv);
+                                  },
+                                ),
+                              );
+                            },
+                          ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 }

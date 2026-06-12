@@ -1312,7 +1312,7 @@ class _MonthlyRecapTableCardState extends State<_MonthlyRecapTableCard> {
             children: [
               Expanded(
                 child: _metricBadge(
-                  label: 'Target',
+                  label: 'Total Target',
                   value: '${detail.target}',
                   color: AppColors.primary,
                 ),
