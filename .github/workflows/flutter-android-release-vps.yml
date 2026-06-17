@@ -111,10 +111,18 @@ jobs:
             -storepass "${{ secrets.ANDROID_KEYSTORE_PASSWORD }}"
 
       # =========================================
+      # Create .env from GitHub Secrets
+      # =========================================
+      - name: Create .env file
+        shell: bash
+        run: |
+          echo "${{ secrets.ENV_FILE }}" > .env
+
+      # =========================================
       # Build APK
       # =========================================
       - name: Build release APK
-        run: flutter build apk --release
+        run: flutter build apk --release --dart-define-from-file=.env
 
       # =========================================
       # Verify APK signature
