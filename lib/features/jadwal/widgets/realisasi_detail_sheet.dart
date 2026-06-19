@@ -11,101 +11,18 @@ class RealisasiDetailSheet {
     BuildContext context, {
     required RealisasiModel detail,
     required String title,
+    List<RealisasiModel> riwayatRealisasi = const [],
+    void Function(RealisasiModel)? onTapRiwayat,
   }) async {
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => DraggableScrollableSheet(
-        initialChildSize: 0.8,
-        maxChildSize: 0.95,
-        minChildSize: 0.5,
-        builder: (_, ctrl) => Container(
-          decoration: const BoxDecoration(
-            color: AppColors.bgGray,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-          ),
-          child: ListView(
-            controller: ctrl,
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-            children: [
-              Center(
-                child: Container(
-                  width: 42,
-                  height: 4,
-                  margin: const EdgeInsets.only(bottom: 12),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[300],
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              Text(
-                title,
-                style:
-                    const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: 12),
-              _detailRow('Jadwal', detail.jadwal?['jdw_judul'] ?? '-'),
-              _detailRow('Unit', '${detail.invNo} · ${detail.invNama}'),
-              _detailRow('Tanggal', DateFormatter.toDisplay(detail.realTgl)),
-              _detailRow('Status', detail.realStatus),
-              if ((detail.realJamMulai ?? '').isNotEmpty)
-                _detailRow('Jam Mulai', detail.realJamMulai!),
-              if ((detail.realJamSelesai ?? '').isNotEmpty)
-                _detailRow('Jam Selesai', detail.realJamSelesai!),
-              if ((detail.realKondisiAkhir ?? '').isNotEmpty)
-                _detailRow('Kondisi Akhir', detail.realKondisiAkhir!),
-              if ((detail.realKeterangan ?? '').isNotEmpty)
-                _detailRow('Keterangan', detail.realKeterangan!),
-              _detailRow(
-                'PIC',
-                (detail.realTtdPicNama ?? '').trim().isEmpty
-                    ? '-'
-                    : detail.realTtdPicNama!.trim(),
-              ),
-              _ttdRow(detail.realTtdData),
-              _fotoRow(detail.realFoto),
-              const SizedBox(height: 12),
-              const Text(
-                'Checklist',
-                style: TextStyle(fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: 8),
-              if (detail.hasilChecklist.isEmpty)
-                const Text('-',
-                    style: TextStyle(color: AppColors.textSecondary))
-              else
-                ...([...detail.hasilChecklist]
-                      ..sort((a, b) => a.urutan.compareTo(b.urutan)))
-                    .map(
-                  (h) => Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '• ${h.itemNama} (${h.hcHasil})${(h.hcKondisi ?? '').isNotEmpty ? ' - ${h.hcKondisi}' : ''}',
-                          style: const TextStyle(fontSize: 13),
-                        ),
-                        if ((h.hcKeterangan ?? '').trim().isNotEmpty)
-                          Padding(
-                            padding: const EdgeInsets.only(left: 12, top: 2),
-                            child: Text(
-                              'Keterangan: ${h.hcKeterangan!.trim()}',
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: AppColors.textSecondary,
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ),
+      builder: (_) => _RealisasiDetailContent(
+        detail: detail,
+        title: title,
+        riwayatRealisasi: riwayatRealisasi,
+        onTapRiwayat: onTapRiwayat,
       ),
     );
   }
@@ -226,6 +143,329 @@ class RealisasiDetailSheet {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Stateful widget agar bisa navigate riwayat tanpa menutup sheet
+class _RealisasiDetailContent extends StatefulWidget {
+  final RealisasiModel detail;
+  final String title;
+  final List<RealisasiModel> riwayatRealisasi;
+  final void Function(RealisasiModel)? onTapRiwayat;
+
+  const _RealisasiDetailContent({
+    required this.detail,
+    required this.title,
+    required this.riwayatRealisasi,
+    this.onTapRiwayat,
+  });
+
+  @override
+  State<_RealisasiDetailContent> createState() =>
+      _RealisasiDetailContentState();
+}
+
+class _RealisasiDetailContentState extends State<_RealisasiDetailContent> {
+  late RealisasiModel _currentDetail;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentDetail = widget.detail;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final detail = _currentDetail;
+    final riwayat = widget.riwayatRealisasi;
+
+    return DraggableScrollableSheet(
+      initialChildSize: 0.8,
+      maxChildSize: 0.95,
+      minChildSize: 0.5,
+      builder: (_, ctrl) => Container(
+        decoration: const BoxDecoration(
+          color: AppColors.bgGray,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: ListView(
+          controller: ctrl,
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+          children: [
+            // Drag handle
+            Center(
+              child: Container(
+                width: 42,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+
+            // Title
+            Text(
+              widget.title,
+              style:
+                  const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 12),
+
+            // === Detail Realisasi Terakhir ===
+            RealisasiDetailSheet._detailRow(
+                'Jadwal', detail.jadwal?['jdw_judul'] ?? '-'),
+            RealisasiDetailSheet._detailRow(
+                'Unit', '${detail.invNo} · ${detail.invNama}'),
+            RealisasiDetailSheet._detailRow(
+                'Tanggal', DateFormatter.toDisplay(detail.realTgl)),
+            RealisasiDetailSheet._detailRow('Status', detail.realStatus),
+            if (detail.realJamMulai != null && detail.realJamMulai!.isNotEmpty)
+              RealisasiDetailSheet._detailRow(
+                  'Jam Mulai', detail.realJamMulai ?? ''),
+            if (detail.realJamSelesai != null && detail.realJamSelesai!.isNotEmpty)
+              RealisasiDetailSheet._detailRow(
+                  'Jam Selesai', detail.realJamSelesai ?? ''),
+            if (detail.realKondisiAkhir != null && detail.realKondisiAkhir!.isNotEmpty)
+              RealisasiDetailSheet._detailRow(
+                  'Kondisi Akhir', detail.realKondisiAkhir ?? ''),
+            if (detail.realKeterangan != null && detail.realKeterangan!.isNotEmpty)
+              RealisasiDetailSheet._detailRow(
+                  'Keterangan', detail.realKeterangan ?? ''),
+            RealisasiDetailSheet._detailRow(
+              'PIC',
+              (detail.realTtdPicNama ?? '').trim().isEmpty
+                  ? '-'
+                  : (detail.realTtdPicNama ?? '').trim(),
+            ),
+            RealisasiDetailSheet._ttdRow(detail.realTtdData),
+            RealisasiDetailSheet._fotoRow(detail.realFoto),
+            const SizedBox(height: 12),
+
+            // === Checklist ===
+            const Text(
+              'Checklist',
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 8),
+            if (detail.hasilChecklist.isEmpty)
+              const Text('-',
+                  style: TextStyle(color: AppColors.textSecondary))
+            else
+              ...([...detail.hasilChecklist]
+                    ..sort((a, b) => a.urutan.compareTo(b.urutan)))
+                  .map(
+                (h) => Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '• ${h.itemNama} (${h.hcHasil})${(h.hcKondisi ?? '').isNotEmpty ? ' - ${h.hcKondisi}' : ''}',
+                        style: const TextStyle(fontSize: 13),
+                      ),
+                      if ((h.hcKeterangan ?? '').trim().isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(left: 12, top: 2),
+                          child: Text(
+                            'Keterangan: ${(h.hcKeterangan ?? '').trim()}',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+
+            // === Riwayat Realisasi Sebelumnya ===
+            if (riwayat.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              const Divider(color: AppColors.border),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  const Icon(Icons.history_rounded,
+                      size: 18, color: AppColors.primary),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Riwayat Realisasi (${riwayat.length})',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              ...riwayat.asMap().entries.map((entry) {
+                final idx = entry.key;
+                final item = entry.value;
+                final isCurrentlyViewed = item.realId == detail.realId;
+                final teknisiNama =
+                    (item.teknisi?['user_nama'] ?? '-').toString();
+
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  decoration: BoxDecoration(
+                    color: isCurrentlyViewed
+                        ? AppColors.primarySoft
+                        : AppColors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isCurrentlyViewed
+                          ? AppColors.primary.withOpacity(0.3)
+                          : AppColors.border,
+                    ),
+                  ),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(12),
+                    onTap: isCurrentlyViewed
+                        ? null
+                        : () {
+                            if (widget.onTapRiwayat != null) {
+                              widget.onTapRiwayat!(item);
+                            }
+                          },
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Row(
+                        children: [
+                          // Nomor urut
+                          Container(
+                            width: 28,
+                            height: 28,
+                            decoration: BoxDecoration(
+                              color: isCurrentlyViewed
+                                  ? AppColors.primary
+                                  : AppColors.bgGray,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Center(
+                              child: Text(
+                                '${idx + 1}',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: isCurrentlyViewed
+                                      ? AppColors.white
+                                      : AppColors.textSecondary,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Text(
+                                      DateFormatter.toDisplay(item.realTgl),
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                        color: isCurrentlyViewed
+                                            ? AppColors.primary
+                                            : AppColors.textPrimary,
+                                      ),
+                                    ),
+                                    if (isCurrentlyViewed) ...[
+                                      const SizedBox(width: 6),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 6, vertical: 1),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.primary
+                                              .withOpacity(0.15),
+                                          borderRadius:
+                                              BorderRadius.circular(4),
+                                        ),
+                                        child: const Text(
+                                          'DILIHAT',
+                                          style: TextStyle(
+                                            fontSize: 8,
+                                            fontWeight: FontWeight.w800,
+                                            color: AppColors.primary,
+                                            letterSpacing: 0.5,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  'Oleh: $teknisiNama',
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          // Status + Kondisi
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: item.realStatus == 'Selesai'
+                                      ? AppColors.success.withOpacity(0.1)
+                                      : AppColors.warning.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  item.realStatus,
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w700,
+                                    color: item.realStatus == 'Selesai'
+                                        ? AppColors.success
+                                        : AppColors.warning,
+                                  ),
+                                ),
+                              ),
+                              if ((item.realKondisiAkhir ?? '').isNotEmpty) ...[
+                                const SizedBox(height: 4),
+                                Text(
+                                  item.realKondisiAkhir ?? '',
+                                  style: const TextStyle(
+                                    fontSize: 10,
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                          if (!isCurrentlyViewed)
+                            const Padding(
+                              padding: EdgeInsets.only(left: 4),
+                              child: Icon(
+                                Icons.chevron_right_rounded,
+                                size: 18,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              }),
+            ],
+          ],
+        ),
       ),
     );
   }

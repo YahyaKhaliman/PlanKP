@@ -12,7 +12,39 @@ class JadwalProvider extends ChangeNotifier {
   RealisasiModel? realisasiDetail;
   JadwalModel? jadwalDetail;
   List<dynamic> inventarisByJenis = [];
+  List<dynamic> monitoringDivisiList = [];
+  int? monitoringBulan;
+  int? monitoringTahun;
   final Map<String, Set<int>> _holidayDaysByMonth = {};
+  Map<String, dynamic> dashboardSummary = {};
+  
+  // (sisanya tetap sama, mari kita sesuaikan fetchMonitoringDivisi di bawah)
+  
+  Future<void> fetchMonitoringDivisi({int? bulan, int? tahun}) async {
+    _setLoading(true);
+    try {
+      final query = <String, dynamic>{
+        if (bulan != null) 'bulan': bulan,
+        if (tahun != null) 'tahun': tahun,
+      };
+      final res = await ApiClient.get(ApiConfig.monitoringDivisi, query: query);
+      final responseData = res['data'];
+      if (responseData is Map<String, dynamic>) {
+        monitoringDivisiList = responseData['data'] ?? [];
+        monitoringBulan = responseData['bulan'];
+        monitoringTahun = responseData['tahun'];
+      } else {
+        monitoringDivisiList = responseData ?? [];
+        monitoringBulan = bulan;
+        monitoringTahun = tahun;
+      }
+      _setError(null);
+    } on ApiException catch (e) {
+      _setError(e.message);
+    } finally {
+      _setLoading(false);
+    }
+  }
 
   bool _loading = false;
   bool _loadingDetail = false;
@@ -452,6 +484,19 @@ class JadwalProvider extends ChangeNotifier {
     } on ApiException catch (e) {
       _setError(e.message);
       return [];
+    }
+  }
+
+  Future<void> fetchDashboardSummary() async {
+    _setLoading(true);
+    try {
+      final res = await ApiClient.get(ApiConfig.dashboardSummary);
+      dashboardSummary = Map<String, dynamic>.from(res['data'] ?? {});
+      _setError(null);
+    } on ApiException catch (e) {
+      _setError(e.message);
+    } finally {
+      _setLoading(false);
     }
   }
 }

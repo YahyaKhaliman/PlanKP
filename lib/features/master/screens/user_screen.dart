@@ -24,8 +24,11 @@ class _UserScreenState extends State<UserScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback(
-        (_) => context.read<MasterProvider>().fetchUsers());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final p = context.read<MasterProvider>();
+      p.fetchUsers();
+      p.fetchMetadata(showLoading: false);
+    });
     _searchCtrl
         .addListener(() => setState(() => _searchQuery = _searchCtrl.text));
   }
@@ -450,9 +453,22 @@ class _UserFormState extends State<_UserForm> {
   bool _obscureOld = true;
   bool _obscureNew = true;
 
+  bool get _isEditingSelf {
+    final u = widget.user;
+    if (u == null) return false;
+    final auth = context.read<AuthProvider>();
+    final rawId = auth.user?['user_id'];
+    final currentUserId = rawId is int ? rawId : int.tryParse('$rawId');
+    return currentUserId != null && u.userId == currentUserId;
+  }
+
+
   static const _jabatanList = [
     {'value': 'admin', 'label': 'Admin'},
     {'value': 'user', 'label': 'User'},
+    {'value': 'manager', 'label': 'Manager'},
+    {'value': 'teknisi', 'label': 'Teknisi'},
+    {'value': 'it_support', 'label': 'IT Support'},
   ];
 
   @override
@@ -493,7 +509,9 @@ class _UserFormState extends State<_UserForm> {
       'user_cabang': _cabang,
     };
     if (_passCtrl.text.isNotEmpty) {
-      body['user_password_lama'] = _oldPassCtrl.text;
+      if (_isEditingSelf) {
+        body['user_password_lama'] = _oldPassCtrl.text;
+      }
       body['user_password'] = _passCtrl.text;
     }
     final ok = await p.saveUser(body, id: widget.user?.userId);
@@ -575,7 +593,9 @@ class _UserFormState extends State<_UserForm> {
                 decoration: const InputDecoration(
                     labelText: 'Divisi',
                     prefixIcon: Icon(Icons.account_tree_outlined)),
-                items: UserModel.divisiList
+                items: (master.divisiMetadata.isNotEmpty
+                        ? master.divisiMetadata
+                        : UserModel.divisiList)
                     .map(
                         (div) => DropdownMenuItem(value: div, child: Text(div)))
                     .toList(),
@@ -600,7 +620,7 @@ class _UserFormState extends State<_UserForm> {
                 onChanged: (v) => setState(() => _cabang = v),
               ),
               const SizedBox(height: 14),
-              if (isEdit) ...[
+              if (isEdit && _isEditingSelf) ...[
                 TextFormField(
                     controller: _oldPassCtrl,
                     obscureText: _obscureOld,
@@ -627,7 +647,7 @@ class _UserFormState extends State<_UserForm> {
                   obscureText: _obscureNew,
                   decoration: InputDecoration(
                       labelText: isEdit
-                          ? 'Password Baru (kosongkan jika tidak diubah)'
+                          ? 'Ubah Password'
                           : 'Password',
                       prefixIcon: const Icon(Icons.lock_outline),
                       suffixIcon: IconButton(
@@ -641,7 +661,8 @@ class _UserFormState extends State<_UserForm> {
                           if (v != null && v.isNotEmpty && v.length < 3) {
                             return 'Minimal 3 karakter';
                           }
-                          if (v != null &&
+                          if (_isEditingSelf &&
+                              v != null &&
                               v.isNotEmpty &&
                               _oldPassCtrl.text.isEmpty) {
                             return 'Isi password lama terlebih dahulu';

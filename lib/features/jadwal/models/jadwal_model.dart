@@ -114,7 +114,7 @@ class JadwalModel {
     }
     return value
         .toString()
-        .split(RegExp(r"[;,]"))
+        .split(',')
         .map((e) => e.trim())
         .where((e) => e.isNotEmpty)
         .toSet()

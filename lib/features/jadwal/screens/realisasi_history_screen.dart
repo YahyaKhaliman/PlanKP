@@ -58,11 +58,16 @@ class _RealisasiHistoryScreenState extends State<RealisasiHistoryScreen> {
 
   Future<void> _loadData() async {
     final auth = context.read<AuthProvider>();
-    final isAdmin = auth.user?['user_jabatan'] == 'admin';
+    final role = auth.user?['user_jabatan'];
+    final isAdmin = role == 'admin';
+    final isManager = role == 'manager';
     final provider = context.read<JadwalProvider>();
 
     if (_activeTab == 'Selesai') {
-      if (isAdmin) {
+      if (isManager) {
+        await provider.fetchJadwal();
+        await provider.fetchRealisasi(status: 'Selesai');
+      } else if (isAdmin) {
         await provider.fetchJadwalByDivisi();
         await provider.fetchRealisasi(status: 'Selesai', byDivisi: true);
       } else {
@@ -132,6 +137,47 @@ class _RealisasiHistoryScreenState extends State<RealisasiHistoryScreen> {
             TextSpan(text: value),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildDetailRow(IconData icon, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 16, color: AppColors.textSecondary),
+          const SizedBox(width: 8),
+          SizedBox(
+            width: 90,
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ),
+          const Text(
+            ': ',
+            style: TextStyle(
+              fontSize: 13,
+              color: AppColors.textSecondary,
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: AppColors.textPrimary,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -276,7 +322,8 @@ class _RealisasiHistoryScreenState extends State<RealisasiHistoryScreen> {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
-    final isAdmin = auth.user?['user_jabatan'] == 'admin';
+    final role = auth.user?['user_jabatan'];
+    final isAdmin = role == 'admin' || role == 'manager';
     final isDesktop = AppBreakpoints.isDesktop(context);
     final isTablet = AppBreakpoints.isTablet(context);
     final horizontalPadding = isDesktop
@@ -491,33 +538,35 @@ class _RealisasiHistoryScreenState extends State<RealisasiHistoryScreen> {
                                 );
                               }
 
-                              if (canUseSingleRow) {
-                                return Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Expanded(
-                                      flex: 6,
-                                      child: _MonthSwitcher(
-                                        monthLabel: _monthLabel(_selectedMonth),
-                                        onPrevious: _previousMonth,
-                                        onNext: _nextMonth,
+                               if (canUseSingleRow) {
+                                return IntrinsicHeight(
+                                  child: Row(
+                                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                                    children: [
+                                      Expanded(
+                                        flex: 6,
+                                        child: _MonthSwitcher(
+                                          monthLabel: _monthLabel(_selectedMonth),
+                                          onPrevious: _previousMonth,
+                                          onNext: _nextMonth,
+                                        ),
                                       ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      flex: 5,
-                                      child: _UserFilterCard(
-                                        selectedUserId: _selectedUserId,
-                                        users: userItems,
-                                        onChanged: (value) {
-                                          setState(() {
-                                            _selectedUserId = value;
-                                            _selectedDay = null;
-                                          });
-                                        },
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        flex: 5,
+                                        child: _UserFilterCard(
+                                          selectedUserId: _selectedUserId,
+                                          users: userItems,
+                                          onChanged: (value) {
+                                            setState(() {
+                                              _selectedUserId = value;
+                                              _selectedDay = null;
+                                            });
+                                          },
+                                        ),
                                       ),
-                                    ),
-                                  ],
+                                    ],
+                                  ),
                                 );
                               }
 
@@ -665,6 +714,10 @@ class _RealisasiHistoryScreenState extends State<RealisasiHistoryScreen> {
                                 final jdwId = item.realJadwalId;
                                 final invJenisId = item.jadwal?['jdw_inv_jenis_id'] ?? 0;
                                 final invId = item.realInvId;
+                                final teknisi = (item.teknisi?['user_nama'] ?? '').toString().trim();
+                                final jamSelesai = item.realJamSelesai ?? '-';
+                                final kondisiAkhir = item.realKondisiAkhir ?? '-';
+                                final keterangan = item.realKeterangan ?? '-';
 
                                 return Card(
                                   margin: const EdgeInsets.only(bottom: 12),
@@ -720,75 +773,86 @@ class _RealisasiHistoryScreenState extends State<RealisasiHistoryScreen> {
                                             color: AppColors.textPrimary,
                                           ),
                                         ),
-                                        const SizedBox(height: 8),
-                                        Row(
-                                          children: [
-                                            const Icon(Icons.inventory_2_outlined,
-                                                size: 14,
-                                                color: AppColors.textSecondary),
-                                            const SizedBox(width: 6),
-                                            Expanded(
-                                              child: Text(
-                                                'Aset: $invNama',
+                                        if (isAdmin) ...[
+                                          const SizedBox(height: 8),
+                                          const Divider(height: 1, color: AppColors.border),
+                                          const SizedBox(height: 8),
+                                          _buildDetailRow(Icons.person_outline_rounded, 'Teknisi', teknisi.isEmpty ? '-' : teknisi),
+                                          _buildDetailRow(Icons.inventory_2_outlined, 'Aset', invNama),
+                                          _buildDetailRow(Icons.access_time_rounded, 'Jam', '$jamMulai'),
+                                          _buildDetailRow(Icons.info_outline_rounded, 'Kondisi Akhir', kondisiAkhir),
+                                          _buildDetailRow(Icons.description_outlined, 'Keterangan', keterangan),
+                                        ] else ...[
+                                          const SizedBox(height: 8),
+                                          Row(
+                                            children: [
+                                              const Icon(Icons.inventory_2_outlined,
+                                                  size: 14,
+                                                  color: AppColors.textSecondary),
+                                              const SizedBox(width: 6),
+                                              Expanded(
+                                                child: Text(
+                                                  'Aset: $invNama',
+                                                  style: const TextStyle(
+                                                      fontSize: 13,
+                                                      color: AppColors.textSecondary),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Row(
+                                            children: [
+                                              const Icon(Icons.access_time,
+                                                  size: 14,
+                                                  color: AppColors.textSecondary),
+                                              const SizedBox(width: 6),
+                                              Text(
+                                                'Jam Mulai: $jamMulai',
                                                 style: const TextStyle(
                                                     fontSize: 13,
                                                     color: AppColors.textSecondary),
                                               ),
-                                            ),
-                                          ],
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Row(
-                                          children: [
-                                            const Icon(Icons.access_time,
-                                                size: 14,
-                                                color: AppColors.textSecondary),
-                                            const SizedBox(width: 6),
-                                            Text(
-                                              'Jam Mulai: $jamMulai',
-                                              style: const TextStyle(
-                                                  fontSize: 13,
-                                                  color: AppColors.textSecondary),
-                                            ),
-                                          ],
-                                        ),
-                                        const SizedBox(height: 16),
-                                        SizedBox(
-                                          width: double.infinity,
-                                          child: ElevatedButton.icon(
-                                            onPressed: () async {
-                                              await Navigator.pushNamed(
-                                                context,
-                                                AppRoutes.realisasiForm,
-                                                arguments: {
-                                                  'realId': item.realId,
-                                                  'jadwalId': jdwId,
-                                                  'invJenisId': invJenisId,
-                                                  'invId': invId,
-                                                  'invNama': invNama,
-                                                },
-                                              );
-                                              _loadData();
-                                            },
-                                            style: ElevatedButton.styleFrom(
-                                              backgroundColor: AppColors.primary,
-                                              padding: const EdgeInsets.symmetric(
-                                                  vertical: 12),
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(10),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 16),
+                                          SizedBox(
+                                            width: double.infinity,
+                                            child: ElevatedButton.icon(
+                                              onPressed: () async {
+                                                await Navigator.pushNamed(
+                                                  context,
+                                                  AppRoutes.realisasiForm,
+                                                  arguments: {
+                                                    'realId': item.realId,
+                                                    'jadwalId': jdwId,
+                                                    'invJenisId': invJenisId,
+                                                    'invId': invId,
+                                                    'invNama': invNama,
+                                                  },
+                                                );
+                                                _loadData();
+                                              },
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor: AppColors.primary,
+                                                padding: const EdgeInsets.symmetric(
+                                                    vertical: 12),
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(10),
+                                                ),
+                                              ),
+                                              icon: const Icon(Icons.border_color,
+                                                  size: 16),
+                                              label: const Text(
+                                                'Lanjutkan & TTD PIC',
+                                                style: TextStyle(
+                                                    fontSize: 13,
+                                                    fontWeight: FontWeight.bold),
                                               ),
                                             ),
-                                            icon: const Icon(Icons.border_color,
-                                                size: 16),
-                                            label: const Text(
-                                              'Lanjutkan & TTD PIC',
-                                              style: TextStyle(
-                                                  fontSize: 13,
-                                                  fontWeight: FontWeight.bold),
-                                            ),
                                           ),
-                                        ),
+                                        ],
                                       ],
                                     ),
                                   ),
@@ -885,7 +949,7 @@ class _RealisasiHistoryScreenState extends State<RealisasiHistoryScreen> {
           _effectiveScheduleDatesInMonth(j, monthStart, monthEnd, holidayDays)
               .length;
       final perTarget =
-          (j.jdwTarget ?? 0) > 0 ? j.jdwTarget! : (j.jdwTotalUnit ?? 0);
+          (j.jdwTarget ?? 0) > 0 ? (j.jdwTarget ?? 0) : (j.jdwTotalUnit ?? 0);
 
       targetByJdwId[j.jdwId] = appearances * perTarget;
       targetPerPeriodByJdwId[j.jdwId] = perTarget;
@@ -938,7 +1002,7 @@ class _RealisasiHistoryScreenState extends State<RealisasiHistoryScreen> {
       final count =
           _effectiveScheduleDatesInMonth(j, start, end, holidayDays).length;
       target += count *
-          ((j.jdwTarget ?? 0) > 0 ? j.jdwTarget! : (j.jdwTotalUnit ?? 0));
+          ((j.jdwTarget ?? 0) > 0 ? (j.jdwTarget ?? 0) : (j.jdwTotalUnit ?? 0));
     }
     return _MonthlyHistoryMetrics(
         targetCount: target, doneCount: realisasiList.length);
@@ -1519,7 +1583,7 @@ class _UserFilterCard extends StatelessWidget {
     return Card(
       margin: EdgeInsets.zero,
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
         child: DropdownButtonFormField<int?>(
           value: selectedUserId,
           decoration: const InputDecoration(

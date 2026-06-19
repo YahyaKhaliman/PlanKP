@@ -16,6 +16,7 @@ import '../../master/screens/inventaris_screen.dart';
 import '../../master/screens/checklist_template_screen.dart';
 import '../../master/screens/jenis_screen.dart';
 import '../../master/screens/user_screen.dart';
+import '../../../core/widgets/shimmer_loading.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -154,15 +155,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Future<void> _loadData() async {
     final auth = context.read<AuthProvider>();
-    final isAdmin = auth.user?['user_jabatan'] == 'admin';
+    final role = auth.user?['user_jabatan']?.toString().toLowerCase();
+    final isManager = role == 'manager';
+    final isAdmin = role == 'admin' || role == 'manager';
     final p = context.read<JadwalProvider>();
 
-    if (isAdmin) {
+    if (isManager) {
+      await p.fetchJadwal();
+      await p.fetchRealisasi(status: 'Selesai', byDivisi: false);
+      await p.fetchDashboardSummary();
+    } else if (role == 'admin') {
       await p.fetchJadwalByDivisi();
+      await p.fetchRealisasi(status: 'Selesai', byDivisi: true);
     } else {
       await p.fetchJadwalByUser();
+      await p.fetchRealisasi(status: 'Selesai', byDivisi: false);
     }
-    await p.fetchRealisasi(status: 'Selesai', byDivisi: isAdmin);
+    await p.fetchHariLiburForMonth(DateTime.now());
     if (!mounted) return;
     await context.read<MasterProvider>().fetchJenis();
 
@@ -204,7 +213,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
 
     final auth = context.read<AuthProvider>();
-    final isAdmin = auth.user?['user_jabatan'] == 'admin';
+    final role = auth.user?['user_jabatan']?.toString().toLowerCase();
+    final isAdmin = role == 'admin' || role == 'manager';
 
     if (isAdmin) {
       await Navigator.pushNamed(
@@ -359,7 +369,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
-    final isAdmin = auth.user?['user_jabatan'] == 'admin';
+    final role = auth.user?['user_jabatan']?.toString().toLowerCase();
+    final isAdmin = role == 'admin' || role == 'manager';
     final isDesktop = MediaQuery.of(context).size.width > 900;
     final p = context.watch<JadwalProvider>();
 
@@ -368,29 +379,48 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final currentMonth = now.month;
     final currentYear = now.year;
 
-    // 1. Tugas Aktif (Hari Ini & Terlewat)
-    final pendingTasks = p.jadwalList.where((j) {
-      if (j.jdwStatus != 'Draft') return false;
-      final diff = _getRemainingDaysDiff(j);
-      return diff <= 0;
-    }).length;
-
-    // 2. Realisasi Selesai Bulan Ini
-    final doneBulanIni = p.realisasiList.where((r) {
-      return r.realBulan == currentMonth && r.realTahun == currentYear;
-    }).length;
-
-    // 3. Total Target Bulan Ini
-    final startOfMonth = DateTime(now.year, now.month, 1);
-    final endOfMonth = DateTime(now.year, now.month + 1, 0);
-    final holidayDays = p.getHolidayDaysForMonth(now);
-
+    int jadwalAktif = 0;
+    int pendingTasks = 0;
+    int doneBulanIni = 0;
     int totalTargetBulanIni = 0;
-    for (final j in p.jadwalList) {
-      if (j.jdwStatus != 'Draft') continue;
-      final count = _effectiveScheduleDatesInMonth(j, startOfMonth, endOfMonth, holidayDays).length;
-      final perTarget = (j.jdwTarget ?? 0) > 0 ? j.jdwTarget! : (j.jdwTotalUnit ?? 0);
-      totalTargetBulanIni += count * perTarget;
+
+    if (role == 'manager') {
+      final summary = p.dashboardSummary['summary_cards'];
+      if (summary != null) {
+        jadwalAktif = summary['jadwal_aktif'] ?? 0;
+        pendingTasks = summary['pending_tasks'] ?? 0;
+        doneBulanIni = summary['realisasi_bulan_ini'] ?? 0;
+        totalTargetBulanIni = summary['total_target_bulan_ini'] ?? 0;
+      }
+    } else {
+      // 1. Total Jadwal Aktif (semua Draft)
+      jadwalAktif = p.jadwalList.where((j) => j.jdwStatus == 'Draft').length;
+
+      // 1b. Jadwal yang perlu dikerjakan sekarang (hari ini & terlewat)
+      pendingTasks = p.jadwalList.where((j) {
+        if (j.jdwStatus != 'Draft') return false;
+        final diff = _getRemainingDaysDiff(j);
+        return diff <= 0;
+      }).length;
+
+      // 2. Realisasi Selesai Bulan Ini (jumlah baris realisasi)
+      doneBulanIni = p.realisasiList.where((r) {
+        return r.realBulan == currentMonth && r.realTahun == currentYear;
+      }).length;
+
+      // 3. Target Bulan Ini = jumlah occurrence jadwal Draft di bulan ini
+      //    (berapa kali masing-masing jadwal seharusnya dikerjakan bulan ini)
+      final startOfMonth = DateTime(now.year, now.month, 1);
+      final endOfMonth = DateTime(now.year, now.month + 1, 0);
+      final holidayDays = p.getHolidayDaysForMonth(now);
+
+      for (final j in p.jadwalList) {
+        if (j.jdwStatus != 'Draft') continue;
+        final count =
+            _effectiveScheduleDatesInMonth(j, startOfMonth, endOfMonth, holidayDays).length;
+        final perTarget = (j.jdwTarget ?? 0) > 0 ? j.jdwTarget! : (j.jdwTotalUnit ?? 0);
+        totalTargetBulanIni += count * perTarget;
+      }
     }
 
     return Scaffold(
@@ -487,27 +517,55 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                       ),
                                     ),
                                     const SizedBox(height: 4),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 10,
-                                        vertical: 3,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white
-                                            .withValues(alpha: 0.22),
-                                        borderRadius:
-                                            BorderRadius.circular(999),
-                                      ),
-                                      child: Text(
-                                        '${auth.user?['user_divisi'] ?? '-'}'
-                                            .toUpperCase(),
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.w800,
-                                          letterSpacing: 0.5,
+                                    Row(
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 10,
+                                            vertical: 3,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: Colors.white
+                                                .withValues(alpha: 0.22),
+                                            borderRadius:
+                                                BorderRadius.circular(999),
+                                          ),
+                                          child: Text(
+                                            role == 'manager'
+                                                ? '⭐ MANAGER'
+                                                : '${auth.user?['user_divisi'] ?? '-'}'.toUpperCase(),
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w800,
+                                              letterSpacing: 0.5,
+                                            ),
+                                          ),
                                         ),
-                                      ),
+                                        if (role == 'manager') ...[
+                                          const SizedBox(width: 6),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 8,
+                                              vertical: 3,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: Colors.amber.withValues(alpha: 0.25),
+                                              borderRadius: BorderRadius.circular(999),
+                                              border: Border.all(color: Colors.amber.withValues(alpha: 0.5)),
+                                            ),
+                                            child: const Text(
+                                              'Semua Divisi',
+                                              style: TextStyle(
+                                                color: Colors.amber,
+                                                fontSize: 9,
+                                                fontWeight: FontWeight.w800,
+                                                letterSpacing: 0.5,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ],
                                     ),
                                   ],
                                 ),
@@ -537,31 +595,42 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       child: Padding(
                         padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
                         child: Row(
-                          children: [
-                            _buildQuickAction(
-                                icon: Icons.event_note,
-                                label: "Jadwal",
-                                color: AppColors.primary,
-                                onTap: () => _tabToHistory(0)),
-                            const SizedBox(width: 15),
-                            _buildQuickAction(
-                                icon: Icons.analytics,
-                                label: "Realisasi",
-                                color: Colors.green.shade700,
-                                onTap: () => _tabToHistory(1)),
-                          ],
-                        ),
+                                children: [
+                                  if (role == 'manager') ...[
+                                    _buildQuickAction(
+                                        icon: Icons.monitor_heart_rounded,
+                                        label: "Monitoring Divisi",
+                                        color: Colors.blue.shade700,
+                                        onTap: () => Navigator.pushNamed(context, AppRoutes.monitoringDivisi)),
+                                  ] else ...[
+                                    _buildQuickAction(
+                                        icon: Icons.event_note,
+                                        label: "Jadwal",
+                                        color: AppColors.primary,
+                                        onTap: () => _tabToHistory(0)),
+                                    const SizedBox(width: 15),
+                                    _buildQuickAction(
+                                        icon: Icons.analytics,
+                                        label: "Realisasi",
+                                        color: Colors.green.shade700,
+                                        onTap: () => _tabToHistory(1)),
+                                  ],
+                                ],
+                              ),
                       ),
                     ),
 
                     // 2.5 Quick Stats Section
                     SliverToBoxAdapter(
                       child: _buildQuickStatsSection(
+                        jadwalAktif: jadwalAktif,
                         pendingTasks: pendingTasks,
                         doneBulanIni: doneBulanIni,
                         totalTargetBulanIni: totalTargetBulanIni,
                       ),
                     ),
+
+                    // 2.6 Manager: Ringkasan Per Divisi (dihilangkan, cukup via Monitoring)
 
                     // 3. System Flow Section (Alur Persiapan)
                     if (isAdmin)
@@ -602,9 +671,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 .compareTo(_getRemainingDaysDiff(b)));
                         final list = sorted.take(5).toList();
                         if (p.loading) {
-                          return const SliverToBoxAdapter(
-                              child:
-                                  Center(child: CircularProgressIndicator()));
+                          return SliverToBoxAdapter(
+                            child: SizedBox(
+                              height: 150,
+                              child: AppShimmer(
+                                child: ListView.separated(
+                                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                                  scrollDirection: Axis.horizontal,
+                                  itemCount: 3,
+                                  physics: const NeverScrollableScrollPhysics(),
+                                  separatorBuilder: (_, __) => const SizedBox(width: 12),
+                                  itemBuilder: (_, i) => _buildJadwalItemSkeleton(width: 285),
+                                ),
+                              ),
+                            ),
+                          );
                         }
                         if (list.isEmpty) {
                           return SliverToBoxAdapter(
@@ -1201,6 +1282,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildQuickStatsSection({
+    required int jadwalAktif,
     required int pendingTasks,
     required int doneBulanIni,
     required int totalTargetBulanIni,
@@ -1221,12 +1303,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
           const SizedBox(height: 12),
           Row(
             children: [
-              // Kartu 1: Tugas Aktif
+              // Kartu 1: Total Jadwal Aktif + berapa yang pending
               Expanded(
                 child: Container(
                   padding: const EdgeInsets.all(14),
                   decoration: _surfaceCard(
-                    borderColor: pendingTasks > 0 
+                    borderColor: pendingTasks > 0
                         ? AppColors.warning.withValues(alpha: 0.3)
                         : null,
                   ),
@@ -1251,7 +1333,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
-                              "$pendingTasks",
+                              "$jadwalAktif",
                               textAlign: TextAlign.end,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
@@ -1274,10 +1356,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        pendingTasks > 0 ? "Perlu diselesaikan" : "Semua beres!",
+                        pendingTasks > 0
+                            ? "$pendingTasks perlu dikerjakan"
+                            : "Semua beres!",
                         style: TextStyle(
                           fontSize: 10,
-                          color: pendingTasks > 0 ? AppColors.warning : AppColors.textSecondary,
+                          color: pendingTasks > 0
+                              ? AppColors.warning
+                              : AppColors.textSecondary,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -1286,12 +1372,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
               ),
               const SizedBox(width: 12),
-              // Kartu 2: Realisasi vs Target Bulan Ini
+              // Kartu 2: Realisasi Selesai vs Jadwal yang Dijadwalkan Bulan Ini
               Expanded(
                 child: Container(
                   padding: const EdgeInsets.all(14),
                   decoration: _surfaceCard(
-                    borderColor: doneBulanIni >= totalTargetBulanIni && totalTargetBulanIni > 0
+                    borderColor: totalTargetBulanIni > 0 &&
+                            doneBulanIni >= totalTargetBulanIni
                         ? AppColors.success.withValues(alpha: 0.3)
                         : null,
                   ),
@@ -1316,7 +1403,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
-                              "$doneBulanIni / $totalTargetBulanIni",
+                              totalTargetBulanIni > 0
+                                  ? "$doneBulanIni / $totalTargetBulanIni"
+                                  : "$doneBulanIni",
                               textAlign: TextAlign.end,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
@@ -1338,9 +1427,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ),
                       ),
                       const SizedBox(height: 2),
-                      const Text(
-                        "Realisasi / Target",
-                        style: TextStyle(
+                      Text(
+                        totalTargetBulanIni > 0
+                            ? "Selesai / Jadwal bulan ini"
+                            : "Total selesai bulan ini",
+                        style: const TextStyle(
                           fontSize: 10,
                           color: AppColors.textSecondary,
                           fontWeight: FontWeight.w600,
@@ -1546,6 +1637,57 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildJadwalItemSkeleton({required double width}) {
+    return Container(
+      width: width,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.border.withValues(alpha: 0.6)),
+      ),
+      child: const Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              AppSkeletonSquircle(width: 42, height: 42, borderRadius: 14),
+              SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    AppSkeletonLine(width: 120, height: 14, borderRadius: 4),
+                    SizedBox(height: 8),
+                    Row(
+                      children: [
+                        AppSkeletonSquircle(width: 60, height: 16, borderRadius: 6),
+                        SizedBox(width: 6),
+                        AppSkeletonLine(width: 40, height: 10, borderRadius: 3),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              AppSkeletonSquircle(width: 60, height: 20, borderRadius: 12),
+            ],
+          ),
+          Spacer(),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              AppSkeletonLine(width: 70, height: 12, borderRadius: 3),
+              AppSkeletonLine(width: 90, height: 12, borderRadius: 3),
+            ],
+          ),
+          SizedBox(height: 8),
+          AppSkeletonLine(width: double.infinity, height: 8, borderRadius: 4),
+        ],
       ),
     );
   }

@@ -18,6 +18,7 @@ import 'features/auth/screens/register_screen.dart';
 import 'features/dashboard/screens/dashboard_screen.dart';
 import 'features/jadwal/screens/jadwal_detail_screen.dart';
 import 'features/jadwal/screens/realisasi_form_screen.dart';
+import 'features/dashboard/screens/monitoring_divisi_screen.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
@@ -50,9 +51,10 @@ class PlanKPApp extends StatelessWidget {
                 child: DashboardScreen(),
               ),
           AppRoutes.jadwalDetail: (ctx) {
-            final args = ModalRoute.of(ctx)!.settings.arguments as int;
+            final rawArgs = ModalRoute.of(ctx)!.settings.arguments;
+            final args = rawArgs is int ? rawArgs : int.tryParse('$rawArgs') ?? 0;
             return _ProtectedRoute(
-              allowedRoles: const ['admin'],
+              allowedRoles: const ['admin', 'manager'],
               child: JadwalDetailScreen(jadwalId: args),
             );
           },
@@ -64,6 +66,10 @@ class PlanKPApp extends StatelessWidget {
               child: RealisasiFormScreen(args: args),
             );
           },
+          AppRoutes.monitoringDivisi: (_) => const _ProtectedRoute(
+                allowedRoles: ['manager'],
+                child: MonitoringDivisiScreen(),
+              ),
         },
         home: const _AuthGate(),
       ),
@@ -658,9 +664,9 @@ class _ProtectedRoute extends StatelessWidget {
     final auth = context.watch<AuthProvider>();
 
     if (auth.isLoggedIn) {
-      final role = auth.jabatan;
-      final isRoleAllowed =
-          allowedRoles == null || allowedRoles!.contains(role);
+      final role = auth.jabatan.toLowerCase();
+      final isRoleAllowed = allowedRoles == null ||
+          allowedRoles!.map((r) => r.toLowerCase()).contains(role);
       if (isRoleAllowed) return child;
 
       WidgetsBinding.instance.addPostFrameCallback((_) {

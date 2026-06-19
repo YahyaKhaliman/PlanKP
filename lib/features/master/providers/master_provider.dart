@@ -13,6 +13,7 @@ class MasterProvider extends ChangeNotifier {
   List<ChecklistTemplateModel> checklistList = [];
   List<UserModel> userList = [];
   List<DivisiModel> divisiList = [];
+  List<String> divisiMetadata = [];
   List<JenisModel> jenisMaster = [];
   List<PabrikModel> pabrikList = [];
   final Map<int, String> _jenisKategoriMap = {};
@@ -52,7 +53,7 @@ class MasterProvider extends ChangeNotifier {
     final includeId = includeJenisId;
     return jenisMaster.where((j) {
       if (includeId != null && j.jenisId == includeId) {
-        return j.jenisIsActive && !hasInventarisForJenis(j.jenisId);
+        return j.jenisIsActive;
       }
       return j.jenisIsActive && !hasInventarisForJenis(j.jenisId);
     }).toList();
@@ -97,7 +98,11 @@ class MasterProvider extends ChangeNotifier {
         if (q != null) 'q': q,
       };
       final res = await ApiClient.get(ApiConfig.inventaris, query: query);
-      inventarisList = (res['data'] as List)
+      final dataField = res['data'];
+      final List rawList = dataField is Map && dataField.containsKey('items')
+          ? dataField['items']
+          : (dataField as List);
+      inventarisList = rawList
           .map((e) => InventarisModel.fromJson(e))
           .toList();
       if (updateKategoriMap && jenisMaster.isNotEmpty) {
@@ -210,45 +215,20 @@ class MasterProvider extends ChangeNotifier {
     }
   }
 
-  // ── DIVISI ──────────────────────────────────────────────────
-  Future<void> fetchDivisi({bool showLoading = true}) async {
+  // ── METADATA & DIVISI ──────────────────────────────────────────
+  Future<void> fetchMetadata({bool showLoading = true}) async {
     if (showLoading) _setLoading(true);
     try {
-      final res = await ApiClient.get(ApiConfig.divisi);
-      divisiList =
-          (res['data'] as List).map((e) => DivisiModel.fromJson(e)).toList();
+      final res = await ApiClient.get(ApiConfig.metadata);
+      final rawDivisi = res['data']['divisi'] as List;
+      divisiMetadata = rawDivisi.map((e) => e.toString()).toList();
       _setError(null);
     } on ApiException catch (e) {
       _setError(e.message);
     } finally {
       if (showLoading) _setLoading(false);
     }
-  }
-
-  Future<bool> saveDivisi(Map<String, dynamic> body, {int? id}) async {
-    try {
-      if (id != null) {
-        await ApiClient.put('${ApiConfig.divisi}/$id', body);
-      } else {
-        await ApiClient.post(ApiConfig.divisi, body);
-      }
-      await fetchDivisi();
-      return true;
-    } on ApiException catch (e) {
-      _setError(e.message);
-      return false;
-    }
-  }
-
-  Future<bool> deleteDivisi(int id) async {
-    try {
-      await ApiClient.delete('${ApiConfig.divisi}/$id');
-      await fetchDivisi();
-      return true;
-    } on ApiException catch (e) {
-      _setError(e.message);
-      return false;
-    }
+    notifyListeners();
   }
 
   // ── CHECKLIST TEMPLATE ─────────────────────────────────────────

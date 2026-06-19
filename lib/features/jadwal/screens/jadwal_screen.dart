@@ -1,7 +1,6 @@
 // ignore_for_file: curly_braces_in_flow_control_structures, duplicate_ignore, deprecated_member_use
 
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/constants/app_constants.dart';
@@ -29,37 +28,8 @@ class JadwalScreen extends StatefulWidget {
 
 class _JadwalScreenState extends State<JadwalScreen> {
   String? _selectedFrekuensi;
-  bool _isSummaryCollapsed = false;
   bool _isGapGuideExpanded = false;
 
-  bool _onScrollNotification(ScrollNotification notification) {
-    if (notification.metrics.axis != Axis.vertical) return false;
-
-    final pixels = notification.metrics.pixels;
-
-    if (pixels <= 8 && _isSummaryCollapsed) {
-      setState(() => _isSummaryCollapsed = false);
-      return false;
-    }
-
-    if (notification is ScrollUpdateNotification) {
-      final delta = notification.scrollDelta ?? 0;
-
-      if (delta > 0 && pixels > 50 && !_isSummaryCollapsed) {
-        setState(() => _isSummaryCollapsed = true);
-      } else if (delta < 0 && _isSummaryCollapsed) {
-        setState(() => _isSummaryCollapsed = false);
-      }
-    }
-
-    if (notification is UserScrollNotification &&
-        notification.direction == ScrollDirection.forward &&
-        _isSummaryCollapsed) {
-      setState(() => _isSummaryCollapsed = false);
-    }
-
-    return false;
-  }
 
   // Logika pembantu periode (dipertahankan)
   int _isoWeekNumber(DateTime date) {
@@ -98,7 +68,8 @@ class _JadwalScreenState extends State<JadwalScreen> {
   Future<void> _loadData() async {
     final auth = context.read<AuthProvider>();
     final jadwalProvider = context.read<JadwalProvider>();
-    final isAdmin = auth.user?['user_jabatan'] == 'admin';
+    final role = auth.user?['user_jabatan'];
+    final isAdmin = role == 'admin' || role == 'manager';
     if (isAdmin) {
       await jadwalProvider.fetchJadwal(status: 'Draft');
     } else {
@@ -114,7 +85,9 @@ class _JadwalScreenState extends State<JadwalScreen> {
     final auth = context.read<AuthProvider>();
     await master.fetchJenis(showLoading: false);
     await master.fetchPabrik();
-    final userDivisi = auth.user?['user_divisi'] ?? '';
+    final role = auth.user?['user_jabatan'];
+    final isManager = role == 'manager';
+    final userDivisi = isManager ? null : (auth.user?['user_divisi'] ?? '');
     await master.fetchUsers(divisi: userDivisi, showLoading: false);
     if (!mounted) return;
     showModalBottomSheet(
@@ -162,7 +135,9 @@ class _JadwalScreenState extends State<JadwalScreen> {
         .map((r) => r.realInvId)
         .toSet();
     final belumSelesaiList = inventarisList
-        .where((inv) => !terpakaiInvIds.contains(inv['inv_id']))
+        .where((inv) =>
+            !terpakaiInvIds.contains(inv['inv_id']) &&
+            inv['inv_is_gap_eligible'] != false)
         .toList();
 
     if (inventarisList.isEmpty) {
@@ -523,8 +498,9 @@ class _JadwalScreenState extends State<JadwalScreen> {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
-    final isAdmin = auth.user?['user_jabatan'] == 'admin';
-    final isUser = auth.user?['user_jabatan'] == 'user';
+    final role = auth.user?['user_jabatan'];
+    final isAdmin = role == 'admin' || role == 'manager';
+    final isUser = role == 'user';
     final isDesktop = AppBreakpoints.isDesktop(context);
     final maxContentWidth = isDesktop ? 1180.0 : 860.0;
 
@@ -569,92 +545,74 @@ class _JadwalScreenState extends State<JadwalScreen> {
           return Center(
             child: ConstrainedBox(
               constraints: BoxConstraints(maxWidth: maxContentWidth),
-              child: NotificationListener<ScrollNotification>(
-                onNotification: _onScrollNotification,
-                child: CustomScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  slivers: [
-                    // Ringkasan menggunakan Sliver agar scroll bersama list
-                    SliverToBoxAdapter(
-                      child: AnimatedSize(
-                        duration: const Duration(milliseconds: 220),
-                        curve: Curves.easeInOut,
-                        alignment: Alignment.topCenter,
-                        child: AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 220),
-                          switchInCurve: Curves.easeInOut,
-                          switchOutCurve: Curves.easeInOut,
-                          child: _isSummaryCollapsed
-                              ? const SizedBox(
-                                  key: ValueKey('summary-hidden'),
-                                )
-                              : Column(
-                                  key: const ValueKey('summary-visible'),
-                                  children: [
-                                    _buildSummaryTable(jadwalAktif),
-                                    if (isAdmin) _buildGapGuideCard(),
-                                    const SizedBox(height: 16),
-                                  ],
-                                ),
+              child: CustomScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                slivers: [
+                  // Ringkasan menggunakan Sliver agar scroll bersama list
+                  SliverToBoxAdapter(
+                    child: Column(
+                      children: [
+                        _buildSummaryTable(jadwalAktif),
+                        if (isAdmin) _buildGapGuideCard(),
+                        const SizedBox(height: 16),
+                      ],
+                    ),
+                  ),
+
+                  // List Jadwal
+                  if (filtered.isEmpty)
+                    SliverFillRemaining(
+                      hasScrollBody: false,
+                      child: EmptyState(
+                          message: _selectedFrekuensi != null
+                              ? 'Tidak ada jadwal $_selectedFrekuensi yang aktif'
+                              : 'Belum ada jadwal yang aktif'),
+                    )
+                  else
+                    SliverPadding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      sliver: SliverList(
+                        delegate: SliverChildBuilderDelegate(
+                          (context, i) {
+                            final item = filtered[i];
+                            final master = context.read<MasterProvider>();
+                            final jenisNama =
+                                (item.jdwInvJenis ?? '').trim().isNotEmpty
+                                    ? item.jdwInvJenis!.trim()
+                                    : master
+                                            .jenisById(item.jdwJenisId)
+                                            ?.jenisNama ??
+                                        'Jenis tidak diketahui';
+                            final pabrikLabel = item.jdwPabrikList.isEmpty
+                                ? null
+                                : item.jdwPabrikList
+                                    .map((c) => master.displayPabrik(c))
+                                    .join(', ');
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 8),
+                              child: _JadwalCard(
+                                jadwal: item,
+                                jenisNama: jenisNama,
+                                pabrikLabel: pabrikLabel,
+                                isAdmin: isAdmin,
+                                isUser: isUser,
+                                onTap: () => _handleJadwalTap(item,
+                                    isAdmin: isAdmin, isUser: isUser),
+                                onEdit: () => _openForm(item),
+                                onDelete: () =>
+                                    _confirmSelesaikanJadwal(item),
+                                onStatusChange: (st) => context
+                                    .read<JadwalProvider>()
+                                    .updateStatusJadwal(item.jdwId, st),
+                              ),
+                            );
+                          },
+                          childCount: filtered.length,
                         ),
                       ),
                     ),
-
-                    // List Jadwal
-                    if (filtered.isEmpty)
-                      SliverFillRemaining(
-                        hasScrollBody: false,
-                        child: EmptyState(
-                            message: _selectedFrekuensi != null
-                                ? 'Tidak ada jadwal $_selectedFrekuensi yang aktif'
-                                : 'Belum ada jadwal yang aktif'),
-                      )
-                    else
-                      SliverPadding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        sliver: SliverList(
-                          delegate: SliverChildBuilderDelegate(
-                            (context, i) {
-                              final item = filtered[i];
-                              final master = context.read<MasterProvider>();
-                              final jenisNama =
-                                  (item.jdwInvJenis ?? '').trim().isNotEmpty
-                                      ? item.jdwInvJenis!.trim()
-                                      : master
-                                              .jenisById(item.jdwJenisId)
-                                              ?.jenisNama ??
-                                          'Jenis tidak diketahui';
-                              final pabrikLabel = item.jdwPabrikList.isEmpty
-                                  ? null
-                                  : item.jdwPabrikList
-                                      .map((c) => master.displayPabrik(c))
-                                      .join(', ');
-                              return Padding(
-                                padding: const EdgeInsets.only(bottom: 8),
-                                child: _JadwalCard(
-                                  jadwal: item,
-                                  jenisNama: jenisNama,
-                                  pabrikLabel: pabrikLabel,
-                                  isAdmin: isAdmin,
-                                  isUser: isUser,
-                                  onTap: () => _handleJadwalTap(item,
-                                      isAdmin: isAdmin, isUser: isUser),
-                                  onEdit: () => _openForm(item),
-                                  onDelete: () =>
-                                      _confirmSelesaikanJadwal(item),
-                                  onStatusChange: (st) => context
-                                      .read<JadwalProvider>()
-                                      .updateStatusJadwal(item.jdwId, st),
-                                ),
-                              );
-                            },
-                            childCount: filtered.length,
-                          ),
-                        ),
-                      ),
-                    const SliverToBoxAdapter(child: SizedBox(height: 100)),
-                  ],
-                ),
+                  const SliverToBoxAdapter(child: SizedBox(height: 100)),
+                ],
               ),
             ),
           );
@@ -1603,6 +1561,8 @@ class _JadwalFormState extends State<_JadwalForm> {
           _jenisCtrl.text = result.jenisNama;
           _pabrikCodes.clear();
           _selectedPabrikValue = null;
+          _divisi = result.jenisKategori;
+          _assignedToUserId = null;
         });
         _pabrikDropdownKey.currentState?.didChange(null);
         await _syncTargetLimitForJenis(result.jenisId);

@@ -368,7 +368,8 @@ class _JenisFormState extends State<_JenisForm> {
     } else {
       _namaCtrls.add(TextEditingController());
       final auth = context.read<AuthProvider>();
-      _kategori = (auth.user?['user_divisi'] ?? '').toString();
+      final isManager = auth.user?['user_jabatan'] == 'manager';
+      _kategori = isManager ? 'GA' : (auth.user?['user_divisi'] ?? '').toString();
       _gapHariCtrl.text = '0';
     }
   }
@@ -451,6 +452,7 @@ class _JenisFormState extends State<_JenisForm> {
 
   @override
   Widget build(BuildContext context) {
+    final isManager = context.read<AuthProvider>().user?['user_jabatan'] == 'manager';
     return Padding(
       padding:
           EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
@@ -482,7 +484,7 @@ class _JenisFormState extends State<_JenisForm> {
                         style: const TextStyle(
                             fontSize: 18, fontWeight: FontWeight.w700)),
                     const Spacer(),
-                    if (_kategori.isNotEmpty)
+                    if (!isManager && _kategori.isNotEmpty)
                       Container(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 10, vertical: 4),
@@ -499,6 +501,28 @@ class _JenisFormState extends State<_JenisForm> {
                   ],
                 ),
                 const SizedBox(height: 20),
+                if (isManager) ...[
+                  DropdownButtonFormField<String>(
+                    value: _kategori.isEmpty ? 'GA' : _kategori,
+                    decoration: const InputDecoration(
+                      labelText: 'Kategori Divisi',
+                      prefixIcon: Icon(Icons.business_outlined),
+                    ),
+                    items: const [
+                      DropdownMenuItem(value: 'GA', child: Text('GA')),
+                      DropdownMenuItem(value: 'IT', child: Text('IT')),
+                      DropdownMenuItem(value: 'DRIVER', child: Text('DRIVER')),
+                    ],
+                    onChanged: (val) {
+                      if (val != null) {
+                        setState(() {
+                          _kategori = val;
+                        });
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                ],
                 if (_isEdit)
                   TextFormField(
                     controller: _namaCtrl,

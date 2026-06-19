@@ -16,6 +16,7 @@ class ApiConfig {
   static const String pabrik = '/master/pabrik';
   static const String metadata = '/master/metadata';
   static const String dashboardSummary = '/master/dashboard/summary';
+  static const String monitoringDivisi = '/master/monitoring-divisi';
 
   static const String updateManifestUrl = String.fromEnvironment('UPDATE_MANIFEST_URL');
 }
@@ -26,6 +27,7 @@ class AppRoutes {
   static const String register = '/register';
   static const String jadwalDetail = '/jadwal/detail';
   static const String realisasiForm = '/jadwal/realisasi-form';
+  static const String monitoringDivisi = '/monitoring-divisi';
 }
 
 class StorageKeys {

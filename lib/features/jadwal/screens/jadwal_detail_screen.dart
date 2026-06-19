@@ -10,6 +10,7 @@ import '../models/jadwal_model.dart';
 import '../models/realisasi_model.dart';
 import '../providers/jadwal_provider.dart';
 import '../widgets/realisasi_detail_sheet.dart';
+import '../../../core/widgets/shimmer_loading.dart';
 
 const _kDetailPageBg = Color(0xFFF8FAFC);
 
@@ -23,6 +24,7 @@ class JadwalDetailScreen extends StatefulWidget {
 }
 
 class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
+  String _realisasiFilter = 'Semua'; // 'Semua', 'Sudah', 'Belum'
   @override
   void initState() {
     super.initState();
@@ -54,12 +56,24 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
       return;
     }
 
+    // Kumpulkan semua realisasi untuk unit inventaris yang sama
+    final riwayat = provider.realisasiList
+        .where((r) => r.realInvId == item.realInvId && r.realStatus == 'Selesai')
+        .toList()
+      ..sort((a, b) => b.realTgl.compareTo(a.realTgl)); // terbaru di atas
+
     await RealisasiDetailSheet.show(
       context,
       detail: detail,
       title: 'Detail Realisasi Unit',
+      riwayatRealisasi: riwayat,
+      onTapRiwayat: (tappedItem) async {
+        Navigator.pop(context); // tutup sheet saat ini
+        await _openRealisasiDetail(tappedItem); // buka detail baru
+      },
     );
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -79,7 +93,7 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
       body: Consumer<JadwalProvider>(
         builder: (_, provider, __) {
           if (provider.loading) {
-            return const Center(child: CircularProgressIndicator());
+            return _buildSkeleton(isDesktop, horizontalPadding);
           }
 
           final jadwal = provider.jadwalDetail;
@@ -127,6 +141,7 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
                     const SizedBox(height: 16),
                     _buildInfoSection(
                       context,
+                      jadwal: jadwal,
                       jenisNama: jenisNama,
                       master: master,
                       progressPct: progressPct,
@@ -134,6 +149,7 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
                     const SizedBox(height: 16),
                     _buildInventarisSection(
                       context,
+                      jadwal: jadwal,
                       selesaiInvIds: selesaiInvIds,
                     ),
                   ],
@@ -308,11 +324,11 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
 
   Widget _buildInfoSection(
     BuildContext context, {
+    required JadwalModel jadwal,
     required String jenisNama,
     required MasterProvider master,
     required int progressPct,
   }) {
-    final jadwal = context.read<JadwalProvider>().jadwalDetail!;
     final jenisGapHari =
         master.jenisById(jadwal.jdwJenisId)?.jenisGapHari ?? 0;
     final jadwalGapHari = jadwal.jdwGapHari;
@@ -333,7 +349,7 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
           if (jadwal.jdwTglSelesai != null)
             _infoRow(
               'Akhir Periode Jadwal',
-              DateFormatter.toDisplay(jadwal.jdwTglSelesai!),
+              DateFormatter.toDisplay(jadwal.jdwTglSelesai),
             ),
           _infoRow('Jadwal berikutnya', _displayDate(jadwal.jdwNextDueDate)),
           _infoRow('Capaian Per Jadwal', '$progressPct%'),
@@ -454,15 +470,78 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
   }
 
 
+  Widget _buildFilterPills() {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            _filterChip(label: 'Semua', value: 'Semua'),
+            const SizedBox(width: 8),
+            _filterChip(label: 'Sudah Terealisasi', value: 'Sudah'),
+            const SizedBox(width: 8),
+            _filterChip(label: 'Belum Terealisasi', value: 'Belum'),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _filterChip({required String label, required String value}) {
+    final isSelected = _realisasiFilter == value;
+    return ChoiceChip(
+      label: Text(label),
+      selected: isSelected,
+      onSelected: (selected) {
+        if (selected) {
+          setState(() {
+            _realisasiFilter = value;
+          });
+        }
+      },
+      selectedColor: AppColors.primary.withOpacity(0.12),
+      backgroundColor: Colors.white,
+      labelStyle: TextStyle(
+        fontSize: 11.5,
+        fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+        color: isSelected ? AppColors.primary : AppColors.textSecondary,
+      ),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: BorderSide(
+          color: isSelected ? AppColors.primary : AppColors.border,
+          width: 1,
+        ),
+      ),
+      showCheckmark: false,
+    );
+  }
+
   Widget _buildInventarisSection(
     BuildContext context, {
+    required JadwalModel jadwal,
     required Set<int> selesaiInvIds,
   }) {
     final provider = context.read<JadwalProvider>();
     final master = context.read<MasterProvider>();
     final jenisNama =
-        master.jenisById(provider.jadwalDetail!.jdwJenisId)?.jenisNama ??
-            'ID ${provider.jadwalDetail!.jdwJenisId}';
+        master.jenisById(jadwal.jdwJenisId)?.jenisNama ??
+            'ID ${jadwal.jdwJenisId}';
+
+    final filteredList = provider.inventarisByJenis.where((inv) {
+      final invIdRaw = inv['inv_id'];
+      final invId =
+          invIdRaw is int ? invIdRaw : int.tryParse('$invIdRaw');
+      final sudahTerealisasi = invId != null && selesaiInvIds.contains(invId);
+
+      if (_realisasiFilter == 'Sudah') {
+        return sudahTerealisasi;
+      } else if (_realisasiFilter == 'Belum') {
+        return !sudahTerealisasi;
+      }
+      return true;
+    }).toList();
 
     return _sectionCard(
       title: 'Unit Inventaris $jenisNama',
@@ -470,187 +549,215 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
       child: provider.inventarisByJenis.isEmpty
           ? const EmptyState(message: 'Belum ada inventaris untuk jadwal ini')
           : Column(
-              children: provider.inventarisByJenis.map((inv) {
-                final invIdRaw = inv['inv_id'];
-                final invId =
-                    invIdRaw is int ? invIdRaw : int.tryParse('$invIdRaw');
-                final sudahTerealisasi =
-                    invId != null && selesaiInvIds.contains(invId);
-                final merk = (inv['inv_merk'] ?? '-').toString();
-                final pic = (inv['inv_pic'] ?? '-').toString();
-                RealisasiModel? realisasiItem;
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildFilterPills(),
+                if (filteredList.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 30),
+                    child: Center(
+                      child: Text(
+                        'Tidak ada unit yang cocok dengan filter "${_realisasiFilter == 'Sudah' ? 'Sudah Terealisasi' : 'Belum Terealisasi'}".',
+                        style: const TextStyle(
+                          fontSize: 12.5,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ),
+                  )
+                else
+                  ...filteredList.map((inv) {
+                    final invIdRaw = inv['inv_id'];
+                    final invId =
+                        invIdRaw is int ? invIdRaw : int.tryParse('$invIdRaw');
+                    final isGapEligible = inv['inv_is_gap_eligible'] != false;
+                    final nextEligibleDate = inv['inv_next_eligible_date']?.toString();
+                    final sudahTerealisasi =
+                        invId != null && selesaiInvIds.contains(invId);
+                    final merk = (inv['inv_merk'] ?? '-').toString();
+                    final pic = (inv['inv_pic'] ?? '-').toString();
+                    RealisasiModel? realisasiItem;
 
-                if (invId != null) {
-                  for (final item in provider.realisasiList) {
-                    if (item.realInvId == invId &&
-                        item.realStatus == 'Selesai') {
-                      realisasiItem = item;
-                      break;
+                    if (invId != null) {
+                      for (final item in provider.realisasiList) {
+                        if (item.realInvId == invId &&
+                            item.realStatus == 'Selesai') {
+                          realisasiItem = item;
+                          break;
+                        }
+                      }
                     }
-                  }
-                }
 
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: Card(
-                    margin: EdgeInsets.zero,
-                    child: Padding(
-                      padding: const EdgeInsets.all(14),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: Card(
+                        margin: EdgeInsets.zero,
+                        child: Padding(
+                          padding: const EdgeInsets.all(14),
+                          child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Container(
-                                width: 40,
-                                height: 40,
-                                decoration: BoxDecoration(
-                                  color:
-                                      AppColors.primary.withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: const Icon(
-                                  Icons.inventory_2_outlined,
-                                  color: AppColors.primary,
-                                  size: 20,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      (inv['inv_nama'] ?? '-').toString(),
-                                      style: const TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w700,
-                                      ),
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Container(
+                                    width: 40,
+                                    height: 40,
+                                    decoration: BoxDecoration(
+                                      color:
+                                          AppColors.primary.withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(12),
                                     ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      '${inv['inv_serial_number'] ?? inv['inv_no'] ?? '-'} · ${master.displayPabrik(inv['inv_pabrik_kode']?.toString())}',
-                                      style: const TextStyle(
-                                        fontSize: 12,
-                                        color: AppColors.textSecondary,
-                                      ),
+                                    child: const Icon(
+                                      Icons.inventory_2_outlined,
+                                      color: AppColors.primary,
+                                      size: 20,
                                     ),
-                                    const SizedBox(height: 4),
-                                    Wrap(
-                                      spacing: 6,
-                                      runSpacing: 6,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        _infoChip(
-                                          icon:
-                                              Icons.branding_watermark_outlined,
-                                          text: 'Merk: $merk',
+                                        Text(
+                                          (inv['inv_nama'] ?? '-').toString(),
+                                          style: const TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w700,
+                                          ),
                                         ),
-                                        _infoChip(
-                                          icon: Icons.person_outline,
-                                          text: 'PIC: $pic',
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          '${inv['inv_serial_number'] ?? inv['inv_no'] ?? '-'} · ${master.displayPabrik(inv['inv_pabrik_kode']?.toString())}',
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            color: AppColors.textSecondary,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Wrap(
+                                          spacing: 6,
+                                          runSpacing: 6,
+                                          children: [
+                                            _infoChip(
+                                              icon:
+                                                  Icons.branding_watermark_outlined,
+                                              text: 'Merk: $merk',
+                                            ),
+                                            _infoChip(
+                                              icon: Icons.person_outline,
+                                              text: 'PIC: $pic',
+                                            ),
+                                          ],
                                         ),
                                       ],
                                     ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 10),
-                          Row(
-                            children: [
-                              Icon(
-                                sudahTerealisasi
-                                    ? Icons.check_circle_outline
-                                    : Icons.schedule_outlined,
-                                size: 14,
-                                color: sudahTerealisasi
-                                    ? AppColors.success
-                                    : AppColors.textSecondary,
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                sudahTerealisasi
-                                    ? 'Sudah terealisasi'
-                                    : 'Belum terealisasi',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: sudahTerealisasi
-                                      ? AppColors.success
-                                      : AppColors.textSecondary,
-                                ),
-                              ),
-                            ],
-                          ),
-                          if (sudahTerealisasi && realisasiItem != null) ...[
-                            const SizedBox(height: 8),
-                            Row(
-                              children: [
-                                const Icon(
-                                  Icons.event_outlined,
-                                  size: 14,
-                                  color: AppColors.textSecondary,
-                                ),
-                                const SizedBox(width: 6),
-                                Expanded(
-                                  child: Text(
-                                    'Tanggal realisasi: ${_displayDate(realisasiItem.realTgl)}',
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      color: AppColors.textSecondary,
-                                    ),
                                   ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 4),
-                            Row(
-                              children: [
-                                const Icon(
-                                  Icons.person_outline,
-                                  size: 14,
-                                  color: AppColors.textSecondary,
-                                ),
-                                const SizedBox(width: 6),
-                                Expanded(
-                                  child: Text(
-                                    'Direalisasikan oleh: ${(realisasiItem.teknisi?['user_nama'] ?? '-').toString()}',
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      color: AppColors.textSecondary,
-                                    ),
+                                ],
+                              ),
+                              const SizedBox(height: 10),
+                              Row(
+                                children: [
+                                  Icon(
+                                    sudahTerealisasi
+                                        ? Icons.check_circle_outline
+                                        : (!isGapEligible
+                                            ? Icons.error_outline_rounded
+                                            : Icons.schedule_outlined),
+                                    size: 14,
+                                    color: sudahTerealisasi
+                                        ? AppColors.success
+                                        : (!isGapEligible
+                                            ? Colors.orange.shade700
+                                            : AppColors.textSecondary),
                                   ),
-                                ),
-                              ],
-                            ),
-                          ],
-                          const SizedBox(height: 10),
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: sudahTerealisasi && realisasiItem != null
-                                ? OutlinedButton.icon(
-                                    onPressed: () =>
-                                        _openRealisasiDetail(realisasiItem!),
-                                    icon: const Icon(Icons.visibility_outlined,
-                                        size: 16),
-                                    label: const Text('Lihat Detail'),
-                                  )
-                                : const Text(
-                                    'Menunggu realisasi',
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    sudahTerealisasi
+                                        ? 'Sudah terealisasi'
+                                        : (!isGapEligible
+                                            ? 'Belum layak (Jeda hingga: ${_displayDate(nextEligibleDate)})'
+                                            : 'Belum terealisasi'),
                                     style: TextStyle(
                                       fontSize: 12,
-                                      color: AppColors.textSecondary,
+                                      fontWeight: FontWeight.w600,
+                                      color: sudahTerealisasi
+                                          ? AppColors.success
+                                          : (!isGapEligible
+                                              ? Colors.orange.shade700
+                                              : AppColors.textSecondary),
                                     ),
                                   ),
+                                ],
+                              ),
+                              if (sudahTerealisasi && realisasiItem != null) ...[
+                                const SizedBox(height: 8),
+                                Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.event_outlined,
+                                      size: 14,
+                                      color: AppColors.textSecondary,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Expanded(
+                                      child: Text(
+                                        'Realisasi Terakhir: ${_displayDate(realisasiItem.realTgl)}',
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          color: AppColors.textSecondary,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 4),
+                                Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.person_outline,
+                                      size: 14,
+                                      color: AppColors.textSecondary,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Expanded(
+                                      child: Text(
+                                        'Direalisasikan oleh: ${(realisasiItem.teknisi?['user_nama'] ?? '-').toString()}',
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          color: AppColors.textSecondary,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                              const SizedBox(height: 10),
+                              Align(
+                                alignment: Alignment.centerRight,
+                                child: sudahTerealisasi && realisasiItem != null
+                                    ? OutlinedButton.icon(
+                                        onPressed: () =>
+                                            _openRealisasiDetail(realisasiItem!),
+                                        icon: const Icon(Icons.visibility_outlined,
+                                            size: 16),
+                                        label: const Text('Lihat Detail'),
+                                      )
+                                    : const Text(
+                                        'Menunggu realisasi',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: AppColors.textSecondary,
+                                        ),
+                                      ),
+                              ),
+                            ],
                           ),
-                        ],
+                        ),
                       ),
-                    ),
-                  ),
-                );
-              }).toList(),
+                    );
+                  }),
+              ],
             ),
     );
   }
@@ -834,5 +941,147 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
   String _displayDate(String? raw) {
     if (raw == null || raw.trim().isEmpty) return '-';
     return DateFormatter.toDisplay(raw);
+  }
+
+  Widget _buildSkeleton(bool isDesktop, double horizontalPadding) {
+    return AppShimmer(
+      child: ListView(
+        padding: EdgeInsets.fromLTRB(horizontalPadding, 16, horizontalPadding, 28),
+        physics: const NeverScrollableScrollPhysics(),
+        children: [
+          // 1. Hero Card Placeholder
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.4),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: AppColors.border.withOpacity(0.3)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    AppSkeletonSquircle(width: 44, height: 44, borderRadius: 12),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          AppSkeletonLine(width: 180, height: 18),
+                          SizedBox(height: 8),
+                          AppSkeletonLine(width: 120, height: 12),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: AppColors.border.withOpacity(0.2)),
+                  ),
+                  child: const Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                        children: [
+                          AppSkeletonLine(width: 50, height: 14),
+                          AppSkeletonLine(width: 50, height: 14),
+                          AppSkeletonLine(width: 50, height: 14),
+                        ],
+                      ),
+                      SizedBox(height: 12),
+                      AppSkeletonSquircle(width: double.infinity, height: 10, borderRadius: 99),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          // 2. Stats Row Placeholder
+          Row(
+            children: List.generate(4, (index) => const Expanded(
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: 4),
+                child: AppSkeletonSquircle(width: double.infinity, height: 60, borderRadius: 12),
+              ),
+            )),
+          ),
+          const SizedBox(height: 16),
+          // 3. Info Section Card Placeholder
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.4),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: AppColors.border.withOpacity(0.3)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const AppSkeletonLine(width: 140, height: 16),
+                const SizedBox(height: 6),
+                const AppSkeletonLine(width: 180, height: 12),
+                const SizedBox(height: 20),
+                ...List.generate(5, (index) => const Padding(
+                  padding: EdgeInsets.only(bottom: 12),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      AppSkeletonLine(width: 100, height: 14),
+                      AppSkeletonLine(width: 120, height: 14),
+                    ],
+                  ),
+                )),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          // 4. Inventaris Section Placeholder (1-2 item list card placeholders)
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.4),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: AppColors.border.withOpacity(0.3)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const AppSkeletonLine(width: 160, height: 16),
+                const SizedBox(height: 6),
+                const AppSkeletonLine(width: 100, height: 12),
+                const SizedBox(height: 16),
+                ...List.generate(2, (index) => const Padding(
+                  padding: EdgeInsets.only(bottom: 12),
+                  child: Row(
+                    children: [
+                      AppSkeletonSquircle(width: 40, height: 40, borderRadius: 12),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            AppSkeletonLine(width: 150, height: 14),
+                            SizedBox(height: 6),
+                            AppSkeletonLine(width: 100, height: 12),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                )),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

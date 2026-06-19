@@ -48,6 +48,12 @@ class UserModel {
         return 'Admin';
       case 'user':
         return 'User';
+      case 'manager':
+        return 'Manager';
+      case 'teknisi':
+        return 'Teknisi';
+      case 'it_support':
+        return 'IT Support';
       default:
         return userJabatan;
     }
