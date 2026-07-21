@@ -466,7 +466,6 @@ class _UserFormState extends State<_UserForm> {
   static const _jabatanList = [
     {'value': 'admin', 'label': 'Admin'},
     {'value': 'user', 'label': 'User'},
-    {'value': 'manager', 'label': 'Manager'},
     {'value': 'teknisi', 'label': 'Teknisi'},
     {'value': 'it_support', 'label': 'IT Support'},
   ];

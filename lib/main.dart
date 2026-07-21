@@ -62,7 +62,7 @@ class PlanKPApp extends StatelessWidget {
             final args =
                 ModalRoute.of(ctx)!.settings.arguments as Map<String, dynamic>;
             return _ProtectedRoute(
-              allowedRoles: const ['user'],
+              allowedRoles: const ['user', 'teknisi', 'it_support'],
               child: RealisasiFormScreen(args: args),
             );
           },

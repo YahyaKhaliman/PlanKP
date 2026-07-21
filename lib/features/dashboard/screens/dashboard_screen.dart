@@ -495,7 +495,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      'Selamat Datang',
+                                      _greeting(),
                                       style: TextStyle(
                                         color: Colors.white
                                             .withValues(alpha: 0.85),
@@ -532,7 +532,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                           ),
                                           child: Text(
                                             role == 'manager'
-                                                ? '⭐ MANAGER'
+                                                ? '⭐ Manager'
                                                 : '${auth.user?['user_divisi'] ?? '-'}'.toUpperCase(),
                                             style: const TextStyle(
                                               color: Colors.white,
@@ -709,19 +709,44 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         return SliverToBoxAdapter(
                           child: SizedBox(
                             height: 150,
-                            child: ListView.separated(
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 20),
-                              scrollDirection: Axis.horizontal,
-                              itemCount: list.length,
-                              separatorBuilder: (_, __) =>
-                                  const SizedBox(width: 12),
-                              itemBuilder: (_, i) => _buildJadwalItem(
-                                list[i],
-                                p,
-                                width: 285,
-                                compact: true,
-                              ),
+                            child: Stack(
+                              children: [
+                                ListView.separated(
+                                  padding:
+                                      const EdgeInsets.symmetric(horizontal: 20),
+                                  scrollDirection: Axis.horizontal,
+                                  itemCount: list.length,
+                                  separatorBuilder: (_, __) =>
+                                      const SizedBox(width: 12),
+                                  itemBuilder: (_, i) => _buildJadwalItem(
+                                    list[i],
+                                    p,
+                                    width: 285,
+                                    compact: true,
+                                  ),
+                                ),
+                                if (list.length > 1)
+                                  Positioned(
+                                    right: 0,
+                                    top: 0,
+                                    bottom: 0,
+                                    width: 32,
+                                    child: IgnorePointer(
+                                      child: DecoratedBox(
+                                        decoration: BoxDecoration(
+                                          gradient: LinearGradient(
+                                            begin: Alignment.centerLeft,
+                                            end: Alignment.centerRight,
+                                            colors: [
+                                              _pageBg.withValues(alpha: 0.0),
+                                              _pageBg.withValues(alpha: 0.8),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                              ],
                             ),
                           ),
                         );
@@ -857,12 +882,37 @@ class _DashboardScreenState extends State<DashboardScreen> {
         else
           SizedBox(
             height: 115,
-            child: ListView.separated(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              scrollDirection: Axis.horizontal,
-              itemCount: steps.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 12),
-              itemBuilder: (_, i) => _buildStepCard(steps[i]),
+            child: Stack(
+              children: [
+                ListView.separated(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  scrollDirection: Axis.horizontal,
+                  itemCount: steps.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 12),
+                  itemBuilder: (_, i) => _buildStepCard(steps[i]),
+                ),
+                if (steps.length > 2)
+                  Positioned(
+                    right: 0,
+                    top: 0,
+                    bottom: 0,
+                    width: 32,
+                    child: IgnorePointer(
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.centerLeft,
+                            end: Alignment.centerRight,
+                            colors: [
+                              _pageBg.withValues(alpha: 0.0),
+                              _pageBg.withValues(alpha: 0.8),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
       ],
@@ -1237,7 +1287,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               width: 42,
               height: 4,
               decoration: BoxDecoration(
-                color: Colors.grey.shade300,
+                color: AppColors.border,
                 borderRadius: BorderRadius.circular(999),
               ),
             ),
@@ -1252,7 +1302,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                   Text(
                     '${plans.length} jadwal',
-                    style: const TextStyle(color: Colors.grey),
+                    style: const TextStyle(color: AppColors.textSecondary),
                   ),
                 ],
               ),
@@ -1263,7 +1313,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       child: Text(
                         'Belum ada jadwal terdaftar',
                         textAlign: TextAlign.center,
-                        style: TextStyle(color: Colors.grey),
+                        style: TextStyle(color: AppColors.textSecondary),
                       ),
                     )
                   : ListView.builder(
@@ -1357,8 +1407,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       const SizedBox(height: 2),
                       Text(
                         pendingTasks > 0
-                            ? "$pendingTasks perlu dikerjakan"
-                            : "Semua beres!",
+                            ? "⏳ $pendingTasks perlu dikerjakan"
+                            : "✅ Semua terkini selesai",
                         style: TextStyle(
                           fontSize: 10,
                           color: pendingTasks > 0
@@ -1402,17 +1452,33 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           ),
                           const SizedBox(width: 8),
                           Expanded(
-                            child: Text(
-                              totalTargetBulanIni > 0
-                                  ? "$doneBulanIni / $totalTargetBulanIni"
-                                  : "$doneBulanIni",
-                              textAlign: TextAlign.end,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w900,
-                                color: AppColors.textPrimary,
-                              ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Text(
+                                  totalTargetBulanIni > 0
+                                      ? "$doneBulanIni / $totalTargetBulanIni"
+                                      : "$doneBulanIni",
+                                  textAlign: TextAlign.end,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w900,
+                                    color: AppColors.textPrimary,
+                                  ),
+                                ),
+                                if (totalTargetBulanIni > 0)
+                                  Text(
+                                    '${(doneBulanIni / totalTargetBulanIni * 100).round()}%',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w700,
+                                      color: doneBulanIni >= totalTargetBulanIni
+                                          ? AppColors.success
+                                          : AppColors.warning,
+                                    ),
+                                  ),
+                              ],
                             ),
                           ),
                         ],
@@ -1429,8 +1495,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       const SizedBox(height: 2),
                       Text(
                         totalTargetBulanIni > 0
-                            ? "Selesai / Jadwal bulan ini"
-                            : "Total selesai bulan ini",
+                            ? "Unit selesai dari target"
+                            : "Unit selesai bulan ini",
                         style: const TextStyle(
                           fontSize: 10,
                           color: AppColors.textSecondary,
@@ -1447,6 +1513,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ),
     );
   }
+
+
 
   Widget _buildJadwalItem(
     JadwalModel item,
@@ -1549,26 +1617,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 8, vertical: 2),
                                   decoration: BoxDecoration(
-                                    color: Colors.grey.shade100,
+                                    color: AppColors.border,
                                     borderRadius: BorderRadius.circular(6),
                                   ),
                                   child: Text(
-                                    jenisNama.toUpperCase(),
+                                    jenisNama,
                                     style: TextStyle(
                                       fontSize: 10,
                                       color: divisiColor,
-                                      fontWeight: FontWeight.w800,
-                                      letterSpacing: 0.5,
+                                      fontWeight: FontWeight.w700,
                                     ),
                                   ),
                                 ),
                                 const SizedBox(width: 6),
                                 Text(
-                                  item.jdwFrekuensi.toUpperCase(),
-                                  style: TextStyle(
-                                    fontSize: 9,
-                                    color: Colors.grey.shade700,
-                                    fontWeight: FontWeight.bold,
+                                  item.jdwFrekuensi,
+                                  style: const TextStyle(
+                                    fontSize: 10,
+                                    color: AppColors.textSecondary,
+                                    fontWeight: FontWeight.w600,
                                   ),
                                 ),
                               ],
@@ -1598,16 +1665,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
+                      const Text(
                         'Progres Unit',
                         style: TextStyle(
                           fontSize: 12,
-                          color: Colors.grey.shade600,
+                          color: AppColors.textSecondary,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
                       Text(
-                        '$realisasiSelesai / $totalTarget Unit selesai',
+                        '$realisasiSelesai / $totalTarget Unit selesai (${(progressPercent * 100).round()}%)',
                         style: const TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w800,
@@ -1622,7 +1689,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     child: LinearProgressIndicator(
                       value: progressPercent,
                       minHeight: 8,
-                      backgroundColor: Colors.grey.shade100,
+                      backgroundColor: AppColors.border,
                       valueColor: AlwaysStoppedAnimation<Color>(
                         progressPercent == 1.0
                             ? AppColors.success
@@ -1692,11 +1759,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  String _greeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 11) return 'Selamat Pagi';
+    if (hour < 15) return 'Selamat Siang';
+    if (hour < 18) return 'Selamat Sore';
+    return 'Selamat Malam';
+  }
+
   String _getRemainingDays(JadwalModel j) {
     final diff = _getRemainingDaysDiff(j);
 
-    if (diff < 0) return 'Terlewat ${-diff} hari';
-    if (diff == 0) return 'Hari ini';
+    if (diff < 0) return '⚠ Terlambat ${-diff}h';
+    if (diff == 0) return 'Hari ini!';
     if (diff == 1) return 'Besok';
     return '$diff hari lagi';
   }
@@ -1872,7 +1947,7 @@ class _InventarisPickerSheetState extends State<_InventarisPickerSheet> {
                     height: 4,
                     margin: const EdgeInsets.only(bottom: 12),
                     decoration: BoxDecoration(
-                      color: Colors.grey[300],
+                      color: AppColors.border,
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
@@ -2085,3 +2160,5 @@ class _InventarisPickerSheetState extends State<_InventarisPickerSheet> {
     );
   }
 }
+
+

@@ -54,8 +54,14 @@ class _RealisasiFormScreenState extends State<RealisasiFormScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadTemplate());
   }
 
+  final _scrollController = ScrollController();
+  static const _kScrollbarThickness = 8.0;
+  static const _kScrollbarRadius = Radius.circular(100);
+  static const _kScrollbarMargin = 3.0;
+
   @override
   void dispose() {
+    _scrollController.dispose();
     _ketCtrl.dispose();
     super.dispose();
   }
@@ -639,7 +645,133 @@ class _RealisasiFormScreenState extends State<RealisasiFormScreen> {
       ),
       body: _loadingTemplate
           ? const Center(child: CircularProgressIndicator())
-          : _buildForm(),
+          : Column(
+              children: [
+                _buildProgressHeader(),
+                Expanded(child: _buildForm()),
+              ],
+            ),
+    );
+  }
+
+  Widget _buildProgressHeader() {
+    if (_checklistItems.isEmpty) return const SizedBox.shrink();
+    int total = _checklistItems.length;
+    int filled = _checklistItems.where((item) => item.hasil == 'OK' || item.hasil == 'NK' || item.hasil == 'N/A').length;
+    double progress = total == 0 ? 0 : filled / total;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        border: Border(bottom: BorderSide(color: AppColors.border)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Progress Checklist',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+              ),
+              Text(
+                '$filled dari $total terisi',
+                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.primary),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          LinearProgressIndicator(
+            value: progress,
+            backgroundColor: AppColors.primarySoft,
+            color: progress == 1.0 ? AppColors.success : AppColors.primary,
+            minHeight: 6,
+            borderRadius: BorderRadius.circular(3),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionButtonsCard() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Consumer<JadwalProvider>(
+        builder: (_, p, __) => Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Pilih simpan sebagai Draft (Tunda TTD) atau lanjutkan Tanda Tangan PIC untuk menyelesaikan realisasi.',
+              style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: p.loading || _submitting ? null : _saveAsDraft,
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      minimumSize: const Size(double.infinity, 48),
+                      side: const BorderSide(color: AppColors.primary, width: 1.5),
+                      foregroundColor: AppColors.primary,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    icon: p.loading || _submitting
+                        ? const SizedBox(
+                            height: 16,
+                            width: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.save_outlined, size: 18),
+                    label: const Text('Simpan Draft', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: p.loading || _submitting ? null : _proceedToTtd,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.success,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      minimumSize: const Size(double.infinity, 48),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      elevation: 0,
+                    ),
+                    icon: p.loading || _submitting
+                        ? const SizedBox(
+                            height: 16,
+                            width: 16,
+                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                          )
+                        : const Icon(Icons.draw_outlined, size: 18),
+                    label: const Text('Tanda Tangan PIC', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -652,233 +784,175 @@ class _RealisasiFormScreenState extends State<RealisasiFormScreen> {
         return Center(
           child: ConstrainedBox(
             constraints: BoxConstraints(maxWidth: maxContentWidth),
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
-              children: [
-                _buildHeroCard(),
-                const SizedBox(height: 16),
-                _buildSectionCard(
-                  title: 'Checklist Pemeriksaan',
-                  subtitle:
-                      'Centang hasil pemeriksaan sebelum realisasi diselesaikan.',
-                  child: Column(
-                    children: [
-                      if (_checklistItems.isEmpty)
-                        Card(
-                          margin: EdgeInsets.zero,
-                          color: AppColors.surface,
-                          child: Padding(
-                            padding: const EdgeInsets.all(20),
-                            child: Column(children: [
-                              const Icon(Icons.checklist_outlined,
-                                  size: 36, color: AppColors.textSecondary),
-                              const SizedBox(height: 8),
-                              Text(
-                                (templateError != null &&
-                                        templateError.isNotEmpty)
-                                    ? 'Gagal memuat template checklist'
-                                    : 'Tidak ada template checklist untuk jenis ini',
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(
-                                    color: AppColors.textSecondary),
-                              ),
-                              if (templateError != null &&
-                                  templateError.isNotEmpty) ...[
-                                const SizedBox(height: 6),
+            child: RawScrollbar(
+              controller: _scrollController,
+              thumbVisibility: true,
+              trackVisibility: false,
+              thickness: _kScrollbarThickness,
+              radius: _kScrollbarRadius,
+              thumbColor: AppColors.primary.withValues(alpha: 0.55),
+              minThumbLength: 48,
+              crossAxisMargin: _kScrollbarMargin,
+              mainAxisMargin: 10.0,
+              interactive: true,
+              child: ListView(
+                controller: _scrollController,
+                physics: const BouncingScrollPhysics(
+                  parent: AlwaysScrollableScrollPhysics(),
+                ),
+                // Padding kanan lebih besar agar konten tidak tertutup thumb scrollbar
+                padding: const EdgeInsets.fromLTRB(16, 16, 26, 32),
+                children: [
+                  _buildHeroCard(),
+                  const SizedBox(height: 16),
+                  _buildSectionCard(
+                    title: 'Checklist Pemeriksaan',
+                    subtitle:
+                        'Centang hasil pemeriksaan sebelum realisasi diselesaikan.',
+                    child: Column(
+                      children: [
+                        if (_checklistItems.isEmpty)
+                          Card(
+                            margin: EdgeInsets.zero,
+                            color: AppColors.surface,
+                            child: Padding(
+                              padding: const EdgeInsets.all(20),
+                              child: Column(children: [
+                                const Icon(Icons.checklist_outlined,
+                                    size: 36, color: AppColors.textSecondary),
+                                const SizedBox(height: 8),
                                 Text(
-                                  templateError,
+                                  (templateError != null &&
+                                          templateError.isNotEmpty)
+                                      ? 'Gagal memuat template checklist'
+                                      : 'Tidak ada template checklist untuk jenis ini',
                                   textAlign: TextAlign.center,
                                   style: const TextStyle(
-                                      fontSize: 12,
                                       color: AppColors.textSecondary),
                                 ),
-                              ],
-                              const SizedBox(height: 12),
-                              OutlinedButton.icon(
-                                onPressed: _loadingTemplate
-                                    ? null
-                                    : _retryLoadTemplate,
-                                icon: _loadingTemplate
-                                    ? const SizedBox(
-                                        height: 14,
-                                        width: 14,
-                                        child: CircularProgressIndicator(
-                                            strokeWidth: 2),
-                                      )
-                                    : const Icon(Icons.refresh_outlined,
-                                        size: 16),
-                                label: Text(_loadingTemplate
-                                    ? 'Memuat...'
-                                    : 'Muat Ulang'),
-                              ),
-                            ]),
-                          ),
-                        )
-                      else
-                        ..._checklistItems.asMap().entries.map(
-                              (e) => _ChecklistItemCard(
-                                item: e.value,
-                                index: e.key,
-                                onChanged: () => setState(() {}),
-                              ),
+                                if (templateError != null &&
+                                    templateError.isNotEmpty) ...[
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    templateError,
+                                    textAlign: TextAlign.center,
+                                    style: const TextStyle(
+                                        fontSize: 12,
+                                        color: AppColors.textSecondary),
+                                  ),
+                                ],
+                                const SizedBox(height: 12),
+                                OutlinedButton.icon(
+                                  onPressed: _loadingTemplate
+                                      ? null
+                                      : _retryLoadTemplate,
+                                  icon: _loadingTemplate
+                                      ? const SizedBox(
+                                          height: 14,
+                                          width: 14,
+                                          child: CircularProgressIndicator(
+                                              strokeWidth: 2),
+                                        )
+                                      : const Icon(Icons.refresh_outlined,
+                                          size: 16),
+                                  label: Text(_loadingTemplate
+                                      ? 'Memuat...'
+                                      : 'Muat Ulang'),
+                                ),
+                              ]),
                             ),
-                    ],
+                          )
+                        else
+                          ..._checklistItems.asMap().entries.map(
+                                (e) => _ChecklistItemCard(
+                                  item: e.value,
+                                  index: e.key,
+                                  onChanged: () => setState(() {}),
+                                ),
+                              ),
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(height: 16),
-                _buildSectionCard(
-                  title: 'Hasil Realisasi',
-                  subtitle:
-                      'Tentukan kondisi akhir unit dan tambahkan catatan bila ada temuan.',
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('Kondisi Akhir',
-                          style: TextStyle(
-                              fontWeight: FontWeight.w700, fontSize: 14)),
-                      const SizedBox(height: 10),
-                      Row(
-                        children: _kondisiList.map((k) {
-                          final selected = _kondisi == k;
-                          return Expanded(
-                            child: Padding(
-                              padding: EdgeInsets.only(
-                                  right: k == _kondisiList.last ? 0 : 8),
-                              child: InkWell(
-                                onTap: () => setState(() => _kondisi = k),
-                                borderRadius: BorderRadius.circular(14),
-                                child: AnimatedContainer(
-                                  duration: const Duration(milliseconds: 180),
-                                  padding:
-                                      const EdgeInsets.symmetric(vertical: 12),
-                                  decoration: BoxDecoration(
-                                    color: selected
-                                        ? _kondisiColor(k)
-                                        : _kondisiColor(k)
-                                            .withValues(alpha: 0.08),
-                                    borderRadius: BorderRadius.circular(14),
-                                    border: Border.all(
+                  const SizedBox(height: 16),
+                  _buildSectionCard(
+                    title: 'Hasil Realisasi',
+                    subtitle:
+                        'Tentukan kondisi akhir unit dan tambahkan catatan bila ada temuan.',
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Kondisi Akhir',
+                            style: TextStyle(
+                                fontWeight: FontWeight.w700, fontSize: 14)),
+                        const SizedBox(height: 10),
+                        Row(
+                          children: _kondisiList.map((k) {
+                            final selected = _kondisi == k;
+                            return Expanded(
+                              child: Padding(
+                                padding: EdgeInsets.only(
+                                    right: k == _kondisiList.last ? 0 : 8),
+                                child: InkWell(
+                                  onTap: () => setState(() => _kondisi = k),
+                                  borderRadius: BorderRadius.circular(14),
+                                  child: AnimatedContainer(
+                                    duration: const Duration(milliseconds: 180),
+                                    padding:
+                                        const EdgeInsets.symmetric(vertical: 12),
+                                    decoration: BoxDecoration(
                                       color: selected
                                           ? _kondisiColor(k)
-                                          : Colors.transparent,
-                                    ),
-                                  ),
-                                  child: Center(
-                                    child: Text(
-                                      k,
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w700,
+                                          : _kondisiColor(k)
+                                              .withValues(alpha: 0.08),
+                                      borderRadius: BorderRadius.circular(14),
+                                      border: Border.all(
                                         color: selected
-                                            ? Colors.white
-                                            : _kondisiColor(k),
+                                            ? _kondisiColor(k)
+                                            : Colors.transparent,
+                                      ),
+                                    ),
+                                    child: Center(
+                                      child: Text(
+                                        k,
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w700,
+                                          color: selected
+                                              ? Colors.white
+                                              : _kondisiColor(k),
+                                        ),
                                       ),
                                     ),
                                   ),
                                 ),
                               ),
-                            ),
-                          );
-                        }).toList(),
-                      ),
-                      const SizedBox(height: 18),
-                      const Text('Catatan',
-                          style: TextStyle(
-                              fontWeight: FontWeight.w700, fontSize: 14)),
-                      const SizedBox(height: 8),
-                      TextField(
-                        controller: _ketCtrl,
-                        maxLines: 4,
-                        decoration: const InputDecoration(
-                          hintText:
-                              'Tuliskan catatan atau temuan selama maintenance...',
-                          alignLabelWithHint: true,
+                            );
+                          }).toList(),
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-                _buildPhotoSection(),
-                const SizedBox(height: 18),
-                Consumer<JadwalProvider>(
-                  builder: (_, p, __) => Card(
-                    margin: EdgeInsets.zero,
-                    child: Padding(
-                      padding: const EdgeInsets.all(14),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // const Text(
-                                                     const Text(
-                            'Pilih simpan sebagai Draft (Tunda TTD) atau lanjutkan Tanda Tangan PIC untuk menyelesaikan realisasi.',
+                        const SizedBox(height: 18),
+                        const Text('Catatan',
                             style: TextStyle(
-                                fontSize: 12, color: AppColors.textSecondary),
+                                fontWeight: FontWeight.w700, fontSize: 14)),
+                        const SizedBox(height: 8),
+                        TextField(
+                          controller: _ketCtrl,
+                          maxLines: 4,
+                          decoration: const InputDecoration(
+                            hintText:
+                                'Tuliskan catatan atau temuan selama maintenance...',
+                            alignLabelWithHint: true,
                           ),
-                          const SizedBox(height: 14),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: OutlinedButton.icon(
-                                  onPressed: p.loading || _submitting
-                                      ? null
-                                      : _saveAsDraft,
-                                  style: OutlinedButton.styleFrom(
-                                    padding: const EdgeInsets.symmetric(vertical: 12),
-                                    minimumSize: const Size(double.infinity, 48),
-                                    side: const BorderSide(color: AppColors.primary, width: 1.5),
-                                    foregroundColor: AppColors.primary,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                  ),
-                                  icon: p.loading || _submitting
-                                      ? const SizedBox(
-                                          height: 16,
-                                          width: 16,
-                                          child: CircularProgressIndicator(
-                                              strokeWidth: 2),
-                                        )
-                                      : const Icon(Icons.save_outlined, size: 18),
-                                  label: const Text('Simpan Draft', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: ElevatedButton.icon(
-                                  onPressed: p.loading || _submitting
-                                      ? null
-                                      : _proceedToTtd,
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: AppColors.success,
-                                    foregroundColor: Colors.white,
-                                    padding: const EdgeInsets.symmetric(vertical: 12),
-                                    minimumSize: const Size(double.infinity, 48),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    elevation: 0,
-                                  ),
-                                  icon: p.loading || _submitting
-                                      ? const SizedBox(
-                                          height: 16,
-                                          width: 16,
-                                          child: CircularProgressIndicator(
-                                              color: Colors.white, strokeWidth: 2),
-                                        )
-                                      : const Icon(Icons.draw_outlined, size: 18),
-                                  label: const Text('Tanda Tangan PIC', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ),
-                ),
-              ],
+                  const SizedBox(height: 16),
+                  _buildPhotoSection(),
+                  const SizedBox(height: 20),
+                  _buildActionButtonsCard(),
+                ],
+              ),
             ),
           ),
         );
@@ -898,7 +972,7 @@ class _RealisasiFormScreenState extends State<RealisasiFormScreen> {
     if ((_invMerk ?? '').trim().isNotEmpty) {
       metaItems.add(
         _metaChip(
-            Icons.branding_watermark_outlined, _invMerk!.trim().toUpperCase()),
+            Icons.branding_watermark_outlined, _invMerk!.trim()),
       );
     }
     if ((_invKondisiAwal ?? '').trim().isNotEmpty) {

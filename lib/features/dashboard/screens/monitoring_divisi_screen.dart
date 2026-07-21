@@ -557,7 +557,7 @@ class _MonitoringDivisiScreenState extends State<MonitoringDivisiScreen> with Si
                       color: AppColors.textPrimary,
                     ),
                     decoration: InputDecoration(
-                      hintText: 'Pencarian Progress',
+                      hintText: 'Cari divisi / jadwal...',
                       hintStyle: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w400,
@@ -916,7 +916,7 @@ class _PenjadwalanDivisiCardState extends State<_PenjadwalanDivisiCard> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Divisi ${divisi.toUpperCase()}',
+                              'Divisi $divisi',
                               style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w700,
@@ -1170,12 +1170,11 @@ class _PenjadwalanDivisiCardState extends State<_PenjadwalanDivisiCard> {
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
-                    isScheduled ? '${jadwalList.length} JADWAL AKTIF' : 'BELUM DIJADWALKAN',
+                    isScheduled ? '${jadwalList.length} jadwal aktif' : 'Belum dijadwalkan',
                     style: TextStyle(
-                      fontSize: 9,
+                      fontSize: 10,
                       color: color,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 0.5,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ),

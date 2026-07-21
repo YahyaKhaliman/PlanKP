@@ -169,7 +169,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           ),
           const SizedBox(height: 18),
           const Text(
-            'BUAT AKUN',
+            'Buat Akun',
             style: TextStyle(
               fontSize: 34,
               fontWeight: FontWeight.w800,
@@ -204,7 +204,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const Text(
-              'REGISTRASI',
+              'Registrasi',
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.w700,
@@ -214,7 +214,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             const SizedBox(height: 24),
             _buildInputField(
               controller: _namaCtrl,
-              label: 'NAMA LENGKAP',
+              label: 'Nama Lengkap',
               icon: Icons.person_outline_rounded,
               textCapitalization: TextCapitalization.characters,
               inputFormatters: [UpperCaseTextFormatter()],
@@ -232,7 +232,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             ),
             const SizedBox(height: 14),
             _buildDropdownField<String>(
-              label: 'DIVISI',
+              label: 'Divisi',
               icon: Icons.account_tree_outlined,
               value: _divisiCtrl.text.isNotEmpty &&
                       _divisiOptions.contains(_divisiCtrl.text)
@@ -262,7 +262,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                   )
                 : _buildDropdownField<String>(
-                    label: 'CABANG',
+                    label: 'Cabang',
                     icon: Icons.business_outlined,
                     value: _selectedCabang,
                     items: _pabrikList
@@ -281,7 +281,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             const SizedBox(height: 14),
             _buildInputField(
               controller: _passwordCtrl,
-              label: 'PASSWORD',
+              label: 'Password',
               icon: Icons.lock_outline_rounded,
               isPassword: true,
               obscure: _obscure,
@@ -310,7 +310,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             strokeWidth: 2.5, color: Colors.white),
                       )
                     : const Text(
-                        'DAFTAR SEKARANG',
+                        'Daftar',
                         style: TextStyle(
                             fontWeight: FontWeight.w700, fontSize: 15),
                       ),
@@ -421,7 +421,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         const Text(
-          'SUDAH PUNYA AKUN?',
+          'Sudah punya akun?',
           style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w500, fontSize: 14),
         ),
         TextButton(
@@ -430,7 +430,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 8),
           ),
           child: const Text(
-            'LOGIN',
+            'Masuk',
             style: TextStyle(
               fontWeight: FontWeight.w700,
               fontSize: 14,

@@ -278,7 +278,7 @@ class _LoginScreenState extends State<LoginScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const Text(
-              'LOGIN',
+              'Login',
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.w700,
@@ -288,7 +288,7 @@ class _LoginScreenState extends State<LoginScreen> {
             const SizedBox(height: 24),
             _buildInputField(
               controller: _usernameCtrl,
-              label: 'USERNAME',
+              label: 'Username',
               icon: Icons.alternate_email_rounded,
               textCapitalization: TextCapitalization.characters,
               inputFormatters: [UpperCaseTextFormatter()],
@@ -299,7 +299,7 @@ class _LoginScreenState extends State<LoginScreen> {
             const SizedBox(height: 16),
             _buildInputField(
               controller: _passCtrl,
-              label: 'PASSWORD',
+              label: 'Password',
               icon: Icons.lock_outline_rounded,
               isPassword: true,
               obscure: _obscure,
@@ -335,7 +335,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     });
                   },
                   child: const Text(
-                    'INGAT SAYA',
+                    'Ingat saya',
                     style: TextStyle(
                       color: AppColors.textSecondary,
                       fontWeight: FontWeight.w600,
@@ -365,31 +365,19 @@ class _LoginScreenState extends State<LoginScreen> {
                             strokeWidth: 2.5, color: Colors.white),
                       )
                     : const Text(
-                        'MASUK',
+                        'Masuk',
                         style: TextStyle(
                             fontWeight: FontWeight.w700, fontSize: 15),
                       ),
               ),
             ),
-            const SizedBox(height: 24),
-            const Divider(height: 1, color: AppColors.border),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
             Text(
-              _appVersionLabel,
-              style: const TextStyle(
-                color: AppColors.textSecondary,
-                fontSize: 11,
-                fontWeight: FontWeight.w500,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 4),
-            Text(
-              _updateStatusLabel,
+              '$_appVersionLabel • $_updateStatusLabel',
               style: TextStyle(
                 color: _updateStatusColor,
                 fontSize: 11,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w500,
               ),
               textAlign: TextAlign.center,
             ),
@@ -459,7 +447,7 @@ class _LoginScreenState extends State<LoginScreen> {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         const Text(
-          'BELUM PUNYA AKUN?',
+          'Belum punya akun?',
           style: TextStyle(
               color: AppColors.textSecondary,
               fontWeight: FontWeight.w500,
@@ -471,7 +459,7 @@ class _LoginScreenState extends State<LoginScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 8),
           ),
           child: const Text(
-            'DAFTAR SEKARANG',
+            'Daftar',
             style: TextStyle(
               fontWeight: FontWeight.w700,
               fontSize: 14,

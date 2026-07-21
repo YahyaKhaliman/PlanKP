@@ -247,12 +247,11 @@ class _JenisCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  jenis.jenisKategori.toUpperCase(),
+                  jenis.jenisKategori,
                   style: const TextStyle(
                     fontSize: 10,
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w600,
                     color: AppColors.textSecondary,
-                    letterSpacing: 0.5,
                   ),
                 ),
               ],

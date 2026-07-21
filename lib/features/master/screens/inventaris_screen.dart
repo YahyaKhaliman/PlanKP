@@ -371,12 +371,11 @@ class _InventarisGroupCardState extends State<_InventarisGroupCard>
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          widget.kategoriLabel.toUpperCase(),
+                          widget.kategoriLabel,
                           style: const TextStyle(
                             fontSize: 10,
-                            fontWeight: FontWeight.w800,
+                            fontWeight: FontWeight.w600,
                             color: AppColors.textSecondary,
-                            letterSpacing: 0.5,
                           ),
                         ),
                       ],
@@ -493,7 +492,7 @@ class _InventarisCard extends StatelessWidget {
                     if (isInactive) ...[
                       const SizedBox(width: 6),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
                           color: AppColors.danger.withValues(alpha: 0.08),
                           borderRadius: BorderRadius.circular(4),
@@ -501,7 +500,7 @@ class _InventarisCard extends StatelessWidget {
                         child: const Text(
                           'nonaktif',
                           style: TextStyle(
-                            fontSize: 9,
+                            fontSize: 10,
                             fontWeight: FontWeight.w700,
                             color: AppColors.danger,
                           ),
@@ -512,7 +511,17 @@ class _InventarisCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  'No: ${item.invNo}${item.invPabrikKode != null ? ' · $pabrikLabel' : ''} · $merk · PIC: $pic',
+                  'No: ${item.invNo}${item.invPabrikKode != null ? ' · $pabrikLabel' : ''}',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: AppColors.textSecondary,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '$merk · PIC: $pic',
                   style: const TextStyle(
                     fontSize: 11,
                     color: AppColors.textSecondary,

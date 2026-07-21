@@ -246,7 +246,7 @@ class _JadwalScreenState extends State<JadwalScreen> {
             children: [
               const Expanded(
                 child: Text(
-                  'Ringkasan Realisasi per Frekuensi',
+                  'Progres per Frekuensi',
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w800,
@@ -292,46 +292,71 @@ class _JadwalScreenState extends State<JadwalScreen> {
                           : AppColors.border.withValues(alpha: 0.6),
                     ),
                   ),
-                  child: Row(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Container(
-                        width: 8,
-                        height: 8,
-                        decoration: BoxDecoration(
-                          color:
-                              isSelected ? AppColors.primary : Colors.grey[300],
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          f,
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight:
-                                isSelected ? FontWeight.w800 : FontWeight.w600,
-                            color: AppColors.textPrimary,
+                      Row(
+                        children: [
+                          Container(
+                            width: 8,
+                            height: 8,
+                            decoration: BoxDecoration(
+                              color:
+                                  isSelected ? AppColors.primary : Colors.grey[300],
+                              shape: BoxShape.circle,
+                            ),
                           ),
-                        ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              f,
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight:
+                                    isSelected ? FontWeight.w800 : FontWeight.w600,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                          ),
+                          Text(
+                            '${row['realisasi']}/${row['target']}',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Text(
+                            '${row['pct']}%',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                              color: isSelected
+                                  ? AppColors.primary
+                                  : AppColors.textPrimary,
+                            ),
+                          ),
+                        ],
                       ),
-                      Text(
-                        '${row['realisasi']}/${row['target']}',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Text(
-                        '${row['pct']}%',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w800,
-                          color: isSelected
-                              ? AppColors.primary
-                              : AppColors.textPrimary,
+                      const SizedBox(height: 8),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(99),
+                        child: LinearProgressIndicator(
+                          value: (row['target'] as int) > 0
+                              ? ((row['realisasi'] as int) / (row['target'] as int)).clamp(0.0, 1.0)
+                              : 0.0,
+                          minHeight: 4,
+                          backgroundColor: isSelected
+                              ? AppColors.primary.withValues(alpha: 0.1)
+                              : AppColors.border.withValues(alpha: 0.5),
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            (row['pct'] as int) >= 100
+                                ? AppColors.success
+                                : ((row['pct'] as int) > 50
+                                    ? AppColors.primary
+                                    : AppColors.warning),
+                          ),
                         ),
                       ),
                     ],
@@ -500,7 +525,8 @@ class _JadwalScreenState extends State<JadwalScreen> {
     final auth = context.watch<AuthProvider>();
     final role = auth.user?['user_jabatan'];
     final isAdmin = role == 'admin' || role == 'manager';
-    final isUser = role == 'user';
+    final isUser =
+        role == 'user' || role == 'teknisi' || role == 'it_support';
     final isDesktop = AppBreakpoints.isDesktop(context);
     final maxContentWidth = isDesktop ? 1180.0 : 860.0;
 
@@ -728,7 +754,7 @@ class _InventarisPickerSheetState extends State<_InventarisPickerSheet> {
                   const Align(
                     alignment: Alignment.centerLeft,
                     child: Text(
-                      'Pilih Unit untuk Realisasi',
+                      'Pilih unit yang akan diperiksa',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
@@ -747,7 +773,7 @@ class _InventarisPickerSheetState extends State<_InventarisPickerSheet> {
                       });
                     },
                     decoration: InputDecoration(
-                      hintText: 'Cari serial number, nama, atau PIC...',
+                      hintText: 'Cari nama, serial number, atau PIC...',
                       suffixIcon: IconButton(
                         icon: const Icon(Icons.search, size: 20, color: AppColors.primary),
                         onPressed: () {
@@ -796,7 +822,7 @@ class _InventarisPickerSheetState extends State<_InventarisPickerSheet> {
                             itemBuilder: (_, i) {
                               final inv = filtered[i];
                               final merk =
-                                  (inv['inv_merk'] ?? '-').toString().toUpperCase();
+                                  (inv['inv_merk'] ?? '-').toString();
                               final pabrik = inv['inv_pabrik_kode'] ?? '-';
                               final sn = inv['inv_serial_number'] ?? '-';
                               final picName = _resolvePicName(inv);
@@ -968,8 +994,8 @@ class _JadwalCard extends StatelessWidget {
 
   String _getRemainingDays(JadwalModel j) {
     final diff = _getRemainingDaysDiff(j);
-    if (diff < 0) return 'Terlewat ${-diff} hari';
-    if (diff == 0) return 'Hari ini';
+    if (diff < 0) return '⚠ Terlambat ${-diff}h';
+    if (diff == 0) return 'Hari ini!';
     if (diff == 1) return 'Besok';
     return '$diff hari lagi';
   }
@@ -1087,22 +1113,21 @@ class _JadwalCard extends StatelessWidget {
                                     borderRadius: BorderRadius.circular(6),
                                   ),
                                   child: Text(
-                                    jadwal.jdwFrekuensi.toUpperCase(),
+                                    jadwal.jdwFrekuensi,
                                     style: TextStyle(
-                                      fontSize: 9,
-                                      color: Colors.grey.shade700,
-                                      fontWeight: FontWeight.bold,
+                                      fontSize: 10,
+                                      color: AppColors.textSecondary,
+                                      fontWeight: FontWeight.w600,
                                     ),
                                   ),
                                 ),
                                 const SizedBox(width: 6),
                                 Text(
-                                  jenisNama.toUpperCase(),
+                                  jenisNama,
                                   style: TextStyle(
                                     fontSize: 10,
                                     color: divisiColor,
-                                    fontWeight: FontWeight.w800,
-                                    letterSpacing: 0.5,
+                                    fontWeight: FontWeight.w700,
                                   ),
                                 ),
                               ],
@@ -1180,7 +1205,7 @@ class _JadwalCard extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        '$selesai / $target Unit selesai',
+                        '$selesai / $target selesai (${(progressPercent * 100).round()}%)',
                         style: const TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w800,
@@ -1892,8 +1917,16 @@ class _JadwalFormState extends State<_JadwalForm> {
                 ),
                 hint: const Text('Pilih pelaksana'),
                 items: master.userList
-                    .where((u) =>
-                        u.userDivisi == _divisi && u.userJabatan == 'user')
+                    .where((u) {
+                      final targetDivisi = (_divisi ?? '').trim().toLowerCase();
+                      final userDiv = u.userDivisi.trim().toLowerCase();
+                      final matchDivisi =
+                          targetDivisi.isEmpty || userDiv == targetDivisi;
+                      final matchJabatan = u.userJabatan == 'user' ||
+                          u.userJabatan == 'teknisi' ||
+                          u.userJabatan == 'it_support';
+                      return matchDivisi && matchJabatan && u.userIsActive;
+                    })
                     .map((u) => DropdownMenuItem(
                           value: u.userId,
                           child: Text(u.userNama),
