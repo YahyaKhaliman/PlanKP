@@ -155,7 +155,7 @@ class _MonitoringDivisiScreenState extends State<MonitoringDivisiScreen>
                 ),
                 tabs: const [
                   Tab(text: 'Penjadwalan'),
-                  Tab(text: 'Progress'),
+                  Tab(text: 'Progres'),
                 ],
               ),
             ),
@@ -331,7 +331,7 @@ class _MonitoringDivisiScreenState extends State<MonitoringDivisiScreen>
                             ),
                           if (totalMatched > 0)
                             const TextSpan(
-                                text: 'progress untuk kata kunci '),
+                                text: 'progres untuk kata kunci '),
                           TextSpan(
                             text: '"$_searchQuery"',
                             style: TextStyle(
@@ -359,7 +359,7 @@ class _MonitoringDivisiScreenState extends State<MonitoringDivisiScreen>
                 runSpacing: 6,
                 children: [
                   const Text(
-                    'Progress Realisasi Divisi',
+                    'Progres Realisasi Divisi',
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
@@ -441,7 +441,7 @@ class _MonitoringDivisiScreenState extends State<MonitoringDivisiScreen>
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      'Tidak ada progress yang cocok dengan "$_searchQuery"',
+                      'Tidak ada progres yang cocok dengan "$_searchQuery"',
                       style: const TextStyle(
                         fontSize: 13,
                         color: AppColors.textSecondary,
@@ -1364,8 +1364,8 @@ class _ProgressDivisiCardState extends State<_ProgressDivisiCard> {
     }
 
     final int realisasiPersen = totalTarget > 0
-        ? ((totalRealisasi / totalTarget) * 100).round().clamp(0, 100)
-        : 0;
+    ? ((totalRealisasi / totalTarget) * 100).round().clamp(0, 100)
+    : 0;
 
     return Container(
       decoration: BoxDecoration(

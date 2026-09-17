@@ -15,6 +15,7 @@ class JadwalProvider extends ChangeNotifier {
   List<dynamic> monitoringDivisiList = [];
   int? monitoringBulan;
   int? monitoringTahun;
+  Map<String, dynamic>? historySummaryData;
   final Map<String, Set<int>> _holidayDaysByMonth = {};
   Map<String, dynamic> dashboardSummary = {};
   List<RealisasiModel> kendalaList = [];
@@ -87,6 +88,34 @@ class JadwalProvider extends ChangeNotifier {
     }
   }
 
+  Future<Map<String, dynamic>?> fetchRealisasiHistorySummary({
+    int? bulan,
+    int? tahun,
+    int? userId,
+    String? divisi,
+  }) async {
+    try {
+      final query = <String, dynamic>{
+        if (bulan != null) 'bulan': bulan,
+        if (tahun != null) 'tahun': tahun,
+        if (userId != null) 'user_id': userId,
+        if (divisi != null && divisi.isNotEmpty) 'divisi': divisi,
+      };
+      final res =
+          await ApiClient.get(ApiConfig.realisasiHistorySummary, query: query);
+      final responseData = res['data'];
+      if (responseData is Map<String, dynamic>) {
+        historySummaryData = responseData;
+        notifyListeners();
+        return responseData;
+      }
+      return null;
+    } on ApiException catch (e) {
+      _setError(e.message);
+      return null;
+    }
+  }
+
   bool _loading = false;
   bool _loadingDetail = false;
   String? _error;
@@ -100,8 +129,14 @@ class JadwalProvider extends ChangeNotifier {
   String? get error => _error;
 
   Set<int> getHolidayDaysForMonth(DateTime month, {String? divisi}) {
-    final key = '${_monthKey(month)}_${divisi ?? "ALL"}';
-    return _holidayDaysByMonth[key] ?? <int>{};
+    if (divisi != null && divisi.isNotEmpty) {
+      final divKey = '${_monthKey(month)}_$divisi';
+      if (_holidayDaysByMonth.containsKey(divKey)) {
+        return _holidayDaysByMonth[divKey]!;
+      }
+    }
+    final allKey = '${_monthKey(month)}_ALL';
+    return _holidayDaysByMonth[allKey] ?? <int>{};
   }
 
   String _monthKey(DateTime month) =>

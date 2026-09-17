@@ -82,6 +82,11 @@ class _RealisasiHistoryScreenState extends State<RealisasiHistoryScreen> {
         await provider.fetchRealisasi(status: 'Selesai');
       }
       await provider.fetchHariLiburForMonth(_selectedMonth);
+      await provider.fetchRealisasiHistorySummary(
+        bulan: _selectedMonth.month,
+        tahun: _selectedMonth.year,
+        userId: _selectedUserId,
+      );
     } else {
       await _loadDraftData();
     }
@@ -92,7 +97,13 @@ class _RealisasiHistoryScreenState extends State<RealisasiHistoryScreen> {
       _selectedMonth = DateTime(_selectedMonth.year, _selectedMonth.month - 1);
       _selectedDay = null;
     });
-    context.read<JadwalProvider>().fetchHariLiburForMonth(_selectedMonth);
+    final p = context.read<JadwalProvider>();
+    p.fetchHariLiburForMonth(_selectedMonth);
+    p.fetchRealisasiHistorySummary(
+      bulan: _selectedMonth.month,
+      tahun: _selectedMonth.year,
+      userId: _selectedUserId,
+    );
   }
 
   void _nextMonth() {
@@ -100,7 +111,25 @@ class _RealisasiHistoryScreenState extends State<RealisasiHistoryScreen> {
       _selectedMonth = DateTime(_selectedMonth.year, _selectedMonth.month + 1);
       _selectedDay = null;
     });
-    context.read<JadwalProvider>().fetchHariLiburForMonth(_selectedMonth);
+    final p = context.read<JadwalProvider>();
+    p.fetchHariLiburForMonth(_selectedMonth);
+    p.fetchRealisasiHistorySummary(
+      bulan: _selectedMonth.month,
+      tahun: _selectedMonth.year,
+      userId: _selectedUserId,
+    );
+  }
+
+  void _onUserFilterChanged(int? value) {
+    setState(() {
+      _selectedUserId = value;
+      _selectedDay = null;
+    });
+    context.read<JadwalProvider>().fetchRealisasiHistorySummary(
+      bulan: _selectedMonth.month,
+      tahun: _selectedMonth.year,
+      userId: value,
+    );
   }
 
   Future<void> _showRealisasiDetail(RealisasiModel item) async {
@@ -419,35 +448,65 @@ class _RealisasiHistoryScreenState extends State<RealisasiHistoryScreen> {
               filteredMonthRealisasi = _filterRealisasiBySelectedUser(monthRealisasi, _selectedUserId);
               holidayDays = p.getHolidayDaysForMonth(_selectedMonth);
 
-              metrics = _buildMonthlyMetrics(
-                jadwalList: filteredJadwal,
-                realisasiList: filteredMonthRealisasi,
-                month: _selectedMonth,
-                holidayDays: holidayDays,
-              );
-
               userItems = _buildUserFilterItems(p.jadwalList, p.realisasiList);
-              recapData = _buildRecapData(
-                jadwalList: filteredJadwal,
-                realisasiList: filteredMonthRealisasi,
-                month: _selectedMonth,
-                holidayDays: holidayDays,
-              );
 
-              final crossMonthWeeks = <int>{};
-              for (final r in filteredMonthRealisasi) {
-                final frekuensi = (r.jadwal?['jdw_frekuensi'] ?? '').toString();
-                if (frekuensi == 'Mingguan') {
-                  final hasOtherMonth = p.realisasiList.any((other) =>
-                      other.realWeekNumber == r.realWeekNumber &&
-                      other.realTahun == r.realTahun &&
-                      other.realBulan != r.realBulan);
-                  if (hasOtherMonth) {
-                    crossMonthWeeks.add(r.realWeekNumber);
+              if (p.historySummaryData != null) {
+                final data = p.historySummaryData!;
+                final int totalTarget = data['total_target'] ?? 0;
+                final int totalRealisasi = data['total_realisasi'] ?? 0;
+                metrics = _MonthlyHistoryMetrics(
+                  targetCount: totalTarget,
+                  doneCount: totalRealisasi,
+                );
+
+                final List<dynamic> rawGroups = data['groups'] ?? [];
+                final groups = rawGroups.map((g) {
+                  final String freq = g['frequency'] ?? 'Harian';
+                  final List<dynamic> rawDetails = g['details'] ?? [];
+                  final details = rawDetails.map((d) {
+                    return _RekapDetailRow(
+                      namaTugas: d['nama_tugas'] ?? '-',
+                      totalTargetPerPeriod: d['total_target_per_period'] ?? 0,
+                      target: d['target'] ?? 0,
+                      realisasi: d['realisasi'] ?? 0,
+                    );
+                  }).toList();
+                  return _RekapFrequencyGroup(frequency: freq, details: details);
+                }).toList();
+
+                recapData = _MonthlyRecapData(groups: groups);
+                final List<dynamic> rawWeeks = data['cross_month_weeks'] ?? [];
+                sortedCrossMonthWeeks = rawWeeks.map((w) => (w as num).toInt()).toList()..sort();
+              } else {
+                metrics = _buildMonthlyMetrics(
+                  jadwalList: filteredJadwal,
+                  realisasiList: filteredMonthRealisasi,
+                  month: _selectedMonth,
+                  holidayDays: holidayDays,
+                );
+
+                recapData = _buildRecapData(
+                  jadwalList: filteredJadwal,
+                  realisasiList: filteredMonthRealisasi,
+                  month: _selectedMonth,
+                  holidayDays: holidayDays,
+                );
+
+                final crossMonthWeeks = <int>{};
+                for (final r in filteredMonthRealisasi) {
+                  final frekuensi = (r.jadwal?['jdw_frekuensi'] ?? '').toString();
+                  if (frekuensi == 'Mingguan') {
+                    final hasOtherMonth = p.realisasiList.any((other) =>
+                        other.realWeekNumber == r.realWeekNumber &&
+                        other.realTahun == r.realTahun &&
+                        other.realBulan != r.realBulan);
+                    if (hasOtherMonth) {
+                      crossMonthWeeks.add(r.realWeekNumber);
+                    }
                   }
                 }
+                sortedCrossMonthWeeks = crossMonthWeeks.toList()..sort();
               }
-              sortedCrossMonthWeeks = crossMonthWeeks.toList()..sort();
             }
 
             return Center(
@@ -604,12 +663,7 @@ class _RealisasiHistoryScreenState extends State<RealisasiHistoryScreen> {
                                         child: _UserFilterCard(
                                           selectedUserId: _selectedUserId,
                                           users: userItems,
-                                          onChanged: (value) {
-                                            setState(() {
-                                              _selectedUserId = value;
-                                              _selectedDay = null;
-                                            });
-                                          },
+                                          onChanged: _onUserFilterChanged,
                                         ),
                                       ),
                                     ],
@@ -634,12 +688,7 @@ class _RealisasiHistoryScreenState extends State<RealisasiHistoryScreen> {
                                     child: _UserFilterCard(
                                       selectedUserId: _selectedUserId,
                                       users: userItems,
-                                      onChanged: (value) {
-                                        setState(() {
-                                          _selectedUserId = value;
-                                          _selectedDay = null;
-                                        });
-                                      },
+                                      onChanged: _onUserFilterChanged,
                                     ),
                                   ),
                                 ],
@@ -673,7 +722,7 @@ class _RealisasiHistoryScreenState extends State<RealisasiHistoryScreen> {
                                   ),
                                   Expanded(
                                     child: Text(
-                                      'Catatan: Terdapat realisasi jadwal Mingguan pada minggu ke-${sortedCrossMonthWeeks.join(', ')} yang dicatat lintas bulan. Progress mingguan tetap dihitung sebagai 1 periode.',
+                                      'Catatan: Terdapat realisasi jadwal Mingguan pada minggu ke-${sortedCrossMonthWeeks.join(', ')} yang dicatat lintas bulan. Progres mingguan tetap dihitung sebagai 1 periode.',
                                       style: const TextStyle(
                                           fontSize: 12,
                                           color: Color(0xFF92400E),

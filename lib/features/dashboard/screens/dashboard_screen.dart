@@ -251,9 +251,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     setState(() {
                       _selectedTargetMonth = DateTime(tempTahun, tempBulan);
                     });
-                    context
-                        .read<JadwalProvider>()
-                        .fetchHariLiburForMonth(_selectedTargetMonth);
+                    final p = context.read<JadwalProvider>();
+                    for (int i = 5; i >= 0; i--) {
+                      p.fetchHariLiburForMonth(DateTime(tempTahun, tempBulan - i, 1));
+                    }
+                    p.fetchMonitoringDivisi(bulan: tempBulan, tahun: tempTahun);
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
@@ -425,13 +427,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
           p.fetchJadwal(),
           p.fetchRealisasi(status: 'Selesai'),
           p.fetchDashboardSummary(),
-          p.fetchMonitoringDivisi(),
+          p.fetchMonitoringDivisi(bulan: _selectedTargetMonth.month, tahun: _selectedTargetMonth.year),
         ]);
       } else if (role == 'admin') {
         await Future.wait([
           p.fetchJadwalByDivisi(),
           p.fetchRealisasi(status: 'Selesai'),
           p.fetchDashboardSummary(),
+          p.fetchMonitoringDivisi(bulan: _selectedTargetMonth.month, tahun: _selectedTargetMonth.year),
         ]);
       } else {
         await Future.wait([
@@ -440,7 +443,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
           p.fetchDashboardSummary(),
         ]);
       }
-      await p.fetchHariLiburForMonth(DateTime.now());
+      final currentYear = _selectedTargetMonth.year;
+      for (int i = 5; i >= 0; i--) {
+        p.fetchHariLiburForMonth(DateTime(currentYear, _selectedTargetMonth.month - i, 1));
+      }
       if (!mounted) return;
       await context.read<MasterProvider>().fetchJenis();
 
@@ -2001,12 +2007,46 @@ class _DashboardScreenState extends State<DashboardScreen> {
   int _toInt(dynamic v) => (v is num) ? v.toInt() : (int.tryParse(v?.toString() ?? '') ?? 0);
 
   List<Map<String, dynamic>> _getDivisiTargetRealisasiData(JadwalProvider p) {
+    // 1. Jika data monitoringDivisiList dari Backend tersedia, gunakan langsung 100%
+    //    (Sama persis seperti pada Tab Progress Monitoring Divisi)
+    if (p.monitoringDivisiList.isNotEmpty) {
+      final List<Map<String, dynamic>> result = [];
+      for (final item in p.monitoringDivisiList) {
+        final String div = (item['divisi'] ?? '').toString().trim().toUpperCase();
+        if (div.isEmpty) continue;
+
+        int divTarget = 0;
+        int divRealisasi = 0;
+
+        final List<dynamic> jenisList = item['jenis_list'] ?? [];
+        for (final jen in jenisList) {
+          final jadwalList = jen['jadwal'] as List<dynamic>? ?? [];
+          for (final jdw in jadwalList) {
+            divTarget += _toInt(jdw['jdw_target']);
+            divRealisasi += _toInt(jdw['jdw_realisasi']);
+          }
+        }
+
+        final int pct = divTarget > 0
+            ? ((divRealisasi / divTarget) * 100).round().clamp(0, 100)
+            : 0;
+
+        result.add({
+          'divisi': div,
+          'target_unit': divTarget,
+          'realisasi_unit': divRealisasi,
+          'progress_percent': pct,
+        });
+      }
+      return result;
+    }
+
+    // 2. Fallback jika data monitoringDivisiList belum termuat
     final Map<String, Map<String, dynamic>> divisiMap = {};
 
     final startOfMonth = DateTime(_selectedTargetMonth.year, _selectedTargetMonth.month, 1);
     final endOfMonth = DateTime(_selectedTargetMonth.year, _selectedTargetMonth.month + 1, 0);
 
-    // 1. Calculate Target per Divisi from Jadwal
     for (final j in p.jadwalList) {
       final String div = j.jdwDivisi.trim().toUpperCase();
       if (div.isEmpty) continue;
@@ -2028,7 +2068,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
       divisiMap[div]!['target_unit'] = (divisiMap[div]!['target_unit'] as int) + (count * perTarget);
     }
 
-    // 2. Calculate Realisasi Selesai per Divisi
     for (final r in p.realisasiList) {
       if (r.realStatus != 'Selesai') continue;
       if (r.realBulan != _selectedTargetMonth.month || r.realTahun != _selectedTargetMonth.year) continue;
@@ -2046,39 +2085,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
       }
     }
 
-    // Fallback / merge with API monitoringDivisiList
-    for (final item in p.monitoringDivisiList) {
-      final div = (item['divisi'] ?? '').toString().trim().toUpperCase();
-      if (div.isEmpty) continue;
-
-      int divTarget = 0;
-      int divRealisasi = 0;
-
-      if (item['detail_jenis'] != null && item['detail_jenis'] is List) {
-        for (final jen in (item['detail_jenis'] as List)) {
-          if (jen['jadwal'] != null && jen['jadwal'] is List) {
-            for (final jdw in (jen['jadwal'] as List)) {
-              divTarget += _toInt(jdw['jdw_target']);
-              divRealisasi += _toInt(jdw['jdw_realisasi']);
-            }
-          }
-        }
-      }
-
-      divisiMap.putIfAbsent(div, () => {
-        'divisi': div,
-        'target_unit': 0,
-        'realisasi_unit': 0,
-        'progress_percent': 0,
-      });
-
-      if ((divisiMap[div]!['target_unit'] as int) == 0 && divTarget > 0) {
-        divisiMap[div]!['target_unit'] = divTarget;
-        divisiMap[div]!['realisasi_unit'] = divRealisasi;
-      }
-    }
-
-    // 3. Compute Final Progress Percent per Divisi
     final List<Map<String, dynamic>> result = [];
     divisiMap.forEach((div, dataMap) {
       final target = dataMap['target_unit'] as int;
@@ -2125,6 +2131,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final List<double> monthlyPctList = [];
 
       for (final monthNum in monthList) {
+        // Jika bulan ini adalah bulan yang dipilih, utamakan data resmi dari monitoringDivisiList
+        if (monthNum == _selectedTargetMonth.month && p.monitoringDivisiList.isNotEmpty) {
+          final match = p.monitoringDivisiList.firstWhere(
+            (item) => (item['divisi'] ?? '').toString().trim().toUpperCase() == div,
+            orElse: () => null,
+          );
+          if (match != null) {
+            int divTarget = 0;
+            int divRealisasi = 0;
+            final List<dynamic> jenisList = match['jenis_list'] ?? [];
+            for (final jen in jenisList) {
+              final jadwalList = jen['jadwal'] as List<dynamic>? ?? [];
+              for (final jdw in jadwalList) {
+                divTarget += _toInt(jdw['jdw_target']);
+                divRealisasi += _toInt(jdw['jdw_realisasi']);
+              }
+            }
+            final double pct = divTarget > 0
+                ? ((divRealisasi / divTarget) * 100).clamp(0.0, 100.0)
+                : (divRealisasi > 0 ? 100.0 : 0.0);
+            monthlyPctList.add(pct);
+            continue;
+          }
+        }
+
         final targetMonth = DateTime(currentYear, monthNum, 1);
         final startOfMonth = DateTime(currentYear, monthNum, 1);
         final endOfMonth = DateTime(currentYear, monthNum + 1, 0);

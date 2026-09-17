@@ -17,6 +17,7 @@ class ApiConfig {
   static const String metadata = '/master/metadata';
   static const String dashboardSummary = '/master/dashboard/summary';
   static const String monitoringDivisi = '/master/monitoring-divisi';
+  static const String realisasiHistorySummary = '/master/realisasi/history-summary';
 
   static const String updateManifestUrl = String.fromEnvironment('UPDATE_MANIFEST_URL');
 }
