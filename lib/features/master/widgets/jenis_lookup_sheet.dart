@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../models/jenis_model.dart';
 import '../../../core/theme/app_theme.dart';
@@ -39,7 +40,7 @@ class _JenisLookupSheetState extends State<JenisLookupSheet> {
       expand: false,
       builder: (_, scrollCtrl) => Container(
         decoration: const BoxDecoration(
-          color: Colors.white,
+          color: AppColors.cardSurface,
           borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
         ),
         child: SafeArea(
@@ -51,7 +52,7 @@ class _JenisLookupSheetState extends State<JenisLookupSheet> {
                 height: 4,
                 margin: const EdgeInsets.only(top: 12, bottom: 16),
                 decoration: BoxDecoration(
-                  color: Colors.grey[300],
+                  color: AppColors.border,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -59,8 +60,11 @@ class _JenisLookupSheetState extends State<JenisLookupSheet> {
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: TextField(
                   controller: _searchCtrl,
+                  style: GoogleFonts.plusJakartaSans(fontSize: 14),
                   decoration: InputDecoration(
                     hintText: 'Cari jenis berdasarkan nama/kategori',
+                    hintStyle:
+                        GoogleFonts.plusJakartaSans(color: AppColors.textMuted),
                     prefixIcon: const Icon(Icons.search),
                     suffixIcon: _keyword.isNotEmpty
                         ? IconButton(
@@ -78,8 +82,12 @@ class _JenisLookupSheetState extends State<JenisLookupSheet> {
               const SizedBox(height: 12),
               Expanded(
                 child: filtered.isEmpty
-                    ? const Center(
-                        child: Text('Tidak ada jenis yang sesuai'),
+                    ? Center(
+                        child: Text(
+                          'Tidak ada jenis yang sesuai',
+                          style: GoogleFonts.plusJakartaSans(
+                              color: AppColors.textMuted),
+                        ),
                       )
                     : ListView.separated(
                         controller: scrollCtrl,
@@ -90,21 +98,32 @@ class _JenisLookupSheetState extends State<JenisLookupSheet> {
                         itemBuilder: (_, index) {
                           final jenis = filtered[index];
                           final selected = jenis.jenisId == widget.initialId;
-                          return ListTile(
-                            tileColor: selected
-                                ? AppColors.primary.withValues(alpha: 0.08)
-                                : null,
-                            shape: RoundedRectangleBorder(
+                          return Container(
+                            decoration: BoxDecoration(
+                              color: selected
+                                  ? AppColors.primarySoft
+                                  : AppColors.surface,
                               borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: selected
+                                    ? AppColors.primary
+                                    : AppColors.border,
+                              ),
                             ),
-                            title: Text(jenis.jenisNama,
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.w600)),
-                            trailing: selected
-                                ? const Icon(Icons.check,
-                                    color: AppColors.primary)
-                                : null,
-                            onTap: () => Navigator.pop(context, jenis),
+                            child: ListTile(
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              title: Text(jenis.jenisNama,
+                                  style: GoogleFonts.plusJakartaSans(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 13.5)),
+                              trailing: selected
+                                  ? const Icon(Icons.check,
+                                      color: AppColors.primary)
+                                  : null,
+                              onTap: () => Navigator.pop(context, jenis),
+                            ),
                           );
                         },
                       ),

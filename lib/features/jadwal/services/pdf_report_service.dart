@@ -3,8 +3,10 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:intl/intl.dart';
 
+import '../../../core/utils/date_formatter.dart';
 import '../models/jadwal_model.dart';
 import '../models/realisasi_model.dart';
+import '../providers/jadwal_provider.dart';
 
 // ─── Warna korporat ────────────────────────────────────────────────────────
 class _C {
@@ -78,7 +80,7 @@ class PdfReportService {
     final realisasiJadwalIds = filteredRealisasi.map((r) => r.realJadwalId).toSet();
 
     for (final j in jadwalList) {
-      if (j.jdwStatus != 'Draft') continue;
+      if (j.jdwStatus != 'Aktif' && j.jdwStatus != 'Selesai') continue;
 
       if (divisiFilter != 'Semua Divisi') {
         if (j.jdwDivisi.trim().toUpperCase() != divisiFilter.trim().toUpperCase()) {
@@ -554,37 +556,7 @@ class PdfReportService {
 
   // ── HELPER ───────────────────────────────────────────────────────────────
   static String _bulan(int m) {
-    const n = [
-      'Januari','Februari','Maret','April','Mei','Juni',
-      'Juli','Agustus','September','Oktober','November','Desember',
-    ];
-    return n[(m - 1).clamp(0, 11)];
-  }
-
-  static const List<String> _divisiSixDays = [
-    'GA',
-    'TEKNISI',
-    'MAINTENANCE',
-    'PRODUKSI',
-    'WORKSHOP'
-  ];
-
-  static bool _isWorkingDay(DateTime date, String? divisi) {
-    if (date.weekday == DateTime.sunday) return false;
-    if (date.weekday == DateTime.saturday) {
-      final norm = (divisi ?? '').trim().toUpperCase();
-      return _divisiSixDays.any((d) => d.toUpperCase() == norm);
-    }
-    return true;
-  }
-
-  static DateTime? _findNextWorkingDay(DateTime date, DateTime limit, String? divisi) {
-    var d = date;
-    while (!_isWorkingDay(d, divisi)) {
-      d = d.add(const Duration(days: 1));
-      if (d.isAfter(limit)) return null;
-    }
-    return d;
+    return DateFormatter.monthNames[(m - 1).clamp(0, 11)];
   }
 
   static int _calculateScheduleAppearancesInMonth(
@@ -592,47 +564,6 @@ class PdfReportService {
     DateTime start,
     DateTime end,
   ) {
-    final jStart = DateTime.tryParse(j.jdwTglMulai);
-    if (jStart == null) return 1;
-    final rangeStart = jStart.isAfter(start) ? jStart : start;
-    final jEndStr = j.jdwTglSelesai;
-    final jEnd = (jEndStr == null || jEndStr.isEmpty)
-        ? end
-        : (DateTime.tryParse(jEndStr) ?? end);
-    final rangeEnd = jEnd.isBefore(end) ? jEnd : end;
-
-    if (rangeEnd.isBefore(rangeStart)) return 0;
-    int appearances = 0;
-    final divisi = j.jdwDivisi;
-    final frekuensi = j.jdwFrekuensi.trim().toLowerCase();
-
-    if (frekuensi == 'harian') {
-      for (var d = rangeStart;
-          !d.isAfter(rangeEnd);
-          d = d.add(const Duration(days: 1))) {
-        if (_isWorkingDay(d, divisi)) appearances++;
-      }
-      return appearances;
-    } else if (frekuensi == 'mingguan') {
-      var curr = jStart;
-      while (!curr.isAfter(rangeEnd)) {
-        if (!curr.isBefore(rangeStart)) {
-          final nextWork = _findNextWorkingDay(curr, rangeEnd, divisi);
-          if (nextWork != null) {
-            appearances++;
-          }
-        }
-        curr = curr.add(const Duration(days: 7));
-      }
-      return appearances;
-    } else if (frekuensi == 'bulanan') {
-      final nextWork = _findNextWorkingDay(rangeStart, rangeEnd, divisi);
-      if (nextWork != null) {
-        appearances = 1;
-      }
-      return appearances;
-    }
-
-    return 1;
+    return JadwalProvider.effectiveScheduleDatesInMonth(j, start, end, const {}).length;
   }
 }

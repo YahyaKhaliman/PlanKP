@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_theme.dart';
@@ -160,10 +161,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return Container(
       width: double.infinity,
       padding:
-          EdgeInsets.fromLTRB(24, compact ? 30 : 42, 24, compact ? 34 : 42),
+          EdgeInsets.fromLTRB(24, compact ? 28 : 40, 24, compact ? 30 : 40),
       decoration: BoxDecoration(
-        color: AppColors.primary,
-        borderRadius: BorderRadius.circular(32),
+        gradient: const LinearGradient(
+          colors: [Color(0xFF0F2B6B), Color(0xFF1D4ED8)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF0F2B6B).withValues(alpha: 0.28),
+            blurRadius: 20,
+            offset: const Offset(0, 6),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -178,17 +190,26 @@ class _RegisterScreenState extends State<RegisterScreen> {
             child: const Icon(Icons.person_add_alt_1_rounded,
                 color: Colors.white, size: 28),
           ),
-          const SizedBox(height: 18),
-          const Text(
+          const SizedBox(height: 16),
+          Text(
             'Buat Akun',
-            style: TextStyle(
+            style: GoogleFonts.plusJakartaSans(
               fontSize: 34,
               fontWeight: FontWeight.w800,
               color: Colors.white,
               letterSpacing: -0.8,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 4),
+          Text(
+            'Daftarkan akun teknisi atau staf Kencana Print',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 12.5,
+              fontWeight: FontWeight.w500,
+              color: Colors.white.withValues(alpha: 0.85),
+              height: 1.35,
+            ),
+          ),
         ],
       ),
     );
@@ -196,16 +217,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   Widget _buildFormCard() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 26),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border.withValues(alpha: 0.8)),
-        boxShadow: [
+        color: AppColors.cardSurface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.border),
+        boxShadow: const [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.025),
-            blurRadius: 16,
-            offset: const Offset(0, 4),
+            color: Color(0x060F172A),
+            blurRadius: 18,
+            offset: Offset(0, 4),
           ),
         ],
       ),
@@ -215,10 +236,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              'Registrasi',
-              style: Theme.of(context).textTheme.titleLarge,
+              'Registrasi Akun',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary,
+              ),
             ),
-            const SizedBox(height: AppSpacing.md),
+            const SizedBox(height: 4),
+            Text(
+              'Lengkapi formulir pendaftaran akun baru',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 12.5,
+                color: AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.lg),
             _buildInputField(
               controller: _namaCtrl,
               label: 'Nama Lengkap',
@@ -297,16 +330,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ? 'Password minimal 3 karakter'
                   : null,
             ),
-            const SizedBox(height: AppSpacing.md),
+            const SizedBox(height: AppSpacing.lg),
             Consumer<AuthProvider>(
               builder: (_, auth, __) => ElevatedButton(
                 onPressed: auth.loading ? null : _submit,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: AppColors.white,
-                  minimumSize: const Size(double.infinity, 44),
+                  minimumSize: const Size(double.infinity, 46),
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppRadius.md)),
+                      borderRadius: BorderRadius.circular(12)),
                   elevation: 0,
                 ),
                 child: auth.loading
@@ -316,9 +349,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         child: CircularProgressIndicator(
                             strokeWidth: 2, color: Colors.white),
                       )
-                    : const Text(
-                        'Daftar',
-                        style: TextStyle(
+                    : Text(
+                        'Daftar Akun',
+                        style: GoogleFonts.plusJakartaSans(
                             fontWeight: FontWeight.w700, fontSize: 14),
                       ),
               ),
@@ -350,11 +383,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
       keyboardType: keyboardType,
       textCapitalization: textCapitalization,
       inputFormatters: inputFormatters,
-      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+      style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: const TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w500, fontSize: 12),
-        prefixIcon: Icon(icon, color: AppColors.textSecondary, size: 18),
+        labelStyle: GoogleFonts.plusJakartaSans(color: AppColors.textSecondary, fontWeight: FontWeight.w500, fontSize: 12.5),
+        prefixIcon: Icon(icon, color: AppColors.primary, size: 18),
         suffixIcon: isPassword
             ? IconButton(
                 icon: Icon(obscure
@@ -366,21 +399,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
               )
             : null,
         filled: true,
-        fillColor: AppColors.surface,
+        fillColor: AppColors.surfaceAlt,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppRadius.md),
-          borderSide: BorderSide.none,
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AppColors.border),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppRadius.md),
-          borderSide: BorderSide.none,
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AppColors.border),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppRadius.md),
+          borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
         ),
         contentPadding:
-            const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+            const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
       ),
     );
   }
@@ -398,27 +431,27 @@ class _RegisterScreenState extends State<RegisterScreen> {
       items: items,
       onChanged: onChanged,
       validator: validator,
-      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+      style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: const TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w500, fontSize: 12),
-        prefixIcon: Icon(icon, color: AppColors.textSecondary, size: 18),
+        labelStyle: GoogleFonts.plusJakartaSans(color: AppColors.textSecondary, fontWeight: FontWeight.w500, fontSize: 12.5),
+        prefixIcon: Icon(icon, color: AppColors.primary, size: 18),
         filled: true,
-        fillColor: AppColors.surface,
+        fillColor: AppColors.surfaceAlt,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppRadius.md),
-          borderSide: BorderSide.none,
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AppColors.border),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppRadius.md),
-          borderSide: BorderSide.none,
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AppColors.border),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppRadius.md),
+          borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
         ),
         contentPadding:
-            const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+            const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
       ),
     );
   }
@@ -429,7 +462,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
       children: [
         Text(
           'Sudah punya akun?',
-          style: Theme.of(context).textTheme.bodyMedium,
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 12.5,
+            color: AppColors.textSecondary,
+          ),
         ),
         TextButton(
           onPressed: _backToLogin,
@@ -437,9 +473,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 6),
             visualDensity: VisualDensity.compact,
           ),
-          child: const Text(
+          child: Text(
             'Masuk',
-            style: TextStyle(
+            style: GoogleFonts.plusJakartaSans(
               fontWeight: FontWeight.w700,
               fontSize: 13,
               color: AppColors.primary,

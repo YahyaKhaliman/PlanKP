@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
@@ -777,7 +778,7 @@ class _RealisasiFormScreenState extends State<RealisasiFormScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: const BoxDecoration(
-        color: AppColors.surface,
+        color: AppColors.cardSurface,
         border: Border(bottom: BorderSide(color: AppColors.border)),
       ),
       child: Column(
@@ -786,23 +787,44 @@ class _RealisasiFormScreenState extends State<RealisasiFormScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Checklist',
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
-              ),
               Text(
-                '$filled dari $total terisi',
-                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.primary),
+                'Kelengkapan Checklist',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2.5),
+                decoration: BoxDecoration(
+                  color: progress == 1.0
+                      ? AppColors.successSoft
+                      : AppColors.primarySoft,
+                  borderRadius: BorderRadius.circular(99),
+                ),
+                child: Text(
+                  '$filled dari $total terisi (${(progress * 100).round()}%)',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w700,
+                    color: progress == 1.0 ? AppColors.success : AppColors.primary,
+                  ),
+                ),
               ),
             ],
           ),
           const SizedBox(height: 8),
-          LinearProgressIndicator(
-            value: progress,
-            backgroundColor: AppColors.primarySoft,
-            color: progress == 1.0 ? AppColors.success : AppColors.primary,
-            minHeight: 6,
-            borderRadius: BorderRadius.circular(3),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(99),
+            child: LinearProgressIndicator(
+              value: progress,
+              backgroundColor: AppColors.surfaceAlt,
+              valueColor: AlwaysStoppedAnimation<Color>(
+                progress == 1.0 ? AppColors.success : AppColors.primary,
+              ),
+              minHeight: 6,
+            ),
           ),
         ],
       ),
@@ -813,14 +835,14 @@ class _RealisasiFormScreenState extends State<RealisasiFormScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: AppColors.cardSurface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppColors.border),
-        boxShadow: [
+        boxShadow: const [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
+            color: Color(0x060F172A),
             blurRadius: 10,
-            offset: const Offset(0, 4),
+            offset: Offset(0, 3),
           ),
         ],
       ),
@@ -828,9 +850,13 @@ class _RealisasiFormScreenState extends State<RealisasiFormScreen> {
         builder: (_, p, __) => Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'Pilih simpan sebagai Draft (Tunda TTD) atau lanjutkan Tanda Tangan PIC untuk menyelesaikan maintenance.',
-              style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 12,
+                color: AppColors.textSecondary,
+                height: 1.35,
+              ),
             ),
             const SizedBox(height: 14),
             Row(
@@ -840,7 +866,7 @@ class _RealisasiFormScreenState extends State<RealisasiFormScreen> {
                     onPressed: p.loading || _submitting ? null : _saveAsDraft,
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 12),
-                      minimumSize: const Size(double.infinity, 48),
+                      minimumSize: const Size(double.infinity, 46),
                       side: const BorderSide(color: AppColors.primary, width: 1.5),
                       foregroundColor: AppColors.primary,
                       shape: RoundedRectangleBorder(
@@ -854,7 +880,13 @@ class _RealisasiFormScreenState extends State<RealisasiFormScreen> {
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
                         : const Icon(Icons.save_outlined, size: 18),
-                    label: const Text('Simpan Draft', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                    label: Text(
+                      'Simpan Draft',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -865,7 +897,7 @@ class _RealisasiFormScreenState extends State<RealisasiFormScreen> {
                       backgroundColor: AppColors.success,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 12),
-                      minimumSize: const Size(double.infinity, 48),
+                      minimumSize: const Size(double.infinity, 46),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -875,10 +907,19 @@ class _RealisasiFormScreenState extends State<RealisasiFormScreen> {
                         ? const SizedBox(
                             height: 16,
                             width: 16,
-                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
                           )
-                        : const Icon(Icons.draw_outlined, size: 18),
-                    label: const Text('Tanda Tangan PIC', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                        : const Icon(Icons.draw_rounded, size: 18),
+                    label: Text(
+                      'Tanda Tangan PIC',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                   ),
                 ),
               ],
@@ -1099,54 +1140,62 @@ class _RealisasiFormScreenState extends State<RealisasiFormScreen> {
           _metaChip(Icons.health_and_safety_outlined, _invKondisiAwal!.trim()));
     }
 
-    return Card(
-      margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: AppColors.primarySoft,
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: const Icon(Icons.fact_check_outlined,
-                      color: AppColors.primary),
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.cardSurface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border, width: 1),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x060F172A),
+            blurRadius: 10,
+            offset: Offset(0, 3),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: AppColors.primarySoft,
+                  borderRadius: BorderRadius.circular(14),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        _invNama.isNotEmpty ? _invNama : 'Form Realisasi',
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 14),
-            if (metaItems.isNotEmpty)
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: metaItems,
+                child: const Icon(Icons.fact_check_outlined,
+                    color: AppColors.primary),
               ),
-            const SizedBox(height: 14),
-          ],
-        ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _invNama.isNotEmpty ? _invNama : 'Form Realisasi',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          if (metaItems.isNotEmpty)
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: metaItems,
+            ),
+        ],
       ),
     );
   }
@@ -1156,56 +1205,66 @@ class _RealisasiFormScreenState extends State<RealisasiFormScreen> {
     String? subtitle,
     required Widget child,
   }) {
-    return Card(
-      margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.all(11),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.cardSurface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border, width: 1),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x060F172A),
+            blurRadius: 10,
+            offset: Offset(0, 3),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          if (subtitle != null) ...[
+            const SizedBox(height: 4),
             Text(
-              title,
-              style: const TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary,
+              subtitle,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 12,
+                color: AppColors.textSecondary,
+                height: 1.35,
               ),
             ),
-            if (subtitle != null) ...[
-              const SizedBox(height: 4),
-              Text(
-                subtitle,
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-            ],
-            const SizedBox(height: 14),
-            child,
           ],
-        ),
+          const SizedBox(height: 14),
+          child,
+        ],
       ),
     );
   }
 
   Widget _metaChip(IconData icon, String label) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: AppColors.surfaceAlt,
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: AppColors.border, width: 0.8),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 14, color: AppColors.primary),
-          const SizedBox(width: 6),
+          Icon(icon, size: 13, color: AppColors.primary),
+          const SizedBox(width: 5),
           Text(
             label,
-            style: const TextStyle(
-              fontSize: 12,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 11.5,
               fontWeight: FontWeight.w600,
               color: AppColors.textSecondary,
             ),
@@ -1246,24 +1305,36 @@ class _ChecklistItemCardState extends State<_ChecklistItemCard> {
   @override
   Widget build(BuildContext context) {
     final item = widget.item;
-    return Card(
-      margin: const EdgeInsets.only(bottom: 10),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: AppColors.cardSurface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border, width: 1),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x060F172A),
+            blurRadius: 10,
+            offset: Offset(0, 3),
+          ),
+        ],
+      ),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+        padding: const EdgeInsets.all(14),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
             Container(
-              width: 30,
-              height: 30,
+              width: 32,
+              height: 32,
               decoration: BoxDecoration(
                 color: AppColors.primarySoft,
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(10),
               ),
               child: Center(
                   child: Text('${item.ctUrutan}',
-                      style: const TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
+                      style: GoogleFonts.plusJakartaSans(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
                           color: AppColors.primary))),
             ),
             const SizedBox(width: 10),
@@ -1272,13 +1343,16 @@ class _ChecklistItemCardState extends State<_ChecklistItemCard> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(item.ctItem,
-                      style: const TextStyle(
-                          fontWeight: FontWeight.w700, fontSize: 14)),
+                      style: GoogleFonts.plusJakartaSans(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14,
+                          color: AppColors.textPrimary)),
                   if ((item.ctKeterangan ?? '').isNotEmpty) ...[
                     const SizedBox(height: 3),
                     Text(item.ctKeterangan!,
-                        style: const TextStyle(
-                            fontSize: 12, color: AppColors.textSecondary)),
+                        style: GoogleFonts.plusJakartaSans(
+                            fontSize: 11.5,
+                            color: AppColors.textSecondary)),
                   ],
                 ],
               ),
@@ -1292,13 +1366,13 @@ class _ChecklistItemCardState extends State<_ChecklistItemCard> {
             String label;
             if (h == 'OK') {
               color = AppColors.success;
-              label = 'OK';
+              label = 'OK (Sesuai)';
             } else if (h == 'NK') {
               color = AppColors.danger;
-              label = 'NK';
+              label = 'NK (Temuan)';
             } else {
-              color = Colors.grey.shade600;
-              label = 'Tidak Ada';
+              color = AppColors.textSecondary;
+              label = 'Tidak Ada (N/A)';
             }
             return Expanded(
                 child: Padding(
@@ -1311,19 +1385,23 @@ class _ChecklistItemCardState extends State<_ChecklistItemCard> {
                   });
                   widget.onChanged();
                 },
-                borderRadius: BorderRadius.circular(8),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
+                borderRadius: BorderRadius.circular(10),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  padding: const EdgeInsets.symmetric(vertical: 9),
                   decoration: BoxDecoration(
                     color: sel ? color : color.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: sel ? color : Colors.transparent),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: sel ? color : color.withValues(alpha: 0.2),
+                      width: sel ? 1.5 : 1,
+                    ),
                   ),
                   child: Center(
                       child: Text(label,
-                          style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w700,
+                          style: GoogleFonts.plusJakartaSans(
+                              fontSize: 11.5,
+                              fontWeight: sel ? FontWeight.w800 : FontWeight.w700,
                               color: sel ? Colors.white : color))),
                 ),
               ),
@@ -1331,59 +1409,71 @@ class _ChecklistItemCardState extends State<_ChecklistItemCard> {
           }).toList()),
           if (item.hasil != 'OK' && item.hasil != 'NK' && item.hasil != 'N/A') ...[
             const SizedBox(height: 8),
-            const Text(
+            Text(
               'Pilih hasil pemeriksaan (OK/NK/Tidak Ada).',
-              style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+              style: GoogleFonts.plusJakartaSans(fontSize: 11, color: AppColors.textSecondary),
             ),
           ],
           if (item.hasil == 'N/A') ...[
-            const SizedBox(height: 6),
+            const SizedBox(height: 8),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
-                color: Colors.grey.shade600.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(10),
+                color: AppColors.surfaceAlt,
+                borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.remove_circle_outline,
-                      size: 14, color: Colors.grey.shade600),
-                  const SizedBox(width: 4),
+                  const Icon(Icons.remove_circle_outline,
+                      size: 13, color: AppColors.textSecondary),
+                  const SizedBox(width: 5),
                   Text('Item tidak ada di lapangan (N/A)',
-                      style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
+                      style: GoogleFonts.plusJakartaSans(
+                          fontSize: 11, color: AppColors.textSecondary, fontWeight: FontWeight.w500)),
                 ],
               ),
             ),
           ],
           if (item.hasil == 'OK') ...[
-            const SizedBox(height: 6),
+            const SizedBox(height: 8),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
-                color: AppColors.success.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(10),
+                color: AppColors.successSoft,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppColors.success.withValues(alpha: 0.2)),
               ),
-              child: const Row(
+              child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.check_circle_outline,
-                      size: 14, color: AppColors.success),
-                  SizedBox(width: 4),
-                  Text('Sudah diperiksa dan sesuai standar',
-                      style: TextStyle(fontSize: 11, color: AppColors.success)),
+                  const Icon(Icons.check_circle_outline_rounded,
+                      size: 13, color: AppColors.success),
+                  const SizedBox(width: 5),
+                  Text('Kondisi unit sesuai dan normal',
+                      style: GoogleFonts.plusJakartaSans(
+                          fontSize: 11, color: AppColors.success, fontWeight: FontWeight.w600)),
                 ],
               ),
             ),
           ],
           if (item.hasil == 'NK') ...[
             const SizedBox(height: 10),
-            const Text('Kondisi:',
-                style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+            Text('Tingkat Kondisi Temuan:',
+                style: GoogleFonts.plusJakartaSans(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textSecondary)),
             const SizedBox(height: 6),
             Row(
                 children: ['Baik', 'Sedang', 'Buruk'].map((k) {
               final sel = item.kondisi == k;
+              final Color kColor = k == 'Baik'
+                  ? AppColors.primary
+                  : k == 'Sedang'
+                      ? AppColors.warning
+                      : AppColors.danger;
+
               return Padding(
                 padding: const EdgeInsets.only(right: 6),
                 child: InkWell(
@@ -1391,23 +1481,24 @@ class _ChecklistItemCardState extends State<_ChecklistItemCard> {
                     setState(() => item.kondisi = k);
                     widget.onChanged();
                   },
-                  borderRadius: BorderRadius.circular(6),
-                  child: Container(
+                  borderRadius: BorderRadius.circular(8),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
                     padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                        const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                     decoration: BoxDecoration(
                       color: sel
-                          ? AppColors.warning
-                          : AppColors.warning.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(6),
+                          ? kColor
+                          : kColor.withValues(alpha: 0.09),
+                      borderRadius: BorderRadius.circular(8),
                       border: Border.all(
-                          color: sel ? AppColors.warning : Colors.transparent),
+                          color: sel ? kColor : kColor.withValues(alpha: 0.25)),
                     ),
                     child: Text(k,
-                        style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: sel ? Colors.white : AppColors.warning)),
+                        style: GoogleFonts.plusJakartaSans(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w700,
+                            color: sel ? Colors.white : kColor)),
                   ),
                 ),
               );
@@ -1594,42 +1685,60 @@ class _TtdDialogState extends State<_TtdDialog> {
         }
       },
       child: Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        backgroundColor: AppColors.cardSurface,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 480),
           child: Form(
             key: _formKey,
             child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.all(22),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                // header
+                // Header
                 Row(children: [
-                  const Expanded(
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: AppColors.primarySoft,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(
+                      Icons.draw_rounded,
+                      size: 20,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
                       child: Text('Tanda Tangan PIC',
-                          style: TextStyle(
-                              fontSize: 18, fontWeight: FontWeight.w700))),
+                          style: GoogleFonts.plusJakartaSans(
+                              fontSize: 17, fontWeight: FontWeight.w700, color: AppColors.textPrimary))),
                   IconButton(
-                    icon: const Icon(Icons.close),
+                    icon: const Icon(Icons.close_rounded, size: 20),
                     onPressed: _submitting ? null : _handleClose,
                   ),
                 ]),
                 const SizedBox(height: 4),
-                const Text(
-                    'Isi nama PIC dan tanda tangan untuk menyelesaikan realisasi.',
-                    style: TextStyle(
-                        fontSize: 13, color: AppColors.textSecondary)),
+                Text(
+                    'Isi nama PIC dan bubuhkan tanda tangan untuk menyelesaikan maintenance.',
+                    style: GoogleFonts.plusJakartaSans(
+                        fontSize: 12.5, color: AppColors.textSecondary, height: 1.35)),
                 const SizedBox(height: 16),
 
                 TextFormField(
                   controller: _picCtrl,
                   textCapitalization: TextCapitalization.words,
-                  decoration: const InputDecoration(
+                  style: GoogleFonts.plusJakartaSans(fontSize: 13, color: AppColors.textPrimary),
+                  decoration: InputDecoration(
                     labelText: 'Nama PIC *',
-                    hintText: 'Masukkan nama PIC',
-                    prefixIcon: Icon(Icons.person_outline),
+                    hintText: 'Masukkan nama PIC lokasi',
+                    prefixIcon: const Icon(Icons.person_outline_rounded, size: 18),
+                    hintStyle: GoogleFonts.plusJakartaSans(fontSize: 12.5, color: AppColors.textMuted),
                   ),
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) {
@@ -1641,11 +1750,11 @@ class _TtdDialogState extends State<_TtdDialog> {
                 const SizedBox(height: 16),
 
                 // Rangkuman hasil checklist pemeriksaan (Hanya di FE)
-                const Text(
+                Text(
                   'Rangkuman Hasil Pemeriksaan',
-                  style: TextStyle(
+                  style: GoogleFonts.plusJakartaSans(
                     fontSize: 12,
-                    fontWeight: FontWeight.bold,
+                    fontWeight: FontWeight.w700,
                     color: AppColors.textSecondary,
                   ),
                 ),
@@ -1653,7 +1762,7 @@ class _TtdDialogState extends State<_TtdDialog> {
                 Container(
                   constraints: const BoxConstraints(maxHeight: 140),
                   decoration: BoxDecoration(
-                    color: Colors.grey.shade50,
+                    color: AppColors.surfaceAlt,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: AppColors.border),
                   ),
@@ -1663,19 +1772,23 @@ class _TtdDialogState extends State<_TtdDialog> {
                       shrinkWrap: true,
                       padding: const EdgeInsets.all(12),
                       itemCount: widget.checklistItems.length,
-                      separatorBuilder: (_, __) => const Divider(height: 8),
+                      separatorBuilder: (_, __) => const Divider(height: 8, color: AppColors.border),
                       itemBuilder: (context, index) {
                         final item = widget.checklistItems[index];
                         Color badgeColor;
+                        Color badgeBg;
                         String statusText;
                         if (item.hasil == 'OK') {
                           badgeColor = AppColors.success;
+                          badgeBg = AppColors.successSoft;
                           statusText = 'OK';
                         } else if (item.hasil == 'NK') {
                           badgeColor = AppColors.warning;
+                          badgeBg = AppColors.warningSoft;
                           statusText = 'NK (${item.kondisi ?? "Sedang"})';
                         } else {
-                          badgeColor = Colors.grey.shade600;
+                          badgeColor = AppColors.textSecondary;
+                          badgeBg = AppColors.surfaceAlt;
                           statusText = 'N/A';
                         }
 
@@ -1685,7 +1798,7 @@ class _TtdDialogState extends State<_TtdDialog> {
                             Expanded(
                               child: Text(
                                 item.ctItem,
-                                style: const TextStyle(
+                                style: GoogleFonts.plusJakartaSans(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w600,
                                   color: AppColors.textPrimary,
@@ -1697,15 +1810,16 @@ class _TtdDialogState extends State<_TtdDialog> {
                             const SizedBox(width: 8),
                             Container(
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 6, vertical: 2),
+                                  horizontal: 7, vertical: 2.5),
                               decoration: BoxDecoration(
-                                color: badgeColor.withValues(alpha: 0.1),
+                                color: badgeBg,
                                 borderRadius: BorderRadius.circular(6),
+                                border: Border.all(color: badgeColor.withValues(alpha: 0.25), width: 0.8),
                               ),
                               child: Text(
                                 statusText,
-                                style: TextStyle(
-                                  fontSize: 9,
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 9.5,
                                   fontWeight: FontWeight.w800,
                                   color: badgeColor,
                                 ),
@@ -1717,7 +1831,7 @@ class _TtdDialogState extends State<_TtdDialog> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 14),
 
                 // Checkbox Persetujuan Tunggal
                 Container(
@@ -1725,7 +1839,7 @@ class _TtdDialogState extends State<_TtdDialog> {
                     color: AppColors.primarySoft,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: AppColors.primary.withValues(alpha: 0.15),
+                      color: AppColors.primary.withValues(alpha: 0.2),
                     ),
                   ),
                   child: CheckboxListTile(
@@ -1733,17 +1847,17 @@ class _TtdDialogState extends State<_TtdDialog> {
                     onChanged: (val) {
                       setState(() => _confirmSummary = val ?? false);
                     },
-                    title: const Text(
+                    title: Text(
                       'Pernyataan Persetujuan PIC',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.bold,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w700,
                         color: AppColors.textPrimary,
                       ),
                     ),
-                    subtitle: const Text(
+                    subtitle: Text(
                       'Saya menyatakan bahwa seluruh rangkuman pemeriksaan di atas telah sesuai.',
-                      style: TextStyle(
+                      style: GoogleFonts.plusJakartaSans(
                         fontSize: 11,
                         color: AppColors.textSecondary,
                         height: 1.3,
@@ -1756,33 +1870,51 @@ class _TtdDialogState extends State<_TtdDialog> {
                 ),
                 const SizedBox(height: 16),
 
-                // canvas TTD
+                // Canvas TTD
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text('Area Tanda Tangan',
-                        style: TextStyle(
-                            fontSize: 13, fontWeight: FontWeight.w600)),
-                    TextButton.icon(
-                      onPressed: _clearCanvas,
-                      icon: const Icon(Icons.refresh, size: 16),
-                      label:
-                          const Text('Ulang', style: TextStyle(fontSize: 12)),
+                    Text('Area Tanda Tangan Digital',
+                        style: GoogleFonts.plusJakartaSans(
+                            fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                    Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: _clearCanvas,
+                        borderRadius: BorderRadius.circular(8),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: AppColors.surfaceAlt,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: AppColors.border),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.refresh_rounded, size: 14, color: AppColors.primary),
+                              const SizedBox(width: 4),
+                              Text('Ulang',
+                                  style: GoogleFonts.plusJakartaSans(fontSize: 11.5, fontWeight: FontWeight.w700, color: AppColors.primary)),
+                            ],
+                          ),
+                        ),
+                      ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 8),
 
                 Container(
                   width: double.infinity,
                   height: 160,
                   decoration: BoxDecoration(
-                    color: AppColors.white,
+                    color: AppColors.cardSurface,
                     border: Border.all(color: AppColors.primary, width: 1.5),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(14),
                   ),
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(13),
                     child: Listener(
                       behavior: HitTestBehavior.opaque,
                       onPointerDown: (event) {
@@ -1816,35 +1948,48 @@ class _TtdDialogState extends State<_TtdDialog> {
                   listenable: _sigController,
                   builder: (context, _) {
                     if (_sigController.isNotEmpty) return const SizedBox.shrink();
-                    return const Padding(
-                      padding: EdgeInsets.only(top: 6),
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 6),
                       child: Center(
                         child: Text(
-                          'Tanda tangan di area atas',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: AppColors.textSecondary,
+                          'Tanda tangani pada area di atas',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 11.5,
+                            color: AppColors.textMuted,
                           ),
                         ),
                       ),
                     );
                   },
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 18),
 
                 Consumer<JadwalProvider>(
                   builder: (_, p, __) => ElevatedButton.icon(
                     onPressed: p.loading || _submitting ? null : _submit,
                     style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.success),
+                      backgroundColor: AppColors.success,
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size.fromHeight(46),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      elevation: 0,
+                    ),
                     icon: p.loading || _submitting
                         ? const SizedBox(
                             height: 18,
                             width: 18,
                             child: CircularProgressIndicator(
                                 color: Colors.white, strokeWidth: 2))
-                        : const Icon(Icons.check_circle_outline),
-                    label: const Text('Selesaikan Realisasi'),
+                        : const Icon(Icons.check_circle_outline_rounded, size: 18),
+                    label: Text(
+                      'Selesaikan Realisasi',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                   ),
                 ),
               ],

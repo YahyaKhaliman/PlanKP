@@ -78,6 +78,39 @@ class DateFormatter {
     return res;
   }
 
+  static const List<String> monthNames = [
+    'Januari',
+    'Februari',
+    'Maret',
+    'April',
+    'Mei',
+    'Juni',
+    'Juli',
+    'Agustus',
+    'September',
+    'Oktober',
+    'November',
+    'Desember',
+  ];
+
+  static const List<String> monthNamesShort = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'Mei',
+    'Jun',
+    'Jul',
+    'Ags',
+    'Sep',
+    'Okt',
+    'Nov',
+    'Des',
+  ];
+
+  static int toInt(dynamic v) =>
+      (v is num) ? v.toInt() : (int.tryParse(v?.toString() ?? '') ?? 0);
+
   static String toApi(DateTime? date, {String fallback = ''}) {
     if (date == null) return fallback;
     final yyyy = date.year.toString();

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/app_notifier.dart';
@@ -784,45 +785,46 @@ class _ChecklistTab extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
             child: Container(
               decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
+                color: AppColors.cardSurface,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: AppColors.border, width: 1),
+                boxShadow: const [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.02),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
+                    color: Color(0x040F172A),
+                    blurRadius: 8,
+                    offset: Offset(0, 2),
                   ),
                 ],
               ),
               child: TextField(
                 controller: searchCtrl,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.textPrimary,
+                ),
                 decoration: InputDecoration(
                   hintText: 'Cari item checklist atau jenis...',
-                  prefixIcon: const Icon(Icons.search, size: 20, color: AppColors.textSecondary),
+                  hintStyle: GoogleFonts.plusJakartaSans(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w400,
+                    color: AppColors.textMuted,
+                  ),
+                  prefixIcon: const Icon(Icons.search_rounded, size: 20, color: AppColors.primary),
                   suffixIcon: searchCtrl.text.isNotEmpty
                       ? IconButton(
-                          icon: const Icon(Icons.clear, size: 20, color: AppColors.textSecondary),
+                          icon: const Icon(Icons.clear_rounded, size: 18, color: AppColors.textMuted),
                           onPressed: () {
                             searchCtrl.clear();
                             onSearchChanged('');
                           },
                         )
                       : null,
-                  filled: true,
-                  fillColor: Colors.white,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: const BorderSide(color: AppColors.border),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: const BorderSide(color: AppColors.border),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
-                  ),
+                  filled: false,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
                 ),
                 onChanged: onSearchChanged,
               ),
@@ -926,41 +928,41 @@ class _ChecklistTab extends StatelessWidget {
       return Container(
         margin: const EdgeInsets.only(bottom: 12),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: AppColors.border.withValues(alpha: 0.6)),
-          boxShadow: [
+          color: AppColors.cardSurface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.border, width: 1),
+          boxShadow: const [
             BoxShadow(
-                color: Colors.black.withValues(alpha: 0.02),
-                blurRadius: 12,
-                offset: const Offset(0, 4)),
+                color: Color(0x060F172A),
+                blurRadius: 10,
+                offset: Offset(0, 3)),
           ],
         ),
         child: ExpansionTile(
           key: PageStorageKey('jenis_$jenisId'),
           initiallyExpanded: grouped.length == 1,
           shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           collapsedShape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
           maintainState: true,
           title: Row(children: [
             Expanded(
               child: Text(jenisLabel,
-                  style: const TextStyle(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 15,
+                  style: GoogleFonts.plusJakartaSans(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14.5,
                       color: AppColors.textPrimary)),
             ),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
                 color: AppColors.primarySoft,
-                borderRadius: BorderRadius.circular(6),
+                borderRadius: BorderRadius.circular(8),
               ),
               child: Text('${list.length}',
-                  style: const TextStyle(
+                  style: GoogleFonts.plusJakartaSans(
                       fontSize: 11,
                       fontWeight: FontWeight.w800,
                       color: AppColors.primary)),

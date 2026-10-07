@@ -43,9 +43,9 @@ class _AppShimmerState extends State<AppShimmer> with SingleTickerProviderStateM
                 begin: Alignment(-2.0 + _controller.value * 4.0, -1.0),
                 end: Alignment(0.0 + _controller.value * 4.0, 1.0),
                 colors: const [
-                  Color(0xFFE2E8F0), // Slate 200 base
-                  Color(0xFFF8FAFC), // Slate 50 dynamic shine
-                  Color(0xFFE2E8F0), // Slate 200 base
+                  AppColors.border, // Slate 200 base
+                  AppColors.surface, // Slate 50 dynamic shine
+                  AppColors.border, // Slate 200 base
                 ],
                 stops: const [0.3, 0.5, 0.7],
               ).createShader(bounds);
@@ -81,7 +81,7 @@ class AppSkeletonLine extends StatelessWidget {
       width: width,
       height: height,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.cardSurface,
         borderRadius: BorderRadius.circular(borderRadius),
       ),
     );
@@ -102,7 +102,7 @@ class AppSkeletonCircle extends StatelessWidget {
       width: size,
       height: size,
       decoration: const BoxDecoration(
-        color: Colors.white,
+        color: AppColors.cardSurface,
         shape: BoxShape.circle,
       ),
     );
@@ -127,7 +127,7 @@ class AppSkeletonSquircle extends StatelessWidget {
       width: width,
       height: height,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.cardSurface,
         borderRadius: BorderRadius.circular(borderRadius),
       ),
     );
@@ -148,7 +148,7 @@ class AppSkeletonListCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.4),
+        color: AppColors.cardSurface.withValues(alpha: 0.4),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: AppColors.border.withValues(alpha: 0.3)),
       ),
@@ -187,7 +187,7 @@ class AppSkeletonFolderCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.4),
+        color: AppColors.cardSurface.withValues(alpha: 0.4),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: AppColors.border.withValues(alpha: 0.3)),
       ),

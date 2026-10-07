@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:awesome_dialog/awesome_dialog.dart';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 import '../utils/date_formatter.dart';
 
@@ -20,6 +21,24 @@ class AppNotifier {
     return 420;
   }
 
+  static TextStyle _titleStyle() => GoogleFonts.plusJakartaSans(
+        fontSize: 19,
+        fontWeight: FontWeight.w800,
+        color: AppColors.textPrimary,
+      );
+
+  static TextStyle _descStyle() => GoogleFonts.plusJakartaSans(
+        fontSize: 14,
+        fontWeight: FontWeight.w500,
+        color: AppColors.textSecondary,
+        height: 1.45,
+      );
+
+  static TextStyle _btnStyle() => GoogleFonts.plusJakartaSans(
+        fontWeight: FontWeight.w700,
+        color: Colors.white,
+      );
+
   static Future<void> showWarning(BuildContext context, String message) async {
     if (!context.mounted) return;
     final formatted = DateFormatter.formatMessageDates(message);
@@ -30,10 +49,15 @@ class AppNotifier {
       dialogType: DialogType.warning,
       animType: AnimType.scale,
       title: 'Perhatian',
+      titleTextStyle: _titleStyle(),
       desc: formatted,
+      descTextStyle: _descStyle(),
+      buttonsTextStyle: _btnStyle(),
       btnOkColor: AppColors.warning,
       btnOkOnPress: () {},
-      headerAnimationLoop: true,
+      headerAnimationLoop: false,
+      dismissOnTouchOutside: true,
+      dismissOnBackKeyPress: true,
     ).show();
   }
 
@@ -47,14 +71,23 @@ class AppNotifier {
       dialogType: DialogType.error,
       animType: AnimType.scale,
       title: 'Terjadi Kesalahan',
+      titleTextStyle: _titleStyle(),
       desc: formatted,
+      descTextStyle: _descStyle(),
+      buttonsTextStyle: _btnStyle(),
       btnOkColor: AppColors.danger,
       btnOkOnPress: () {},
-      headerAnimationLoop: true,
+      headerAnimationLoop: false,
+      dismissOnTouchOutside: true,
+      dismissOnBackKeyPress: true,
     ).show();
   }
 
-  static Future<void> showSuccess(BuildContext context, String message) async {
+  static Future<void> showSuccess(
+    BuildContext context,
+    String message, {
+    Duration? autoHide = const Duration(milliseconds: 2500),
+  }) async {
     if (!context.mounted) return;
     await AwesomeDialog(
       context: context,
@@ -63,10 +96,16 @@ class AppNotifier {
       dialogType: DialogType.success,
       animType: AnimType.scale,
       title: 'Berhasil',
+      titleTextStyle: _titleStyle(),
       desc: message,
+      descTextStyle: _descStyle(),
+      buttonsTextStyle: _btnStyle(),
       btnOkColor: AppColors.primary,
       btnOkOnPress: () {},
-      headerAnimationLoop: true,
+      autoHide: autoHide,
+      headerAnimationLoop: false,
+      dismissOnTouchOutside: true,
+      dismissOnBackKeyPress: true,
     ).show();
   }
 
@@ -83,7 +122,10 @@ class AppNotifier {
       dialogType: DialogType.success,
       animType: AnimType.scale,
       title: 'Berhasil',
+      titleTextStyle: _titleStyle(),
       desc: message,
+      descTextStyle: _descStyle(),
+      buttonsTextStyle: _btnStyle(),
       btnOkColor: AppColors.primary,
       btnOkOnPress: () {},
       autoHide: duration,
@@ -105,7 +147,10 @@ class AppNotifier {
       dialogType: DialogType.question,
       animType: AnimType.scale,
       title: title,
+      titleTextStyle: _titleStyle(),
       desc: message,
+      descTextStyle: _descStyle(),
+      buttonsTextStyle: _btnStyle(),
       btnOkColor: AppColors.primary,
       btnCancelColor: AppColors.textSecondary,
       btnOkOnPress: () async {
@@ -139,7 +184,8 @@ class AppNotifier {
             Expanded(
               child: Text(
                 message,
-                style: const TextStyle(fontSize: 13, color: Colors.white),
+                style: GoogleFonts.plusJakartaSans(
+                    fontSize: 13, fontWeight: FontWeight.w600),
               ),
             ),
           ],
@@ -147,7 +193,7 @@ class AppNotifier {
         backgroundColor: AppColors.primary,
         behavior: SnackBarBehavior.floating,
         duration: duration,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
   }

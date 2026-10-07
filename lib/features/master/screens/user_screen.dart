@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/app_notifier.dart';
@@ -9,6 +10,7 @@ import '../../auth/providers/auth_provider.dart';
 import '../models/user_model.dart';
 import '../providers/master_provider.dart';
 import '../../../core/utils/responsive_sheet.dart';
+import '../../jadwal/screens/jadwal_screen.dart';
 
 class UserScreen extends StatefulWidget {
   const UserScreen({super.key});
@@ -120,50 +122,49 @@ class _UserScreenState extends State<UserScreen> {
                     ),
                     child: Container(
                       decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(AppRadius.md),
-                        boxShadow: [
+                        color: AppColors.cardSurface,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppColors.border, width: 1),
+                        boxShadow: const [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.02),
+                            color: Color(0x040F172A),
                             blurRadius: 8,
-                            offset: const Offset(0, 2),
+                            offset: Offset(0, 2),
                           ),
                         ],
                       ),
                       child: TextField(
                         controller: _searchCtrl,
-                        style: const TextStyle(fontSize: 12.5),
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w500,
+                          color: AppColors.textPrimary,
+                        ),
                         decoration: InputDecoration(
                           hintText: 'Cari nama atau NIK...',
-                          prefixIcon: const Icon(Icons.search,
-                              size: 18, color: AppColors.textSecondary),
+                          hintStyle: GoogleFonts.plusJakartaSans(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w400,
+                            color: AppColors.textMuted,
+                          ),
+                          prefixIcon: const Icon(Icons.search_rounded,
+                              size: 18, color: AppColors.primary),
                           suffixIcon: _searchQuery.isNotEmpty
                               ? IconButton(
                                   icon: const Icon(Icons.clear_rounded,
-                                      size: 18, color: AppColors.textSecondary),
+                                      size: 18, color: AppColors.textMuted),
                                   onPressed: () {
                                     _searchCtrl.clear();
                                     setState(() => _searchQuery = '');
                                   },
                                 )
                               : null,
-                          filled: true,
-                          fillColor: Colors.white,
+                          filled: false,
                           contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 8),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(AppRadius.md),
-                            borderSide: const BorderSide(color: AppColors.border),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(AppRadius.md),
-                            borderSide: const BorderSide(color: AppColors.border),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(AppRadius.md),
-                            borderSide: const BorderSide(
-                                color: AppColors.primary, width: 1.5),
-                          ),
+                              horizontal: 12, vertical: 10),
+                          border: InputBorder.none,
+                          enabledBorder: InputBorder.none,
+                          focusedBorder: InputBorder.none,
                         ),
                       ),
                     ),
@@ -223,38 +224,45 @@ class _UserScreenState extends State<UserScreen> {
                         return Container(
                           margin: EdgeInsets.zero,
                           decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(AppRadius.md),
-                            border: Border.all(
-                                color:
-                                    AppColors.border.withValues(alpha: 0.6)),
-                            boxShadow: [
+                            color: AppColors.cardSurface,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: AppColors.border, width: 1),
+                            boxShadow: const [
                               BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.02),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 2)),
+                                  color: Color(0x060F172A),
+                                  blurRadius: 10,
+                                  offset: Offset(0, 3)),
                             ],
                           ),
                           child: ListTile(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => JadwalScreen(
+                                    initialSearchQuery: user.userNama,
+                                  ),
+                                ),
+                              );
+                            },
                             contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 4),
+                                horizontal: 14, vertical: 6),
                             leading: Container(
-                              width: 36,
-                              height: 36,
+                              width: 38,
+                              height: 38,
                               decoration: BoxDecoration(
-                                color:
-                                    AppColors.primary.withValues(alpha: 0.08),
-                                borderRadius: BorderRadius.circular(8),
+                                color: AppColors.primarySoft,
+                                borderRadius: BorderRadius.circular(12),
                               ),
                               child: Center(
                                 child: Text(
                                   user.userNama.isNotEmpty
                                       ? user.userNama[0].toUpperCase()
                                       : 'U',
-                                  style: const TextStyle(
+                                  style: GoogleFonts.plusJakartaSans(
                                     color: AppColors.primary,
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 14,
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 15,
                                   ),
                                 ),
                               ),
@@ -263,7 +271,7 @@ class _UserScreenState extends State<UserScreen> {
                               user.userNama,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
+                              style: GoogleFonts.plusJakartaSans(
                                 fontWeight: FontWeight.w700,
                                 fontSize: 13.5,
                                 color: AppColors.textPrimary,
@@ -275,7 +283,7 @@ class _UserScreenState extends State<UserScreen> {
                                   const SizedBox(height: 2),
                                   Text(
                                     'NIK: ${user.userNik}',
-                                    style: const TextStyle(
+                                    style: GoogleFonts.plusJakartaSans(
                                       fontSize: 11.5,
                                       color: AppColors.textSecondary,
                                       fontWeight: FontWeight.w500,
@@ -349,6 +357,7 @@ class _UserScreenState extends State<UserScreen> {
                                     icon: const Icon(Icons.edit_rounded,
                                         size: 18, color: AppColors.warning),
                                     onPressed: () => _openForm(user),
+                                    tooltip: 'Edit User',
                                     style: IconButton.styleFrom(
                                       backgroundColor: AppColors.warning
                                           .withValues(alpha: 0.08),
@@ -358,6 +367,12 @@ class _UserScreenState extends State<UserScreen> {
                                             BorderRadius.circular(10),
                                       ),
                                     ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  const Icon(
+                                    Icons.arrow_forward_ios_rounded,
+                                    size: 13,
+                                    color: AppColors.textSecondary,
                                   ),
                                 ]),
                           ),

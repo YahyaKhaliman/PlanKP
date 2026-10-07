@@ -3,6 +3,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/app_notifier.dart';
@@ -337,28 +338,38 @@ class _InventarisScreenState extends State<InventarisScreen> {
                             Expanded(
                               child: Container(
                                 decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(AppRadius.md),
-                                  boxShadow: [
+                                  color: AppColors.cardSurface,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: AppColors.border, width: 1),
+                                  boxShadow: const [
                                     BoxShadow(
-                                      color: Colors.black.withValues(alpha: 0.02),
+                                      color: Color(0x040F172A),
                                       blurRadius: 8,
-                                      offset: const Offset(0, 2),
+                                      offset: Offset(0, 2),
                                     ),
                                   ],
                                 ),
                                 child: TextField(
                                   controller: _search,
-                                  style: const TextStyle(fontSize: 12.5),
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.w500,
+                                    color: AppColors.textPrimary,
+                                  ),
                                   decoration: InputDecoration(
                                     hintText: 'Cari By Nama, No, Merk, PIC...',
-                                    prefixIcon: const Icon(Icons.search,
-                                        size: 18, color: AppColors.textSecondary),
+                                    hintStyle: GoogleFonts.plusJakartaSans(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w400,
+                                      color: AppColors.textMuted,
+                                    ),
+                                    prefixIcon: const Icon(Icons.search_rounded,
+                                        size: 18, color: AppColors.primary),
                                     suffixIcon: _search.text.isNotEmpty
                                         ? IconButton(
-                                            icon: const Icon(Icons.clear,
+                                            icon: const Icon(Icons.clear_rounded,
                                                 size: 18,
-                                                color: AppColors.textSecondary),
+                                                color: AppColors.textMuted),
                                             onPressed: () {
                                               _search.clear();
                                               _onSearchChanged('');
@@ -366,25 +377,12 @@ class _InventarisScreenState extends State<InventarisScreen> {
                                             },
                                           )
                                         : null,
-                                    filled: true,
-                                    fillColor: Colors.white,
+                                    filled: false,
                                     contentPadding: const EdgeInsets.symmetric(
-                                        horizontal: 12, vertical: 8),
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(AppRadius.md),
-                                      borderSide:
-                                          const BorderSide(color: AppColors.border),
-                                    ),
-                                    enabledBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(AppRadius.md),
-                                      borderSide:
-                                          const BorderSide(color: AppColors.border),
-                                    ),
-                                    focusedBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(AppRadius.md),
-                                      borderSide: const BorderSide(
-                                          color: AppColors.primary, width: 1.5),
-                                    ),
+                                        horizontal: 12, vertical: 10),
+                                    border: InputBorder.none,
+                                    enabledBorder: InputBorder.none,
+                                    focusedBorder: InputBorder.none,
                                   ),
                                   onChanged: (val) {
                                     _onSearchChanged(val);
@@ -395,39 +393,31 @@ class _InventarisScreenState extends State<InventarisScreen> {
                             ),
                             const SizedBox(width: 8),
                             InkWell(
-                              borderRadius: BorderRadius.circular(AppRadius.md),
+                              borderRadius: BorderRadius.circular(12),
                               onTap: () => _showPabrikMultiSelectModal(context, p.pabrikList),
                               child: AnimatedContainer(
                                 duration: const Duration(milliseconds: 250),
                                 curve: Curves.easeInOut,
                                 height: 42,
-                                padding: const EdgeInsets.symmetric(horizontal: 10),
+                                padding: const EdgeInsets.symmetric(horizontal: 12),
                                 decoration: BoxDecoration(
                                   color: _selectedPabrikKodes.isNotEmpty
-                                      ? AppColors.primary.withValues(alpha: 0.1)
-                                      : Colors.white,
-                                  borderRadius: BorderRadius.circular(AppRadius.md),
+                                      ? AppColors.primarySoft
+                                      : AppColors.cardSurface,
+                                  borderRadius: BorderRadius.circular(12),
                                   border: Border.all(
                                     color: _selectedPabrikKodes.isNotEmpty
                                         ? AppColors.primary
                                         : AppColors.border,
                                     width: _selectedPabrikKodes.isNotEmpty ? 1.5 : 1.0,
                                   ),
-                                  boxShadow: _selectedPabrikKodes.isNotEmpty
-                                      ? [
-                                          BoxShadow(
-                                            color: AppColors.primary.withValues(alpha: 0.15),
-                                            blurRadius: 6,
-                                            offset: const Offset(0, 2),
-                                          ),
-                                        ]
-                                      : [
-                                          BoxShadow(
-                                            color: Colors.black.withValues(alpha: 0.02),
-                                            blurRadius: 8,
-                                            offset: const Offset(0, 2),
-                                          ),
-                                        ],
+                                  boxShadow: const [
+                                    BoxShadow(
+                                      color: Color(0x040F172A),
+                                      blurRadius: 8,
+                                      offset: Offset(0, 2),
+                                    ),
+                                  ],
                                 ),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
@@ -448,7 +438,7 @@ class _InventarisScreenState extends State<InventarisScreen> {
                                           : _selectedPabrikKodes.length == 1
                                               ? p.displayPabrik(_selectedPabrikKodes.first)
                                               : '${_selectedPabrikKodes.length} Lokasi',
-                                      style: TextStyle(
+                                      style: GoogleFonts.plusJakartaSans(
                                         fontSize: 12,
                                         color: _selectedPabrikKodes.isNotEmpty
                                             ? AppColors.primary
@@ -803,21 +793,21 @@ class _InventarisGroupCardState extends State<_InventarisGroupCard>
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.border.withValues(alpha: 0.6)),
-        boxShadow: [
+        color: AppColors.cardSurface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border, width: 1),
+        boxShadow: const [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
+            color: Color(0x060F172A),
+            blurRadius: 10,
+            offset: Offset(0, 3),
           ),
         ],
       ),
       child: Column(
         children: [
           InkWell(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(16),
             onTap: widget.onToggle,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -829,9 +819,9 @@ class _InventarisGroupCardState extends State<_InventarisGroupCard>
                       children: [
                         Text(
                           widget.jenisNama,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w800,
-                            fontSize: 15,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 14.5,
                             color: AppColors.textPrimary,
                           ),
                         ),
@@ -1182,16 +1172,8 @@ class _InventarisFormState extends State<_InventarisForm> {
   Future<void> _autoGenerateNoNamaForJenis(int jenisId) async {
     if (!_isCreateMode) return;
     final provider = context.read<MasterProvider>();
-    await provider.fetchInventaris(
-      jenis: '$jenisId',
-      showLoading: false,
-      updateKategoriMap: false,
-    );
+    final items = await provider.getInventarisByJenis(jenisId);
     if (!mounted) return;
-
-    final items = provider.inventarisList
-        .where((e) => e.invJenisId == jenisId)
-        .toList(growable: false);
 
 
     int maxNoNumber = 0;

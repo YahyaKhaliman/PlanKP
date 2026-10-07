@@ -235,13 +235,97 @@ class JadwalProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  static const List<String> divisiSixDays = [
+    'GA',
+    'TEKNISI',
+    'MAINTENANCE',
+    'PRODUKSI',
+    'WORKSHOP',
+  ];
+
+  static bool isWorkingDay(DateTime date, String? divisi, Set<int> holidays) {
+    if (holidays.contains(date.day)) return false;
+    if (date.weekday == DateTime.sunday) return false;
+    if (date.weekday == DateTime.saturday) {
+      final norm = (divisi ?? '').trim().toUpperCase();
+      return divisiSixDays.any((d) => d.toUpperCase() == norm);
+    }
+    return true;
+  }
+
+  static DateTime? findNextWorkingDay(
+      DateTime date, DateTime limit, String? divisi, Set<int> holidays) {
+    var d = date;
+    while (!isWorkingDay(d, divisi, holidays)) {
+      d = d.add(const Duration(days: 1));
+      if (d.isAfter(limit)) return null;
+    }
+    return d;
+  }
+
+  static List<DateTime> effectiveScheduleDatesInMonth(
+    JadwalModel j,
+    DateTime start,
+    DateTime end,
+    Set<int> holidays, {
+    DateTime? lastRealisasiDate,
+  }) {
+    final jStart = DateTime.tryParse(j.jdwTglMulai);
+    if (jStart == null) return [];
+
+    final gapHari = j.jdwGapHari;
+    if (gapHari > 0 && lastRealisasiDate != null) {
+      final nextEligibleDate = lastRealisasiDate.add(Duration(days: gapHari));
+      final endMonthDate = DateTime(end.year, end.month, end.day, 23, 59, 59);
+      if (endMonthDate.isBefore(nextEligibleDate)) {
+        return [];
+      }
+    }
+
+    final rangeStart = jStart.isAfter(start) ? jStart : start;
+    final jEndStr = j.jdwTglSelesai;
+    final jEnd = (jEndStr == null || jEndStr.isEmpty)
+        ? end
+        : (DateTime.tryParse(jEndStr) ?? end);
+    final rangeEnd = jEnd.isBefore(end) ? jEnd : end;
+
+    if (rangeEnd.isBefore(rangeStart)) return [];
+    List<DateTime> dates = [];
+    final divisi = j.jdwDivisi;
+
+    if (j.jdwFrekuensi == 'Harian') {
+      for (var d = rangeStart;
+          !d.isAfter(rangeEnd);
+          d = d.add(const Duration(days: 1))) {
+        if (isWorkingDay(d, divisi, holidays)) dates.add(d);
+      }
+    } else if (j.jdwFrekuensi == 'Mingguan') {
+      var curr = jStart;
+      while (!curr.isAfter(rangeEnd)) {
+        if (!curr.isBefore(rangeStart)) {
+          final nextWork = findNextWorkingDay(curr, rangeEnd, divisi, holidays);
+          if (nextWork != null) {
+            dates.add(nextWork);
+          }
+        }
+        curr = curr.add(const Duration(days: 7));
+      }
+    } else if (j.jdwFrekuensi == 'Bulanan') {
+      final nextWork = findNextWorkingDay(rangeStart, rangeEnd, divisi, holidays);
+      if (nextWork != null) {
+        dates.add(nextWork);
+      }
+    }
+    return dates;
+  }
+
   void clearError() {
     _error = null;
     notifyListeners();
   }
 
   // ── JADWAL ─────────────────────────────────────────────────
-  Future<void> fetchJadwal({String? status, String? jenis}) async {
+  Future<void> fetchJadwal({String? status = 'Aktif', String? jenis}) async {
     _setLoading(true);
     _lastFetchDivisi = false;
     _lastFetchUser = false;
@@ -250,7 +334,7 @@ class JadwalProvider extends ChangeNotifier {
     _lastJadwalJenisId = null;
     try {
       final query = <String, dynamic>{
-        if (status != null) 'status': status,
+        if (status != null && status != 'all' && status != '*') 'status': status,
         if (jenis != null) 'jenis': jenis,
       };
       final res = await ApiClient.get(ApiConfig.jadwal, query: query);
@@ -265,7 +349,7 @@ class JadwalProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> fetchJadwalByDivisi({String? status, int? jenisId}) async {
+  Future<void> fetchJadwalByDivisi({String? status = 'Aktif', int? jenisId}) async {
     _setLoading(true);
     _lastFetchDivisi = true;
     _lastFetchUser = false;
@@ -274,7 +358,7 @@ class JadwalProvider extends ChangeNotifier {
     _lastJadwalJenisId = jenisId;
     try {
       final query = <String, dynamic>{
-        if (status != null) 'status': status,
+        if (status != null && status != 'all' && status != '*') 'status': status,
         if (jenisId != null) 'jenis': jenisId,
       };
       final res =
@@ -290,7 +374,7 @@ class JadwalProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> fetchJadwalByUser({String? status, int? jenisId}) async {
+  Future<void> fetchJadwalByUser({String? status = 'Aktif', int? jenisId}) async {
     _setLoading(true);
     _lastFetchUser = true;
     _lastFetchDivisi = false;
@@ -299,7 +383,7 @@ class JadwalProvider extends ChangeNotifier {
     _lastJadwalJenisId = jenisId;
     try {
       final query = <String, dynamic>{
-        if (status != null) 'status': status,
+        if (status != null && status != 'all' && status != '*') 'status': status,
         if (jenisId != null) 'jenis': jenisId,
       };
       final res =
@@ -341,11 +425,24 @@ class JadwalProvider extends ChangeNotifier {
     }
     try {
       final res = await ApiClient.get('${ApiConfig.jadwal}/$id');
-      jadwalDetail = JadwalModel.fromJson(res['data']['jadwal']);
-      inventarisByJenis = List.from(res['data']['inventaris']);
+      final data = res['data'];
+      if (data != null) {
+        if (data is Map && data.containsKey('jadwal') && data['jadwal'] != null) {
+          jadwalDetail = JadwalModel.fromJson(Map<String, dynamic>.from(data['jadwal']));
+        } else if (data is Map) {
+          jadwalDetail = JadwalModel.fromJson(Map<String, dynamic>.from(data));
+        }
+        if (data is Map && data.containsKey('inventaris') && data['inventaris'] is List) {
+          inventarisByJenis = List.from(data['inventaris']);
+        } else {
+          inventarisByJenis = [];
+        }
+      }
       _setError(null);
     } on ApiException catch (e) {
       _setError(e.message);
+    } catch (e) {
+      _setError('Gagal memproses data jadwal: $e');
     } finally {
       if (affectGlobalLoading) {
         _setLoading(false);
@@ -406,11 +503,40 @@ class JadwalProvider extends ChangeNotifier {
     }
   }
 
+  Future<bool> renewJadwal(int id, Map<String, dynamic> body) async {
+    _setLoading(true);
+    try {
+      await ApiClient.post('${ApiConfig.jadwal}/$id/renew', body);
+      if (_lastFetchUser) {
+        await fetchJadwalByUser(
+          status: _lastJadwalStatus,
+          jenisId: _lastJadwalJenisId,
+        );
+      } else if (_lastFetchDivisi) {
+        await fetchJadwalByDivisi(
+          status: _lastJadwalStatus,
+          jenisId: _lastJadwalJenisId,
+        );
+      } else {
+        await fetchJadwal(status: _lastJadwalStatus, jenis: _lastJadwalJenis);
+      }
+      _setError(null);
+      return true;
+    } on ApiException catch (e) {
+      _setError(e.message);
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
   // ── REALISASI ──────────────────────────────────────────────
   Future<void> fetchRealisasi({
     int? jadwalId,
     String? status,
     bool byDivisi = false,
+    int? bulan,
+    int? tahun,
   }) async {
     _setLoading(true);
     try {
@@ -418,6 +544,8 @@ class JadwalProvider extends ChangeNotifier {
         if (jadwalId != null) 'jadwal_id': jadwalId,
         if (status != null) 'status': status,
         if (byDivisi) 'by_divisi': true,
+        if (bulan != null) 'bulan': bulan,
+        if (tahun != null) 'tahun': tahun,
       };
       final res = await ApiClient.get(ApiConfig.realisasi, query: query);
       realisasiList = ((res['data']['items'] ?? res['data']) as List)

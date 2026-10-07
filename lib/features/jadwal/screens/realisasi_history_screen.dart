@@ -2,6 +2,7 @@
 
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_theme.dart';
@@ -33,6 +34,14 @@ class _RealisasiHistoryScreenState extends State<RealisasiHistoryScreen> {
   String _activeTab = 'Selesai'; // 'Selesai' atau 'Draft' (Menunggu TTD)
   List<RealisasiModel> _draftRealisasiList = [];
   bool _loadingDraft = false;
+  final TextEditingController _draftSearchCtrl = TextEditingController();
+  String _draftSearchQuery = '';
+
+  @override
+  void dispose() {
+    _draftSearchCtrl.dispose();
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -126,10 +135,10 @@ class _RealisasiHistoryScreenState extends State<RealisasiHistoryScreen> {
       _selectedDay = null;
     });
     context.read<JadwalProvider>().fetchRealisasiHistorySummary(
-      bulan: _selectedMonth.month,
-      tahun: _selectedMonth.year,
-      userId: value,
-    );
+          bulan: _selectedMonth.month,
+          tahun: _selectedMonth.year,
+          userId: value,
+        );
   }
 
   Future<void> _showRealisasiDetail(RealisasiModel item) async {
@@ -173,47 +182,6 @@ class _RealisasiHistoryScreenState extends State<RealisasiHistoryScreen> {
             TextSpan(text: value),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildDetailRow(IconData icon, String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, size: 16, color: AppColors.textSecondary),
-          const SizedBox(width: 8),
-          SizedBox(
-            width: 90,
-            child: Text(
-              label,
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textSecondary,
-              ),
-            ),
-          ),
-          const Text(
-            ': ',
-            style: TextStyle(
-              fontSize: 13,
-              color: AppColors.textSecondary,
-            ),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-                color: AppColors.textPrimary,
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -322,14 +290,21 @@ class _RealisasiHistoryScreenState extends State<RealisasiHistoryScreen> {
                                 trailing: OutlinedButton(
                                   onPressed: () => _showRealisasiDetail(item),
                                   style: OutlinedButton.styleFrom(
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 10, vertical: 4),
                                     minimumSize: Size.zero,
-                                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                    tapTargetSize:
+                                        MaterialTapTargetSize.shrinkWrap,
                                     foregroundColor: AppColors.textSecondary,
-                                    side: const BorderSide(color: AppColors.border),
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                                    side: const BorderSide(
+                                        color: AppColors.border),
+                                    shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(6)),
                                   ),
-                                  child: const Text('Detail', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
+                                  child: const Text('Detail',
+                                      style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600)),
                                 ),
                               ),
                             );
@@ -382,7 +357,8 @@ class _RealisasiHistoryScreenState extends State<RealisasiHistoryScreen> {
               },
               borderRadius: BorderRadius.circular(20),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
                   color: AppColors.accent,
                   borderRadius: BorderRadius.circular(20),
@@ -394,7 +370,8 @@ class _RealisasiHistoryScreenState extends State<RealisasiHistoryScreen> {
                 child: const Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.file_download_rounded, size: 16, color: Colors.white),
+                    Icon(Icons.file_download_rounded,
+                        size: 16, color: Colors.white),
                     SizedBox(width: 5),
                     Text(
                       'Export',
@@ -415,7 +392,8 @@ class _RealisasiHistoryScreenState extends State<RealisasiHistoryScreen> {
         onRefresh: _loadData,
         child: Consumer<JadwalProvider>(
           builder: (_, p, __) {
-            final isLoading = _activeTab == 'Selesai' ? p.loading : _loadingDraft;
+            final isLoading =
+                _activeTab == 'Selesai' ? p.loading : _loadingDraft;
             if (isLoading) {
               return const AppShimmer(
                 child: SingleChildScrollView(
@@ -437,15 +415,19 @@ class _RealisasiHistoryScreenState extends State<RealisasiHistoryScreen> {
             List<JadwalModel> filteredJadwal = [];
             List<RealisasiModel> filteredMonthRealisasi = [];
             Set<int> holidayDays = {};
-            _MonthlyHistoryMetrics metrics = _MonthlyHistoryMetrics(targetCount: 0, doneCount: 0);
+            _MonthlyHistoryMetrics metrics =
+                _MonthlyHistoryMetrics(targetCount: 0, doneCount: 0);
             List<_UserFilterItem> userItems = [];
             _MonthlyRecapData recapData = _MonthlyRecapData(groups: []);
             List<int> sortedCrossMonthWeeks = [];
 
             if (_activeTab == 'Selesai') {
-              monthRealisasi = _filterRealisasiByMonth(p.realisasiList, _selectedMonth);
-              filteredJadwal = _filterJadwalBySelectedUser(p.jadwalList, _selectedUserId);
-              filteredMonthRealisasi = _filterRealisasiBySelectedUser(monthRealisasi, _selectedUserId);
+              monthRealisasi =
+                  _filterRealisasiByMonth(p.realisasiList, _selectedMonth);
+              filteredJadwal =
+                  _filterJadwalBySelectedUser(p.jadwalList, _selectedUserId);
+              filteredMonthRealisasi = _filterRealisasiBySelectedUser(
+                  monthRealisasi, _selectedUserId);
               holidayDays = p.getHolidayDaysForMonth(_selectedMonth);
 
               userItems = _buildUserFilterItems(p.jadwalList, p.realisasiList);
@@ -471,12 +453,14 @@ class _RealisasiHistoryScreenState extends State<RealisasiHistoryScreen> {
                       realisasi: d['realisasi'] ?? 0,
                     );
                   }).toList();
-                  return _RekapFrequencyGroup(frequency: freq, details: details);
+                  return _RekapFrequencyGroup(
+                      frequency: freq, details: details);
                 }).toList();
 
                 recapData = _MonthlyRecapData(groups: groups);
                 final List<dynamic> rawWeeks = data['cross_month_weeks'] ?? [];
-                sortedCrossMonthWeeks = rawWeeks.map((w) => (w as num).toInt()).toList()..sort();
+                sortedCrossMonthWeeks =
+                    rawWeeks.map((w) => (w as num).toInt()).toList()..sort();
               } else {
                 metrics = _buildMonthlyMetrics(
                   jadwalList: filteredJadwal,
@@ -494,7 +478,8 @@ class _RealisasiHistoryScreenState extends State<RealisasiHistoryScreen> {
 
                 final crossMonthWeeks = <int>{};
                 for (final r in filteredMonthRealisasi) {
-                  final frekuensi = (r.jadwal?['jdw_frekuensi'] ?? '').toString();
+                  final frekuensi =
+                      (r.jadwal?['jdw_frekuensi'] ?? '').toString();
                   if (frekuensi == 'Mingguan') {
                     final hasOtherMonth = p.realisasiList.any((other) =>
                         other.realWeekNumber == r.realWeekNumber &&
@@ -523,9 +508,17 @@ class _RealisasiHistoryScreenState extends State<RealisasiHistoryScreen> {
                         child: Container(
                           padding: const EdgeInsets.all(4),
                           decoration: BoxDecoration(
-                            color: AppColors.surface,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: AppColors.border),
+                            color: AppColors.cardSurface,
+                            borderRadius: BorderRadius.circular(14),
+                            border:
+                                Border.all(color: AppColors.border, width: 1),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Color(0x060F172A),
+                                blurRadius: 8,
+                                offset: Offset(0, 2),
+                              ),
+                            ],
                           ),
                           child: Row(
                             children: [
@@ -537,25 +530,51 @@ class _RealisasiHistoryScreenState extends State<RealisasiHistoryScreen> {
                                     });
                                     _loadData();
                                   },
-                                  borderRadius: BorderRadius.circular(9),
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(vertical: 10),
+                                  borderRadius: BorderRadius.circular(10),
+                                  child: AnimatedContainer(
+                                    duration: const Duration(milliseconds: 180),
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 10),
                                     decoration: BoxDecoration(
                                       color: _activeTab == 'Selesai'
                                           ? AppColors.primary
                                           : Colors.transparent,
-                                      borderRadius: BorderRadius.circular(9),
+                                      borderRadius: BorderRadius.circular(10),
+                                      boxShadow: _activeTab == 'Selesai'
+                                          ? [
+                                              BoxShadow(
+                                                color: AppColors.primary
+                                                    .withValues(alpha: 0.25),
+                                                blurRadius: 6,
+                                                offset: const Offset(0, 2),
+                                              )
+                                            ]
+                                          : null,
                                     ),
                                     child: Center(
-                                      child: Text(
-                                        'Selesai',
-                                        style: TextStyle(
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w700,
-                                          color: _activeTab == 'Selesai'
-                                              ? Colors.white
-                                              : AppColors.textSecondary,
-                                        ),
+                                      child: Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Icon(
+                                            Icons.check_circle_outline_rounded,
+                                            size: 15,
+                                            color: _activeTab == 'Selesai'
+                                                ? Colors.white
+                                                : AppColors.textSecondary,
+                                          ),
+                                          const SizedBox(width: 6),
+                                          Text(
+                                            'Selesai',
+                                            style: GoogleFonts.plusJakartaSans(
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w700,
+                                              color: _activeTab == 'Selesai'
+                                                  ? Colors.white
+                                                  : AppColors.textSecondary,
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ),
                                   ),
@@ -569,22 +588,43 @@ class _RealisasiHistoryScreenState extends State<RealisasiHistoryScreen> {
                                     });
                                     _loadData();
                                   },
-                                  borderRadius: BorderRadius.circular(9),
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(vertical: 10),
+                                  borderRadius: BorderRadius.circular(10),
+                                  child: AnimatedContainer(
+                                    duration: const Duration(milliseconds: 180),
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 10),
                                     decoration: BoxDecoration(
                                       color: _activeTab == 'Draft'
-                                          ? AppColors.primary
+                                          ? AppColors.warning
                                           : Colors.transparent,
-                                      borderRadius: BorderRadius.circular(9),
+                                      borderRadius: BorderRadius.circular(10),
+                                      boxShadow: _activeTab == 'Draft'
+                                          ? [
+                                              BoxShadow(
+                                                color: AppColors.warning
+                                                    .withValues(alpha: 0.25),
+                                                blurRadius: 6,
+                                                offset: const Offset(0, 2),
+                                              )
+                                            ]
+                                          : null,
                                     ),
                                     child: Center(
                                       child: Row(
-                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
                                         children: [
+                                          Icon(
+                                            Icons.draw_rounded,
+                                            size: 15,
+                                            color: _activeTab == 'Draft'
+                                                ? Colors.white
+                                                : AppColors.textSecondary,
+                                          ),
+                                          const SizedBox(width: 6),
                                           Text(
                                             'Menunggu TTD',
-                                            style: TextStyle(
+                                            style: GoogleFonts.plusJakartaSans(
                                               fontSize: 13,
                                               fontWeight: FontWeight.w700,
                                               color: _activeTab == 'Draft'
@@ -592,24 +632,36 @@ class _RealisasiHistoryScreenState extends State<RealisasiHistoryScreen> {
                                                   : AppColors.textSecondary,
                                             ),
                                           ),
-                                          if (_draftRealisasiList.isNotEmpty) ...[
+                                          if (_draftRealisasiList
+                                              .isNotEmpty) ...[
                                             const SizedBox(width: 6),
                                             Container(
-                                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      horizontal: 7,
+                                                      vertical: 2),
                                               decoration: BoxDecoration(
                                                 color: _activeTab == 'Draft'
                                                     ? Colors.white
-                                                    : AppColors.primary,
-                                                borderRadius: BorderRadius.circular(10),
+                                                    : AppColors.warningSoft,
+                                                borderRadius:
+                                                    BorderRadius.circular(10),
+                                                border: Border.all(
+                                                  color: _activeTab == 'Draft'
+                                                      ? Colors.white
+                                                      : AppColors.warning
+                                                          .withValues(
+                                                              alpha: 0.3),
+                                                  width: 1,
+                                                ),
                                               ),
                                               child: Text(
                                                 '${_draftRealisasiList.length}',
-                                                style: TextStyle(
-                                                  fontSize: 10,
-                                                  fontWeight: FontWeight.bold,
-                                                  color: _activeTab == 'Draft'
-                                                      ? AppColors.primary
-                                                      : Colors.white,
+                                                style:
+                                                    GoogleFonts.plusJakartaSans(
+                                                  fontSize: 10.5,
+                                                  fontWeight: FontWeight.w800,
+                                                  color: AppColors.warning,
                                                 ),
                                               ),
                                             ),
@@ -644,15 +696,17 @@ class _RealisasiHistoryScreenState extends State<RealisasiHistoryScreen> {
                                 );
                               }
 
-                               if (canUseSingleRow) {
+                              if (canUseSingleRow) {
                                 return IntrinsicHeight(
                                   child: Row(
-                                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
                                     children: [
                                       Expanded(
                                         flex: 6,
                                         child: _MonthSwitcher(
-                                          monthLabel: _monthLabel(_selectedMonth),
+                                          monthLabel:
+                                              _monthLabel(_selectedMonth),
                                           onPrevious: _previousMonth,
                                           onNext: _nextMonth,
                                         ),
@@ -707,7 +761,8 @@ class _RealisasiHistoryScreenState extends State<RealisasiHistoryScreen> {
                               decoration: BoxDecoration(
                                 color: const Color(0xFFFFF7ED),
                                 borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: const Color(0xFFFED7AA)),
+                                border:
+                                    Border.all(color: const Color(0xFFFED7AA)),
                               ),
                               child: Row(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -769,7 +824,7 @@ class _RealisasiHistoryScreenState extends State<RealisasiHistoryScreen> {
                               SizedBox(
                                 width: double.infinity,
                                 child: Text(
-                                    'Penilaian ${_selectedUserId == null ? 'Semua User' : userItems.firstWhere((u) => u.userId == _selectedUserId, orElse: () => _UserFilterItem(userId: _selectedUserId ?? 0, userName: 'User')).userName} ${_monthLabel(_selectedMonth)}',
+                                    'Penilaian ${_selectedUserId == null ? 'Semua User' : userItems.firstWhere((u) => u.userId == _selectedUserId, orElse: () => _UserFilterItem(userId: _selectedUserId ?? 0, userName: 'User')).userName} Bulan ${_monthLabel(_selectedMonth)}',
                                     textAlign: TextAlign.center,
                                     style: const TextStyle(
                                         fontWeight: FontWeight.w700,
@@ -791,54 +846,275 @@ class _RealisasiHistoryScreenState extends State<RealisasiHistoryScreen> {
                     ],
 
                     if (_activeTab == 'Draft') ...[
-                      if (_draftRealisasiList.isEmpty)
-                        const SliverFillRemaining(
-                          hasScrollBody: false,
-                          child: Center(
-                            child: EmptyState(
-                              message: 'Tidak ada realisasi yang menunggu TTD PIC',
-                            ),
+                      // Header Info & Search Banner for Drafts
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: EdgeInsets.fromLTRB(
+                              horizontalPadding, 12, horizontalPadding, 12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (_draftRealisasiList.isNotEmpty) ...[
+                                const SizedBox(height: 10),
+                                // Search bar
+                                Container(
+                                  decoration: BoxDecoration(
+                                    color: AppColors.cardSurface,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: AppColors.border,
+                                    ),
+                                  ),
+                                  child: TextField(
+                                    controller: _draftSearchCtrl,
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 13,
+                                      color: AppColors.textPrimary,
+                                    ),
+                                    decoration: InputDecoration(
+                                      hintText:
+                                          'Cari aset, jadwal, teknisi, lokasi...',
+                                      hintStyle: GoogleFonts.plusJakartaSans(
+                                        fontSize: 12.5,
+                                        color: AppColors.textMuted,
+                                      ),
+                                      prefixIcon: const Icon(
+                                        Icons.search_rounded,
+                                        color: AppColors.primary,
+                                        size: 20,
+                                      ),
+                                      suffixIcon: _draftSearchQuery.isNotEmpty
+                                          ? IconButton(
+                                              icon: const Icon(
+                                                  Icons.clear_rounded,
+                                                  size: 18),
+                                              onPressed: () {
+                                                _draftSearchCtrl.clear();
+                                                setState(() {
+                                                  _draftSearchQuery = '';
+                                                });
+                                              },
+                                            )
+                                          : null,
+                                      border: InputBorder.none,
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 12,
+                                      ),
+                                    ),
+                                    onChanged: (val) {
+                                      setState(() {
+                                        _draftSearchQuery = val;
+                                      });
+                                    },
+                                  ),
+                                ),
+                              ],
+                            ],
                           ),
-                        )
-                      else () {
-                        final isMobile = AppBreakpoints.isMobile(context);
-                        if (isMobile) {
-                          return SliverPadding(
-                            padding: EdgeInsets.fromLTRB(
-                                horizontalPadding, 8, horizontalPadding, 100),
-                            sliver: SliverList(
-                              delegate: SliverChildBuilderDelegate(
-                                (context, index) {
-                                  final item = _draftRealisasiList[index];
-                                  return _buildDraftCard(context, item, isAdmin);
-                                },
-                                childCount: _draftRealisasiList.length,
+                        ),
+                      ),
+                      () {
+                        final query = _draftSearchQuery.trim().toLowerCase();
+                        final filteredDrafts =
+                            _draftRealisasiList.where((item) {
+                          if (query.isEmpty) return true;
+                          final title = (item.jadwal?['jdw_judul'] ?? '')
+                              .toString()
+                              .toLowerCase();
+                          final invNama = (item.invNama).toLowerCase();
+                          final invNo = (item.invNo).toLowerCase();
+                          final teknisi = (item.teknisi?['user_nama'] ??
+                                  item.realTtdPicNama ??
+                                  '')
+                              .toString()
+                              .toLowerCase();
+                          final divisi = (item.jadwal?['jdw_divisi'] ?? '')
+                              .toString()
+                              .toLowerCase();
+                          final pabrik = (item.jadwal?['jdw_pabrik_kode'] ??
+                                  item.inventaris?['inv_pabrik_kode'] ??
+                                  '')
+                              .toString()
+                              .toLowerCase();
+                          return title.contains(query) ||
+                              invNama.contains(query) ||
+                              invNo.contains(query) ||
+                              teknisi.contains(query) ||
+                              divisi.contains(query) ||
+                              pabrik.contains(query);
+                        }).toList();
+
+                        if (_draftRealisasiList.isEmpty) {
+                          return SliverFillRemaining(
+                            hasScrollBody: false,
+                            child: Center(
+                              child: Padding(
+                                padding: const EdgeInsets.all(24),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(18),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.successSoft,
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                          color: AppColors.success
+                                              .withValues(alpha: 0.2),
+                                        ),
+                                      ),
+                                      child: const Icon(
+                                        Icons.task_alt_rounded,
+                                        color: AppColors.success,
+                                        size: 40,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    Text(
+                                      'Semua Realisasi Selesai',
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w800,
+                                        color: AppColors.textPrimary,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      'Tidak ada antrean draft yang menunggu tanda tangan PIC saat ini.',
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 12.5,
+                                        color: AppColors.textSecondary,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                    const SizedBox(height: 16),
+                                    OutlinedButton.icon(
+                                      onPressed: () {
+                                        setState(() {
+                                          _activeTab = 'Selesai';
+                                        });
+                                        _loadData();
+                                      },
+                                      icon: const Icon(
+                                        Icons.history_rounded,
+                                        size: 16,
+                                      ),
+                                      label: Text(
+                                        'Lihat Riwayat Selesai',
+                                        style: GoogleFonts.plusJakartaSans(
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                      style: OutlinedButton.styleFrom(
+                                        foregroundColor: AppColors.primary,
+                                        side: const BorderSide(
+                                            color: AppColors.primary),
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 16, vertical: 10),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(10),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           );
                         }
-                        final columns = AppBreakpoints.gridColumns(
-                          context,
-                          mobile: 1,
-                          tablet: 2,
-                          desktop: 2,
-                        );
+
+                        if (filteredDrafts.isEmpty) {
+                          return SliverFillRemaining(
+                            hasScrollBody: false,
+                            child: Center(
+                              child: Padding(
+                                padding: const EdgeInsets.all(24),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(
+                                      Icons.search_off_rounded,
+                                      color: AppColors.textMuted,
+                                      size: 44,
+                                    ),
+                                    const SizedBox(height: 12),
+                                    Text(
+                                      'Tidak ada draft yang cocok',
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w700,
+                                        color: AppColors.textPrimary,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Tidak ditemukan draft dengan kata kunci "$_draftSearchQuery"',
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 12,
+                                        color: AppColors.textSecondary,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                    const SizedBox(height: 12),
+                                    TextButton(
+                                      onPressed: () {
+                                        _draftSearchCtrl.clear();
+                                        setState(() {
+                                          _draftSearchQuery = '';
+                                        });
+                                      },
+                                      child: Text(
+                                        'Reset Pencarian',
+                                        style: GoogleFonts.plusJakartaSans(
+                                          fontWeight: FontWeight.w700,
+                                          color: AppColors.primary,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          );
+                        }
+
+                        final isMobile = AppBreakpoints.isMobile(context);
+                        if (isMobile) {
+                          return SliverPadding(
+                            padding: EdgeInsets.fromLTRB(
+                                horizontalPadding, 4, horizontalPadding, 100),
+                            sliver: SliverList(
+                              delegate: SliverChildBuilderDelegate(
+                                (context, index) {
+                                  final item = filteredDrafts[index];
+                                  return _buildDraftCard(
+                                      context, item, isAdmin);
+                                },
+                                childCount: filteredDrafts.length,
+                              ),
+                            ),
+                          );
+                        }
                         return SliverPadding(
                           padding: EdgeInsets.fromLTRB(
-                              horizontalPadding, 8, horizontalPadding, 100),
+                              horizontalPadding, 4, horizontalPadding, 100),
                           sliver: SliverGrid(
-                            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: columns,
-                              mainAxisSpacing: 12,
-                              crossAxisSpacing: 12,
-                              mainAxisExtent: isAdmin ? 220 : 185,
+                            gridDelegate:
+                                const SliverGridDelegateWithMaxCrossAxisExtent(
+                              maxCrossAxisExtent: 540,
+                              mainAxisSpacing: 14,
+                              crossAxisSpacing: 14,
+                              mainAxisExtent: 265,
                             ),
                             delegate: SliverChildBuilderDelegate(
                               (context, index) {
-                                final item = _draftRealisasiList[index];
+                                final item = filteredDrafts[index];
                                 return _buildDraftCard(context, item, isAdmin);
                               },
-                              childCount: _draftRealisasiList.length,
+                              childCount: filteredDrafts.length,
                             ),
                           ),
                         );
@@ -921,13 +1197,13 @@ class _RealisasiHistoryScreenState extends State<RealisasiHistoryScreen> {
     final taskNameByJdwId = <int, String>{};
 
     for (final j in jadwalList) {
-      if (j.jdwStatus != 'Draft') continue;
+      if (j.jdwStatus != 'Aktif' && j.jdwStatus != 'Selesai') continue;
       frequencyByJdwId[j.jdwId] = j.jdwFrekuensi;
       taskNameByJdwId[j.jdwId] =
           j.jdwJudul.isEmpty ? 'Jadwal #${j.jdwId}' : j.jdwJudul;
 
       final appearances =
-          _effectiveScheduleDatesInMonth(j, monthStart, monthEnd, holidayDays)
+          JadwalProvider.effectiveScheduleDatesInMonth(j, monthStart, monthEnd, holidayDays)
               .length;
       final perTarget =
           (j.jdwTarget ?? 0) > 0 ? (j.jdwTarget ?? 0) : (j.jdwTotalUnit ?? 0);
@@ -969,134 +1245,463 @@ class _RealisasiHistoryScreenState extends State<RealisasiHistoryScreen> {
     return _MonthlyRecapData(groups: groups);
   }
 
-  Widget _buildDraftCard(BuildContext context, RealisasiModel item, bool isAdmin) {
+  Widget _buildDraftCard(
+      BuildContext context, RealisasiModel item, bool isAdmin) {
     final title = (item.jadwal?['jdw_judul'] ?? '').toString().trim();
+    final divisi =
+        (item.jadwal?['jdw_divisi'] ?? item.inventaris?['inv_divisi'] ?? '')
+            .toString()
+            .trim();
+    final pabrik = (item.jadwal?['jdw_pabrik_kode'] ??
+            item.inventaris?['inv_pabrik_kode'] ??
+            '')
+        .toString()
+        .trim();
     final tglString = DateFormatter.toDisplay(item.realTgl);
     final jamMulai = item.realJamMulai ?? '-';
-    final invNama = item.invNama ?? '-';
+    final invNama = item.invNama.trim().isEmpty ? 'Unit Aset' : item.invNama;
+    final invNo = item.invNo;
     final jdwId = item.realJadwalId;
     final invJenisId = item.jadwal?['jdw_inv_jenis_id'] ?? 0;
     final invId = item.realInvId;
-    final teknisi = (item.teknisi?['user_nama'] ?? '').toString().trim();
-    final kondisiAkhir = item.realKondisiAkhir ?? '-';
-    final keterangan = item.realKeterangan ?? '-';
+    final teknisi = (item.teknisi?['user_nama'] ?? item.realTtdPicNama ?? '')
+        .toString()
+        .trim();
+    final kondisiAkhir = (item.realKondisiAkhir ?? '').trim();
+    final keterangan = (item.realKeterangan ?? '').trim();
+    final checklistCount = item.hasilChecklist.length;
 
-    return Card(
+    Color kondisiColor = AppColors.textSecondary;
+    Color kondisiBg = AppColors.surfaceAlt;
+    final kLower = kondisiAkhir.toLowerCase();
+    if (kLower == 'normal' || kLower == 'ok' || kLower == 'baik') {
+      kondisiColor = AppColors.success;
+      kondisiBg = AppColors.successSoft;
+    } else if (kLower == 'rusak' || kLower == 'nk' || kLower == 'buruk') {
+      kondisiColor = AppColors.danger;
+      kondisiBg = AppColors.dangerSoft;
+    } else if (kondisiAkhir.isNotEmpty && kondisiAkhir != '-') {
+      kondisiColor = AppColors.warning;
+      kondisiBg = AppColors.warningSoft;
+    }
+
+    return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        side: BorderSide(color: AppColors.border.withValues(alpha: 0.8)),
+      decoration: BoxDecoration(
+        color: AppColors.cardSurface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border, width: 1),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x060F172A),
+            blurRadius: 10,
+            offset: Offset(0, 3),
+          ),
+        ],
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          decoration: const BoxDecoration(
+            border: Border(
+              left: BorderSide(
+                color: AppColors.warning,
+                width: 4,
+              ),
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(15),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: AppColors.warning.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(AppRadius.sm),
-                  ),
-                  child: const Text(
-                    'Menunggu TTD PIC',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.warning,
+                // Top Badges Row
+                Row(
+                  children: [
+                    if (divisi.isNotEmpty) ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 7, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: AppDivisiColors.getSoftColor(divisi),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          divisi.toUpperCase(),
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w800,
+                            color: AppDivisiColors.getColor(divisi),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                    ],
+                    if (pabrik.isNotEmpty) ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 7, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: AppColors.surfaceAlt,
+                          borderRadius: BorderRadius.circular(6),
+                          border:
+                              Border.all(color: AppColors.border, width: 0.8),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.location_on_outlined,
+                              size: 11,
+                              color: AppColors.textSecondary,
+                            ),
+                            const SizedBox(width: 3),
+                            Text(
+                              pabrik,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                    const Spacer(),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3.5),
+                      decoration: BoxDecoration(
+                        color: AppColors.warningSoft,
+                        borderRadius: BorderRadius.circular(99),
+                        border: Border.all(
+                          color: AppColors.warning.withValues(alpha: 0.35),
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.draw_rounded,
+                            size: 13,
+                            color: AppColors.warning,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Menunggu TTD',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.warning,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+
+                // Asset Hero Info
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: AppColors.primarySoft,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: AppColors.primary.withValues(alpha: 0.15),
+                        ),
+                      ),
+                      child: Icon(
+                        AppDivisiColors.getIcon(divisi),
+                        color: AppColors.primary,
+                        size: 22,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  invNama,
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 14.5,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.textPrimary,
+                                    height: 1.25,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              if (invNo.isNotEmpty && invNo != '-') ...[
+                                const SizedBox(width: 6),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.surfaceAlt,
+                                    borderRadius: BorderRadius.circular(4),
+                                    border: Border.all(
+                                        color: AppColors.border, width: 0.8),
+                                  ),
+                                  child: Text(
+                                    invNo,
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 10.5,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.textSecondary,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            title.isEmpty ? 'Jadwal #$jdwId' : title,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                              color: AppColors.textSecondary,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+
+                // Metadata Chips Wrap
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    _buildDraftChip(
+                      icon: Icons.calendar_today_rounded,
+                      label: tglString,
+                    ),
+                    _buildDraftChip(
+                      icon: Icons.access_time_rounded,
+                      label: 'Pukul $jamMulai',
+                    ),
+                    if (teknisi.isNotEmpty)
+                      _buildDraftChip(
+                        icon: Icons.person_outline_rounded,
+                        label: teknisi,
+                      ),
+                    if (kondisiAkhir.isNotEmpty && kondisiAkhir != '-')
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 7, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: kondisiBg,
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(
+                            color: kondisiColor.withValues(alpha: 0.3),
+                            width: 0.8,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.health_and_safety_outlined,
+                              size: 12,
+                              color: kondisiColor,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              kondisiAkhir,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: kondisiColor,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    if (checklistCount > 0)
+                      _buildDraftChip(
+                        icon: Icons.checklist_rounded,
+                        label: '$checklistCount item',
+                      ),
+                  ],
+                ),
+
+                // Notes Bubble if available
+                if (keterangan.isNotEmpty && keterangan != '-') ...[
+                  const SizedBox(height: 10),
+                  Container(
+                    width: double.infinity,
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceAlt,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: AppColors.border, width: 0.8),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Padding(
+                          padding: EdgeInsets.only(top: 1, right: 6),
+                          child: Icon(
+                            Icons.chat_bubble_outline_rounded,
+                            size: 12,
+                            color: AppColors.textMuted,
+                          ),
+                        ),
+                        Expanded(
+                          child: Text(
+                            keterangan,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 11,
+                              fontStyle: FontStyle.italic,
+                              color: AppColors.textSecondary,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ),
-                Text(
-                  tglString,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textSecondary,
+                ],
+
+                const SizedBox(height: 12),
+                const Divider(height: 1, color: AppColors.border),
+                const SizedBox(height: 10),
+
+                // Action Buttons
+                if (isAdmin) ...[
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () => _showRealisasiDetail(item),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.primary,
+                            side: const BorderSide(color: AppColors.primary),
+                            padding: const EdgeInsets.symmetric(
+                                vertical: 9, horizontal: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                          icon: const Icon(Icons.visibility_outlined, size: 16),
+                          label: Text(
+                            'Lihat Rincian Draft',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ),
+                ] else ...[
+                  Row(
+                    children: [
+                      Expanded(
+                        child: FilledButton.icon(
+                          onPressed: () async {
+                            await Navigator.pushNamed(
+                              context,
+                              AppRoutes.realisasiForm,
+                              arguments: {
+                                'realId': item.realId,
+                                'jadwalId': jdwId,
+                                'invJenisId': invJenisId,
+                                'invId': invId,
+                                'invNama': invNama,
+                              },
+                            );
+                            _loadData();
+                          },
+                          style: FilledButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            padding: const EdgeInsets.symmetric(
+                                vertical: 10, horizontal: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                          icon: const Icon(Icons.draw_rounded, size: 16),
+                          label: Text(
+                            'Lanjutkan & Minta TTD PIC',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      IconButton(
+                        tooltip: 'Pratinjau Draft',
+                        onPressed: () => _showRealisasiDetail(item),
+                        style: IconButton.styleFrom(
+                          backgroundColor: AppColors.surfaceAlt,
+                          foregroundColor: AppColors.textSecondary,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            side: const BorderSide(
+                                color: AppColors.border, width: 0.8),
+                          ),
+                          padding: const EdgeInsets.all(9),
+                        ),
+                        icon: const Icon(Icons.visibility_outlined, size: 18),
+                      ),
+                    ],
+                  ),
+                ],
               ],
             ),
-            const SizedBox(height: 12),
-            Text(
-              title.isEmpty ? 'Jadwal #$jdwId' : title,
-              style: const TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary,
-              ),
-            ),
-            if (isAdmin) ...[
-              const SizedBox(height: 8),
-              const Divider(height: 1, color: AppColors.border),
-              const SizedBox(height: 8),
-              _buildDetailRow(Icons.person_outline_rounded, 'Teknisi', teknisi.isEmpty ? '-' : teknisi),
-              _buildDetailRow(Icons.inventory_2_outlined, 'Aset', invNama),
-              _buildDetailRow(Icons.access_time_rounded, 'Jam', jamMulai),
-              _buildDetailRow(Icons.info_outline_rounded, 'Kondisi Akhir', kondisiAkhir),
-              _buildDetailRow(Icons.description_outlined, 'Keterangan', keterangan),
-            ] else ...[
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  const Icon(Icons.inventory_2_outlined, size: 14, color: AppColors.textSecondary),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      'Aset: $invNama',
-                      style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 4),
-              Row(
-                children: [
-                  const Icon(Icons.access_time, size: 14, color: AppColors.textSecondary),
-                  const SizedBox(width: 6),
-                  Text(
-                    'Jam Mulai: $jamMulai',
-                    style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: () async {
-                    await Navigator.pushNamed(
-                      context,
-                      AppRoutes.realisasiForm,
-                      arguments: {
-                        'realId': item.realId,
-                        'jadwalId': jdwId,
-                        'invJenisId': invJenisId,
-                        'invId': invId,
-                        'invNama': invNama,
-                      },
-                    );
-                    _loadData();
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  icon: const Icon(Icons.border_color, size: 16),
-                  label: const Text(
-                    'Lanjutkan & TTD PIC',
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ),
-            ],
-          ],
+          ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildDraftChip({required IconData icon, required String label}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3.5),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceAlt,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: AppColors.border, width: 0.8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: AppColors.textSecondary),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textPrimary,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1111,9 +1716,9 @@ class _RealisasiHistoryScreenState extends State<RealisasiHistoryScreen> {
     final start = DateTime(month.year, month.month, 1);
     final end = DateTime(month.year, month.month + 1, 0);
     for (final j in jadwalList) {
-      if (j.jdwStatus != 'Draft') continue;
+      if (j.jdwStatus != 'Aktif' && j.jdwStatus != 'Selesai') continue;
       final count =
-          _effectiveScheduleDatesInMonth(j, start, end, holidayDays).length;
+          JadwalProvider.effectiveScheduleDatesInMonth(j, start, end, holidayDays).length;
       target += count *
           ((j.jdwTarget ?? 0) > 0 ? (j.jdwTarget ?? 0) : (j.jdwTotalUnit ?? 0));
     }
@@ -1121,103 +1726,13 @@ class _RealisasiHistoryScreenState extends State<RealisasiHistoryScreen> {
         targetCount: target, doneCount: realisasiList.length);
   }
 
-  static const List<String> _divisiSixDays = ['GA', 'TEKNISI', 'MAINTENANCE', 'PRODUKSI', 'WORKSHOP'];
-
-  bool _isWorkingDay(DateTime date, String? divisi, Set<int> holidays) {
-    if (holidays.contains(date.day)) return false;
-    if (date.weekday == DateTime.sunday) return false;
-    if (date.weekday == DateTime.saturday) {
-      final norm = (divisi ?? '').trim().toUpperCase();
-      return _divisiSixDays.any((d) => d.toUpperCase() == norm);
-    }
-    return true;
-  }
-
-  DateTime? _findNextWorkingDay(DateTime date, DateTime limit, String? divisi, Set<int> holidays) {
-    var d = date;
-    while (!_isWorkingDay(d, divisi, holidays)) {
-      d = d.add(const Duration(days: 1));
-      if (d.isAfter(limit)) return null;
-    }
-    return d;
-  }
-
-  List<DateTime> _effectiveScheduleDatesInMonth(
-      JadwalModel j, DateTime start, DateTime end, Set<int> holidays) {
-    final jStart = DateTime.tryParse(j.jdwTglMulai);
-    if (jStart == null) return [];
-    final rangeStart = jStart.isAfter(start) ? jStart : start;
-    final jEndStr = j.jdwTglSelesai;
-    final jEnd = (jEndStr == null || jEndStr.isEmpty)
-        ? end
-        : (DateTime.tryParse(jEndStr) ?? end);
-    final rangeEnd = jEnd.isBefore(end) ? jEnd : end;
-
-    if (rangeEnd.isBefore(rangeStart)) return [];
-    List<DateTime> dates = [];
-    final divisi = j.jdwDivisi;
-
-    if (j.jdwFrekuensi == 'Harian') {
-      for (var d = rangeStart;
-          !d.isAfter(rangeEnd);
-          d = d.add(const Duration(days: 1))) {
-        if (_isWorkingDay(d, divisi, holidays)) dates.add(d);
-      }
-    } else if (j.jdwFrekuensi == 'Mingguan') {
-      var curr = jStart;
-      while (!curr.isAfter(rangeEnd)) {
-        if (!curr.isBefore(rangeStart)) {
-          final nextWork = _findNextWorkingDay(curr, rangeEnd, divisi, holidays);
-          if (nextWork != null) {
-            dates.add(nextWork);
-          }
-        }
-        curr = curr.add(const Duration(days: 7));
-      }
-    } else if (j.jdwFrekuensi == 'Bulanan') {
-      final nextWork = _findNextWorkingDay(rangeStart, rangeEnd, divisi, holidays);
-      if (nextWork != null) {
-        dates.add(nextWork);
-      }
-    }
-    return dates;
-  }
-
   String _monthLabel(DateTime m) {
-    const names = [
-      'Januari',
-      'Februari',
-      'Maret',
-      'April',
-      'Mei',
-      'Juni',
-      'Juli',
-      'Agustus',
-      'September',
-      'Oktober',
-      'November',
-      'Desember'
-    ];
-    return '${names[m.month - 1]} ${m.year}';
+    return '${DateFormatter.monthNames[m.month - 1]} ${m.year}';
   }
 }
 
 String _monthLabel(DateTime m) {
-  const names = [
-    'Januari',
-    'Februari',
-    'Maret',
-    'April',
-    'Mei',
-    'Juni',
-    'Juli',
-    'Agustus',
-    'September',
-    'Oktober',
-    'November',
-    'Desember'
-  ];
-  return '${names[m.month - 1]} ${m.year}';
+  return '${DateFormatter.monthNames[m.month - 1]} ${m.year}';
 }
 
 // --- REFINED RECAP COMPONENTS ---
@@ -1607,26 +2122,67 @@ class _MonthSwitcher extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-        child: Row(
-          children: [
-            IconButton(
-                onPressed: onPrevious,
-                icon: const Icon(Icons.chevron_left, color: AppColors.primary)),
-            Expanded(
-                child: Center(
-                    child: Text(monthLabel,
-                        style: const TextStyle(
-                            fontSize: 15, fontWeight: FontWeight.w700)))),
-            IconButton(
-                onPressed: onNext,
-                icon:
-                    const Icon(Icons.chevron_right, color: AppColors.primary)),
-          ],
-        ),
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.cardSurface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.border, width: 1),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x060F172A),
+            blurRadius: 8,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      child: Row(
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              color: AppColors.surfaceAlt,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: IconButton(
+              onPressed: onPrevious,
+              padding: const EdgeInsets.all(6),
+              constraints: const BoxConstraints(),
+              icon: const Icon(Icons.chevron_left_rounded,
+                  color: AppColors.primary, size: 22),
+            ),
+          ),
+          Expanded(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.calendar_month_rounded,
+                    size: 16, color: AppColors.primary),
+                const SizedBox(width: 6),
+                Text(
+                  monthLabel,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            decoration: BoxDecoration(
+              color: AppColors.surfaceAlt,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: IconButton(
+              onPressed: onNext,
+              padding: const EdgeInsets.all(6),
+              constraints: const BoxConstraints(),
+              icon: const Icon(Icons.chevron_right_rounded,
+                  color: AppColors.primary, size: 22),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1640,55 +2196,81 @@ class _SummaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final rate = metrics.completionRate;
-    return Card(
-      margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            _DonutChart(
-                progress: rate,
-                size: 100,
-                doneColor: const Color(0xFF059669),
-                remainingColor: const Color(0xFFE2E8F0)),
-            const SizedBox(width: 20),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Capaian $monthLabel',
-                      style: const TextStyle(fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 8),
-                  _rowMetric('Target', '${metrics.targetCount}',
-                      const Color(0xFF059669)),
-                  _rowMetric(
-                      'Realisasi', '${metrics.doneCount}', const Color(0xFF0052FF)),
-                ],
-              ),
-            )
-          ],
-        ),
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.cardSurface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border, width: 1),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x060F172A),
+            blurRadius: 10,
+            offset: Offset(0, 3),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        children: [
+          _DonutChart(
+              progress: rate,
+              size: 96,
+              doneColor: AppColors.success,
+              remainingColor: AppColors.border),
+          const SizedBox(width: 20),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Capaian $monthLabel',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                _rowMetric('Target', '${metrics.targetCount}',
+                    AppColors.textSecondary),
+                _rowMetric(
+                    'Realisasi', '${metrics.doneCount}', AppColors.primary),
+              ],
+            ),
+          )
+        ],
       ),
     );
   }
 
   Widget _rowMetric(String l, String v, Color c) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
+      padding: const EdgeInsets.only(bottom: 5),
       child: Row(
         children: [
           Container(
-              width: 8,
-              height: 8,
-              decoration: BoxDecoration(color: c, shape: BoxShape.circle)),
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(color: c, shape: BoxShape.circle),
+          ),
           const SizedBox(width: 8),
-          Text(l,
-              style: const TextStyle(
-                  fontSize: 12, color: AppColors.textSecondary)),
+          Text(
+            l,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              color: AppColors.textSecondary,
+            ),
+          ),
           const Spacer(),
-          Text(v,
-              style:
-                  const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+          Text(
+            v,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textPrimary,
+            ),
+          ),
         ],
       ),
     );
@@ -1721,12 +2303,13 @@ class _UserFilterCard extends StatelessWidget {
             const DropdownMenuItem(
                 value: null,
                 child: Text('Semua User',
-                    style: TextStyle(fontSize: 13, color: AppColors.textPrimary))),
+                    style:
+                        TextStyle(fontSize: 13, color: AppColors.textPrimary))),
             ...users.map((u) => DropdownMenuItem(
                 value: u.userId,
                 child: Text(u.userName,
-                    style:
-                        const TextStyle(fontSize: 13, color: AppColors.textPrimary)))),
+                    style: const TextStyle(
+                        fontSize: 13, color: AppColors.textPrimary)))),
           ],
           onChanged: onChanged,
         ),
@@ -2054,7 +2637,7 @@ class _RekapDetailRow {
       required this.totalTargetPerPeriod,
       required this.realisasi,
       required this.target});
-  double get nilaiPercent => target > 0 ? (realisasi / target) * 100 : 0.0;
+  double get nilaiPercent => target > 0 ? (realisasi / target) * 100 : (realisasi > 0 ? 100.0 : 0.0);
 }
 
 class _RekapFrequencyGroup {
@@ -2064,7 +2647,7 @@ class _RekapFrequencyGroup {
   int get totalTarget => details.fold(0, (s, i) => s + i.target);
   int get totalRealisasi => details.fold(0, (s, i) => s + i.realisasi);
   double get nilaiPercent =>
-      totalTarget > 0 ? (totalRealisasi / totalTarget) * 100 : 0.0;
+      totalTarget > 0 ? (totalRealisasi / totalTarget) * 100 : (totalRealisasi > 0 ? 100.0 : 0.0);
 }
 
 class _MonthlyRecapData {
@@ -2074,5 +2657,5 @@ class _MonthlyRecapData {
   int get totalRealisasi => groups.fold(0, (s, i) => s + i.totalRealisasi);
   int get totalDetailRows => groups.fold(0, (s, i) => s + i.details.length);
   double get totalNilaiPercent =>
-      totalTarget > 0 ? (totalRealisasi / totalTarget) * 100 : 0.0;
+      totalTarget > 0 ? (totalRealisasi / totalTarget) * 100 : (totalRealisasi > 0 ? 100.0 : 0.0);
 }

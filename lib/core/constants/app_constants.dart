@@ -18,6 +18,10 @@ class ApiConfig {
   static const String dashboardSummary = '/master/dashboard/summary';
   static const String monitoringDivisi = '/master/monitoring-divisi';
   static const String realisasiHistorySummary = '/master/realisasi/history-summary';
+  static const String voucher = '/master/voucher';
+  static const String voucherSpbu = '/master/voucher/spbu';
+  static const String voucherBbmTypes = '/master/voucher/bbm-types';
+  static const String voucherEligibleInv = '/master/voucher/eligible-inventaris';
 
   static const String updateManifestUrl = String.fromEnvironment('UPDATE_MANIFEST_URL');
 }
@@ -29,6 +33,8 @@ class AppRoutes {
   static const String jadwalDetail = '/jadwal/detail';
   static const String realisasiForm = '/jadwal/realisasi-form';
   static const String monitoringDivisi = '/monitoring-divisi';
+  static const String voucher = '/voucher';
+  static const String voucherForm = '/voucher/form';
 }
 
 class StorageKeys {

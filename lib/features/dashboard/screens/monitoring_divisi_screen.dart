@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/constants/app_constants.dart';
@@ -10,12 +11,6 @@ import '../../../core/widgets/shimmer_loading.dart';
 import '../../jadwal/providers/jadwal_provider.dart';
 
 
-int _toInt(dynamic val) {
-  if (val == null) return 0;
-  if (val is num) return val.toInt();
-  return int.tryParse('$val') ?? 0;
-}
-
 class MonitoringDivisiScreen extends StatefulWidget {
   const MonitoringDivisiScreen({super.key});
 
@@ -25,20 +20,6 @@ class MonitoringDivisiScreen extends StatefulWidget {
 
 class _MonitoringDivisiScreenState extends State<MonitoringDivisiScreen>
     with SingleTickerProviderStateMixin {
-  final List<String> _months = [
-    'Januari',
-    'Februari',
-    'Maret',
-    'April',
-    'Mei',
-    'Juni',
-    'Juli',
-    'Agustus',
-    'September',
-    'Oktober',
-    'November',
-    'Desember'
-  ];
   String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
   bool _showClear = false;
@@ -245,7 +226,7 @@ class _MonitoringDivisiScreenState extends State<MonitoringDivisiScreen>
     String periodeText = '';
     if (provider.monitoringBulan != null && provider.monitoringTahun != null) {
       periodeText =
-          '${_months[provider.monitoringBulan! - 1]} ${provider.monitoringTahun}';
+          '${DateFormatter.monthNames[provider.monitoringBulan! - 1]} ${provider.monitoringTahun}';
     }
 
 
@@ -502,12 +483,12 @@ class _MonitoringDivisiScreenState extends State<MonitoringDivisiScreen>
   Widget _buildSearchField() {
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: AppColors.cardSurface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.border),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x04000000),
+            color: Color(0x040F172A),
             blurRadius: 8,
             offset: Offset(0, 2),
           ),
@@ -519,22 +500,22 @@ class _MonitoringDivisiScreenState extends State<MonitoringDivisiScreen>
             child: TextField(
               controller: _searchController,
               onSubmitted: (_) => _executeSearch(),
-              style: const TextStyle(
+              style: GoogleFonts.plusJakartaSans(
                 fontSize: 13,
                 fontWeight: FontWeight.w500,
                 color: AppColors.textPrimary,
               ),
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 hintText: 'Cari divisi / nama jadwal...',
-                hintStyle: TextStyle(
+                hintStyle: GoogleFonts.plusJakartaSans(
                   fontSize: 12.5,
                   fontWeight: FontWeight.w400,
-                  color: AppColors.textSecondary,
+                  color: AppColors.textMuted,
                 ),
                 border: InputBorder.none,
                 enabledBorder: InputBorder.none,
                 focusedBorder: InputBorder.none,
-                contentPadding: EdgeInsets.symmetric(
+                contentPadding: const EdgeInsets.symmetric(
                   vertical: 10,
                   horizontal: 12,
                 ),
@@ -585,9 +566,9 @@ class _MonitoringDivisiScreenState extends State<MonitoringDivisiScreen>
                   ),
                 ),
                 icon: const Icon(Icons.search_rounded, size: 15),
-                label: const Text(
+                label: Text(
                   'Cari',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                  style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w600),
                 ),
               ),
             ),
@@ -727,7 +708,7 @@ class _MonitoringDivisiScreenState extends State<MonitoringDivisiScreen>
                       itemBuilder: (context, index) {
                         final bulanNum = index + 1;
                         final isSelected = tempBulan == bulanNum;
-                        final name = _months[index].substring(0, 3);
+                        final name = DateFormatter.monthNames[index].substring(0, 3);
 
                         return InkWell(
                           onTap: () {
@@ -825,10 +806,10 @@ class _PenjadwalanDivisiCardState extends State<_PenjadwalanDivisiCard> {
   Widget build(BuildContext context) {
     final String divisi = widget.item['divisi'] ?? '-';
     final bool sudahDibuatSemua = widget.item['sudah_dibuat_semua'] ?? false;
-    final int totalJenis = _toInt(widget.item['total_jenis']);
-    final int jenisDijadwalkan = _toInt(widget.item['jenis_dijadwalkan']);
+    final int totalJenis = DateFormatter.toInt(widget.item['total_jenis']);
+    final int jenisDijadwalkan = DateFormatter.toInt(widget.item['jenis_dijadwalkan']);
     final int progressPersen =
-        _toInt(widget.item['progress_percent'] ?? widget.item['progress_persen']);
+        DateFormatter.toInt(widget.item['progress_percent'] ?? widget.item['progress_persen']);
     final List<dynamic> jenisList = widget.item['jenis_list'] ?? [];
 
     final double progressValue = totalJenis > 0
@@ -842,14 +823,14 @@ class _PenjadwalanDivisiCardState extends State<_PenjadwalanDivisiCard> {
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
+        color: AppColors.cardSurface,
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppColors.border),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x04000000),
-            blurRadius: 8,
-            offset: Offset(0, 2),
+            color: Color(0x060F172A),
+            blurRadius: 10,
+            offset: Offset(0, 3),
           ),
         ],
       ),
@@ -858,9 +839,9 @@ class _PenjadwalanDivisiCardState extends State<_PenjadwalanDivisiCard> {
         children: [
           InkWell(
             onTap: () => setState(() => _isExpanded = !_isExpanded),
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(16),
             child: Padding(
-              padding: const EdgeInsets.all(14),
+              padding: const EdgeInsets.all(15),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -870,8 +851,8 @@ class _PenjadwalanDivisiCardState extends State<_PenjadwalanDivisiCard> {
                         width: 40,
                         height: 40,
                         decoration: BoxDecoration(
-                          color: widget.divColor.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(10),
+                          color: widget.divColor.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(12),
                         ),
                         child: Icon(
                           widget.divIcon,
@@ -886,7 +867,7 @@ class _PenjadwalanDivisiCardState extends State<_PenjadwalanDivisiCard> {
                           children: [
                             Text(
                               'Divisi $divisi',
-                              style: const TextStyle(
+                              style: GoogleFonts.plusJakartaSans(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w700,
                                 color: AppColors.textPrimary,
@@ -895,7 +876,7 @@ class _PenjadwalanDivisiCardState extends State<_PenjadwalanDivisiCard> {
                             const SizedBox(height: 2),
                             Text(
                               '$totalJenis jenis inventaris',
-                              style: const TextStyle(
+                              style: GoogleFonts.plusJakartaSans(
                                 fontSize: 11.5,
                                 color: AppColors.textSecondary,
                               ),
@@ -1126,7 +1107,7 @@ class _PenjadwalanDivisiCardState extends State<_PenjadwalanDivisiCard> {
                     Navigator.pushNamed(
                       context,
                       AppRoutes.jadwalDetail,
-                      arguments: _toInt(jadwalList[0]['jdw_id']),
+                      arguments: DateFormatter.toInt(jadwalList[0]['jdw_id']),
                     );
                   } else {
                     _showJadwalSelectionSheet(context, name, jadwalList);
@@ -1282,7 +1263,7 @@ class _PenjadwalanDivisiCardState extends State<_PenjadwalanDivisiCard> {
                             Navigator.pushNamed(
                               context,
                               AppRoutes.jadwalDetail,
-                              arguments: _toInt(s['jdw_id']),
+                              arguments: DateFormatter.toInt(s['jdw_id']),
                             );
                           },
                         ),
@@ -1344,8 +1325,8 @@ class _ProgressDivisiCardState extends State<_ProgressDivisiCard> {
       final jadwal = jen['jadwal'] as List<dynamic>? ?? [];
       totalJadwal += jadwal.length;
       for (final j in jadwal) {
-        final int target = _toInt(j['jdw_target']);
-        final int real = _toInt(j['jdw_realisasi']);
+        final int target = DateFormatter.toInt(j['jdw_target']);
+        final int real = DateFormatter.toInt(j['jdw_realisasi']);
         totalTarget += target;
         totalRealisasi += real;
 
@@ -1365,18 +1346,18 @@ class _ProgressDivisiCardState extends State<_ProgressDivisiCard> {
 
     final int realisasiPersen = totalTarget > 0
     ? ((totalRealisasi / totalTarget) * 100).round().clamp(0, 100)
-    : 0;
+    : (totalRealisasi > 0 ? 100 : 0);
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
+        color: AppColors.cardSurface,
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppColors.border),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x04000000),
-            blurRadius: 8,
-            offset: Offset(0, 2),
+            color: Color(0x060F172A),
+            blurRadius: 10,
+            offset: Offset(0, 3),
           ),
         ],
       ),
@@ -1385,9 +1366,9 @@ class _ProgressDivisiCardState extends State<_ProgressDivisiCard> {
         children: [
           InkWell(
             onTap: () => setState(() => _isExpanded = !_isExpanded),
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(16),
             child: Padding(
-              padding: const EdgeInsets.all(14),
+              padding: const EdgeInsets.all(15),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -1397,8 +1378,8 @@ class _ProgressDivisiCardState extends State<_ProgressDivisiCard> {
                         width: 40,
                         height: 40,
                         decoration: BoxDecoration(
-                          color: widget.divColor.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(10),
+                          color: widget.divColor.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(12),
                         ),
                         child: Icon(
                           widget.divIcon,
@@ -1413,7 +1394,7 @@ class _ProgressDivisiCardState extends State<_ProgressDivisiCard> {
                           children: [
                             Text(
                               'Divisi ${divisi.toUpperCase()}',
-                              style: const TextStyle(
+                              style: GoogleFonts.plusJakartaSans(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w700,
                                 color: AppColors.textPrimary,
@@ -1422,7 +1403,7 @@ class _ProgressDivisiCardState extends State<_ProgressDivisiCard> {
                             const SizedBox(height: 2),
                             Text(
                               '$totalJadwal jadwal aktif',
-                              style: const TextStyle(
+                              style: GoogleFonts.plusJakartaSans(
                                 fontSize: 11.5,
                                 color: AppColors.textSecondary,
                               ),
@@ -1489,7 +1470,7 @@ class _ProgressDivisiCardState extends State<_ProgressDivisiCard> {
                     percent: realisasiPersen,
                     progressValue: totalTarget > 0
                         ? (totalRealisasi / totalTarget).clamp(0.0, 1.0)
-                        : 0.0,
+                        : (totalRealisasi > 0 ? 1.0 : 0.0),
                     color: widget.divColor,
                   ),
                 ],
@@ -1539,11 +1520,11 @@ class _ProgressDivisiCardState extends State<_ProgressDivisiCard> {
           final j = item['jadwal'];
           final String title = j['jdw_judul'] ?? '-';
           final String freq = j['jdw_frekuensi'] ?? '-';
-          final int target = _toInt(j['jdw_target']);
-          final int real = _toInt(j['jdw_realisasi']);
-          final int pct = _toInt(j['jdw_persen']);
+          final int target = DateFormatter.toInt(j['jdw_target']);
+          final int real = DateFormatter.toInt(j['jdw_realisasi']);
+          final int pct = DateFormatter.toInt(j['jdw_persen']);
           final double barVal =
-              target > 0 ? (real / target).clamp(0.0, 1.0) : 0.0;
+              target > 0 ? (real / target).clamp(0.0, 1.0) : (real > 0 ? 1.0 : 0.0);
           final today = DateTime.now();
           final provider = context.read<JadwalProvider>();
           final bool isCurrentMonth = provider.monitoringBulan == today.month &&
@@ -1574,7 +1555,7 @@ class _ProgressDivisiCardState extends State<_ProgressDivisiCard> {
                   Navigator.pushNamed(
                     context,
                     AppRoutes.jadwalDetail,
-                    arguments: _toInt(j['jdw_id']),
+                    arguments: DateFormatter.toInt(j['jdw_id']),
                   );
                 },
                 borderRadius: BorderRadius.circular(10),

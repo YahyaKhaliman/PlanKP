@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:printing/printing.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -6,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/api_client.dart';
+import '../../../core/utils/date_formatter.dart';
 import '../../../core/widgets/app_notifier.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../master/providers/master_provider.dart';
@@ -52,21 +54,6 @@ class _ExportPdfDialogState extends State<ExportPdfDialog> {
   bool _isLoadingExcel = false;
 
   bool get _isProcessing => _isLoadingPdf || _isLoadingExcel;
-
-  final List<String> _monthNames = [
-    'Januari',
-    'Februari',
-    'Maret',
-    'April',
-    'Mei',
-    'Juni',
-    'Juli',
-    'Agustus',
-    'September',
-    'Oktober',
-    'November',
-    'Desember'
-  ];
 
   @override
   void initState() {
@@ -281,7 +268,7 @@ class _ExportPdfDialogState extends State<ExportPdfDialog> {
     );
 
     if (!hasData) {
-      final bulanNama = _monthNames[_selectedMonth - 1];
+      final bulanNama = DateFormatter.monthNames[_selectedMonth - 1];
       final targetStr = _selectedPelaksana != 'Semua Pelaksana'
           ? 'user $_selectedPelaksana'
           : 'divisi $_selectedDivisi';
@@ -391,7 +378,7 @@ class _ExportPdfDialogState extends State<ExportPdfDialog> {
 
       if (!hasData) {
         if (!mounted) return;
-        final bulanNama = _monthNames[selectedMonth - 1];
+        final bulanNama = DateFormatter.monthNames[selectedMonth - 1];
         final targetStr = selectedPelaksana != 'Semua Pelaksana'
             ? 'user $selectedPelaksana'
             : 'divisi $selectedDivisi';
@@ -417,7 +404,7 @@ class _ExportPdfDialogState extends State<ExportPdfDialog> {
       await Printing.layoutPdf(
         onLayout: (format) async => pdfBytes,
         name:
-            'Laporan_Maintenance_${selectedDivisi.replaceAll(" ", "_")}_${_monthNames[selectedMonth - 1]}_$selectedYear.pdf',
+            'Laporan_Maintenance_${selectedDivisi.replaceAll(" ", "_")}_${DateFormatter.monthNames[selectedMonth - 1]}_$selectedYear.pdf',
       );
     } catch (e) {
       if (mounted) {
@@ -433,7 +420,8 @@ class _ExportPdfDialogState extends State<ExportPdfDialog> {
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      backgroundColor: AppColors.cardSurface,
       child: Container(
         constraints: const BoxConstraints(maxWidth: 440),
         padding: const EdgeInsets.all(20),
@@ -465,7 +453,7 @@ class _ExportPdfDialogState extends State<ExportPdfDialog> {
                           'Export Laporan (Excel / PDF)',
                           style: TextStyle(
                             fontSize: 16,
-                            fontWeight: FontWeight.bold,
+                            fontWeight: FontWeight.w800,
                             color: AppColors.textPrimary,
                           ),
                         ),
@@ -480,6 +468,10 @@ class _ExportPdfDialogState extends State<ExportPdfDialog> {
                     ),
                   ),
                   IconButton(
+                    style: IconButton.styleFrom(
+                      backgroundColor: AppColors.surfaceAlt,
+                      foregroundColor: AppColors.textSecondary,
+                    ),
                     icon: const Icon(Icons.close_rounded, size: 20),
                     onPressed: () => Navigator.pop(context),
                   ),
@@ -490,9 +482,9 @@ class _ExportPdfDialogState extends State<ExportPdfDialog> {
               const SizedBox(height: 16),
 
               // Dropdown Divisi
-              const Text(
+              Text(
                 'Pilih Divisi',
-                style: TextStyle(
+                style: GoogleFonts.plusJakartaSans(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
                   color: AppColors.textSecondary,
@@ -518,12 +510,13 @@ class _ExportPdfDialogState extends State<ExportPdfDialog> {
                       border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10)),
                       filled: isDivisiLocked,
-                      fillColor: isDivisiLocked ? Colors.grey[100] : null,
+                      fillColor: isDivisiLocked ? AppColors.surfaceAlt : null,
                     ),
                     items: divisiList.map((div) {
                       return DropdownMenuItem(
                         value: div,
-                        child: Text(div, style: const TextStyle(fontSize: 13)),
+                        child: Text(div,
+                            style: GoogleFonts.plusJakartaSans(fontSize: 13)),
                       );
                     }).toList(),
                     onChanged: isDivisiLocked
@@ -537,9 +530,9 @@ class _ExportPdfDialogState extends State<ExportPdfDialog> {
               const SizedBox(height: 14),
 
               // Dropdown Pelaksana 
-              const Text(
+              Text(
                 'Pilih Pelaksana',
-                style: TextStyle(
+                style: GoogleFonts.plusJakartaSans(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
                   color: AppColors.textSecondary,
@@ -568,7 +561,7 @@ class _ExportPdfDialogState extends State<ExportPdfDialog> {
                       border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10)),
                       filled: isPelaksanaLocked,
-                      fillColor: isPelaksanaLocked ? Colors.grey[100] : null,
+                      fillColor: isPelaksanaLocked ? AppColors.surfaceAlt : null,
                     ),
                     items: pelaksanaOptions.map((p) {
                       return DropdownMenuItem(
@@ -576,7 +569,7 @@ class _ExportPdfDialogState extends State<ExportPdfDialog> {
                         child: Text(
                           p,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontSize: 13),
+                          style: GoogleFonts.plusJakartaSans(fontSize: 13),
                         ),
                       );
                     }).toList(),
@@ -598,9 +591,9 @@ class _ExportPdfDialogState extends State<ExportPdfDialog> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           'Bulan',
-                          style: TextStyle(
+                          style: GoogleFonts.plusJakartaSans(
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
                             color: AppColors.textSecondary,
@@ -618,8 +611,8 @@ class _ExportPdfDialogState extends State<ExportPdfDialog> {
                           items: List.generate(12, (i) {
                             return DropdownMenuItem(
                               value: i + 1,
-                              child: Text(_monthNames[i],
-                                  style: const TextStyle(fontSize: 12.5)),
+                              child: Text(DateFormatter.monthNames[i],
+                                  style: GoogleFonts.plusJakartaSans(fontSize: 12.5)),
                             );
                           }),
                           onChanged: (val) {
@@ -637,9 +630,9 @@ class _ExportPdfDialogState extends State<ExportPdfDialog> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           'Tahun',
-                          style: TextStyle(
+                          style: GoogleFonts.plusJakartaSans(
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
                             color: AppColors.textSecondary,
@@ -665,7 +658,8 @@ class _ExportPdfDialogState extends State<ExportPdfDialog> {
                                 return DropdownMenuItem(
                                   value: yr,
                                   child: Text('$yr',
-                                      style: const TextStyle(fontSize: 12.5)),
+                                      style:
+                                          GoogleFonts.plusJakartaSans(fontSize: 12.5)),
                                 );
                               }).toList(),
                               onChanged: (val) {
@@ -689,7 +683,15 @@ class _ExportPdfDialogState extends State<ExportPdfDialog> {
                   Expanded(
                     child: OutlinedButton(
                       onPressed: _isProcessing ? null : () => Navigator.pop(context),
-                      child: const Text('Batal'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.textSecondary,
+                        side: const BorderSide(color: AppColors.border),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      child: Text(
+                        'Batal',
+                        style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -697,8 +699,9 @@ class _ExportPdfDialogState extends State<ExportPdfDialog> {
                     child: ElevatedButton.icon(
                       onPressed: _isProcessing ? null : _downloadExcel,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF16A34A),
+                        backgroundColor: AppColors.success,
                         foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
                       icon: _isLoadingExcel
                           ? const SizedBox(
@@ -712,7 +715,8 @@ class _ExportPdfDialogState extends State<ExportPdfDialog> {
                           : const Icon(Icons.table_chart_rounded, size: 16),
                       label: Text(
                         _isLoadingExcel ? 'Proses...' : 'Excel',
-                        style: const TextStyle(fontSize: 12.5),
+                        style: GoogleFonts.plusJakartaSans(
+                            fontSize: 12.5, fontWeight: FontWeight.w700),
                       ),
                     ),
                   ),
@@ -723,6 +727,7 @@ class _ExportPdfDialogState extends State<ExportPdfDialog> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
                         foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
                       icon: _isLoadingPdf
                           ? const SizedBox(
@@ -736,7 +741,8 @@ class _ExportPdfDialogState extends State<ExportPdfDialog> {
                           : const Icon(Icons.print_rounded, size: 16),
                       label: Text(
                         _isLoadingPdf ? 'Proses...' : 'PDF',
-                        style: const TextStyle(fontSize: 12.5),
+                        style: GoogleFonts.plusJakartaSans(
+                            fontSize: 12.5, fontWeight: FontWeight.w700),
                       ),
                     ),
                   ),

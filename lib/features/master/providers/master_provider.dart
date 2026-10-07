@@ -122,6 +122,19 @@ class MasterProvider extends ChangeNotifier {
     }
   }
 
+  Future<List<InventarisModel>> getInventarisByJenis(int jenisId) async {
+    try {
+      final res = await ApiClient.get(ApiConfig.inventaris, query: {'jenis': '$jenisId'});
+      final dataField = res['data'];
+      final List rawList = dataField is Map && dataField.containsKey('items')
+          ? dataField['items']
+          : (dataField as List);
+      return rawList.map((e) => InventarisModel.fromJson(e)).toList();
+    } catch (_) {
+      return inventarisList.where((e) => e.invJenisId == jenisId).toList();
+    }
+  }
+
   Future<bool> saveInventaris(Map<String, dynamic> body, {int? id}) async {
     try {
       if (id != null) {

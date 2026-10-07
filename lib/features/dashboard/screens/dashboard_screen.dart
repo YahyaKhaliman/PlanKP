@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:awesome_dialog/awesome_dialog.dart';
 import '../../../core/theme/app_theme.dart';
@@ -20,6 +21,10 @@ import '../../master/screens/user_screen.dart';
 import '../../jadwal/widgets/realisasi_detail_sheet.dart';
 import '../../../core/widgets/shimmer_loading.dart';
 import '../../../core/utils/responsive_sheet.dart';
+import '../../voucher/screens/voucher_screen.dart';
+import '../../voucher/models/voucher_model.dart';
+import '../../voucher/providers/voucher_provider.dart';
+import '../../voucher/widgets/voucher_bon_dialog.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -30,20 +35,6 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   static const _pageBg = AppColors.surface;
-  static const List<String> _monthNames = [
-    'Januari',
-    'Februari',
-    'Maret',
-    'April',
-    'Mei',
-    'Juni',
-    'Juli',
-    'Agustus',
-    'September',
-    'Oktober',
-    'November',
-    'Desember'
-  ];
   bool _hasCheckedPendingTtd = false;
   bool _isLoadingData = false;
   List<RealisasiModel> _pendingDrafts = [];
@@ -203,7 +194,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       itemBuilder: (context, index) {
                         final bulanNum = index + 1;
                         final isSelected = tempBulan == bulanNum;
-                        final name = _monthNames[index].substring(0, 3);
+                        final name = DateFormatter.monthNames[index].substring(0, 3);
 
                         return InkWell(
                           onTap: () {
@@ -251,11 +242,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     setState(() {
                       _selectedTargetMonth = DateTime(tempTahun, tempBulan);
                     });
+                    final auth = context.read<AuthProvider>();
+                    final role = auth.user?['user_jabatan']?.toString().toLowerCase();
                     final p = context.read<JadwalProvider>();
                     for (int i = 5; i >= 0; i--) {
                       p.fetchHariLiburForMonth(DateTime(tempTahun, tempBulan - i, 1));
                     }
-                    p.fetchMonitoringDivisi(bulan: tempBulan, tahun: tempTahun);
+                    if (role == 'manager' || role == 'admin') {
+                      p.fetchMonitoringDivisi(bulan: tempBulan, tahun: tempTahun);
+                    }
+                    p.fetchRealisasi(
+                      status: 'Selesai',
+                      bulan: tempBulan,
+                      tahun: tempTahun,
+                      byDivisi: role == 'admin',
+                    );
+                    p.fetchRealisasiHistorySummary(bulan: tempBulan, tahun: tempTahun);
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
@@ -305,79 +307,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
 
     return false;
-  }
-
-  static const List<String> _divisiSixDays = ['GA'];
-
-  bool _isWorkingDay(DateTime date, String? divisi, Set<int> holidays) {
-    if (holidays.contains(date.day)) return false;
-    if (date.weekday == DateTime.sunday) return false;
-    if (date.weekday == DateTime.saturday) {
-      final norm = (divisi ?? '').trim().toUpperCase();
-      return _divisiSixDays.any((d) => d.toUpperCase() == norm);
-    }
-    return true;
-  }
-
-  DateTime? _findNextWorkingDay(DateTime date, DateTime limit, String? divisi, Set<int> holidays) {
-    var d = date;
-    while (!_isWorkingDay(d, divisi, holidays)) {
-      d = d.add(const Duration(days: 1));
-      if (d.isAfter(limit)) return null;
-    }
-    return d;
-  }
-
-  List<DateTime> _effectiveScheduleDatesInMonth(
-      JadwalModel j, DateTime start, DateTime end, Set<int> holidays,
-      {DateTime? lastRealisasiDate}) {
-    final jStart = DateTime.tryParse(j.jdwTglMulai);
-    if (jStart == null) return [];
-
-    final gapHari = j.jdwGapHari;
-    if (gapHari > 0 && lastRealisasiDate != null) {
-      final nextEligibleDate = lastRealisasiDate.add(Duration(days: gapHari));
-      final endMonthDate = DateTime(end.year, end.month, end.day, 23, 59, 59);
-      if (endMonthDate.isBefore(nextEligibleDate)) {
-        return [];
-      }
-    }
-
-    final rangeStart = jStart.isAfter(start) ? jStart : start;
-    final jEndStr = j.jdwTglSelesai;
-    final jEnd = (jEndStr == null || jEndStr.isEmpty)
-        ? end
-        : (DateTime.tryParse(jEndStr) ?? end);
-    final rangeEnd = jEnd.isBefore(end) ? jEnd : end;
-
-    if (rangeEnd.isBefore(rangeStart)) return [];
-    List<DateTime> dates = [];
-    final divisi = j.jdwDivisi;
-
-    if (j.jdwFrekuensi == 'Harian') {
-      for (var d = rangeStart;
-          !d.isAfter(rangeEnd);
-          d = d.add(const Duration(days: 1))) {
-        if (_isWorkingDay(d, divisi, holidays)) dates.add(d);
-      }
-    } else if (j.jdwFrekuensi == 'Mingguan') {
-      var curr = jStart;
-      while (!curr.isAfter(rangeEnd)) {
-        if (!curr.isBefore(rangeStart)) {
-          final nextWork = _findNextWorkingDay(curr, rangeEnd, divisi, holidays);
-          if (nextWork != null) {
-            dates.add(nextWork);
-          }
-        }
-        curr = curr.add(const Duration(days: 7));
-      }
-    } else if (j.jdwFrekuensi == 'Bulanan') {
-      final nextWork = _findNextWorkingDay(rangeStart, rangeEnd, divisi, holidays);
-      if (nextWork != null) {
-        dates.add(nextWork);
-      }
-    }
-    return dates;
   }
 
   DateTime? _getLastRealisasiDateForJadwal(int jdwId, List<RealisasiModel> realisasiList) {
@@ -449,6 +378,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
       }
       if (!mounted) return;
       await context.read<MasterProvider>().fetchJenis();
+
+      final String userDivisi = auth.user?['user_divisi']?.toString().toUpperCase() ?? '';
+      final bool isDriverAdmin = role == 'admin' && userDivisi == 'DRIVER';
+      final bool canSeeVoucherNotif = isManager || isDriverAdmin;
+      if (canSeeVoucherNotif && mounted) {
+        context.read<VoucherProvider>().fetchPendingVouchers();
+      }
 
       if (!isAdmin) {
         final drafts = await p.fetchDraftRealisasi();
@@ -657,6 +593,629 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
 
+  void _showVoucherPendingBottomSheet(BuildContext context) {
+    context.read<VoucherProvider>().fetchPendingVouchers();
+    showResponsiveSheet(
+      context,
+      maxDesktopWidth: 680,
+      builder: (ctx) {
+        String searchQuery = '';
+
+        return StatefulBuilder(
+          builder: (modalCtx, setModalState) {
+            final vp = modalCtx.watch<VoucherProvider>();
+            final pendingList = vp.pendingVouchers;
+            final auth = modalCtx.read<AuthProvider>();
+            final role = auth.user?['user_jabatan']?.toString().toLowerCase();
+            final isManager = role == 'manager';
+            final userDivisi = auth.user?['user_divisi']?.toString();
+
+            final double totalLiter = pendingList.fold(
+              0.0,
+              (sum, item) => sum + item.voucherJumlahLiter,
+            );
+
+            // Filter pencarian
+            final displayList = searchQuery.trim().isEmpty
+                ? pendingList
+                : pendingList.where((v) {
+                    final q = searchQuery.trim().toLowerCase();
+                    final driver = v.namaPemohon.toLowerCase();
+                    final unit = v.namaInventaris.toLowerCase();
+                    final plat = v.noPolisi.toLowerCase();
+                    final spbu = v.namaSpbu.toLowerCase();
+                    final bbm = v.voucherJenisBbm.toLowerCase();
+                    return driver.contains(q) ||
+                        unit.contains(q) ||
+                        plat.contains(q) ||
+                        spbu.contains(q) ||
+                        bbm.contains(q);
+                  }).toList();
+
+            return Container(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(modalCtx).size.height * 0.9,
+              ),
+              decoration: const BoxDecoration(
+                color: Color(0xFFF5F7FF),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // ── Header Gradient ────────────────────────────────────
+                  Container(
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [Color(0xFF1A3A7C), Color(0xFF3B6FE0)],
+                      ),
+                      borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+                    ),
+                    child: Column(
+                      children: [
+                        const SizedBox(height: 12),
+                        Center(
+                          child: Container(
+                            width: 40,
+                            height: 4,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.35),
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        // Title Row
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                                child: const Icon(
+                                  Icons.local_gas_station_rounded,
+                                  color: Colors.white,
+                                  size: 22,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'Permintaan Voucher BBM',
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w800,
+                                        color: Colors.white,
+                                        letterSpacing: -0.3,
+                                      ),
+                                    ),
+                                    Text(
+                                      isManager
+                                          ? 'Semua Divisi'
+                                          : (userDivisi != null && userDivisi.isNotEmpty
+                                              ? 'Divisi: $userDivisi'
+                                              : 'Divisi: Driver'),
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.white.withValues(alpha: 0.75),
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.refresh_rounded, size: 20, color: Colors.white),
+                                tooltip: 'Muat ulang',
+                                onPressed: () => vp.fetchPendingVouchers(),
+                              ),
+                              IconButton(
+                                icon: Container(
+                                  padding: const EdgeInsets.all(6),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withValues(alpha: 0.15),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                    Icons.close_rounded,
+                                    color: Colors.white,
+                                    size: 18,
+                                  ),
+                                ),
+                                onPressed: () => Navigator.of(modalCtx).pop(),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        // ── Integrated Header Button Group ────────────────
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withValues(alpha: 0.18),
+                                    borderRadius: BorderRadius.circular(14),
+                                    border: Border.all(
+                                      color: const Color(0xFFFFB020),
+                                      width: 1.5,
+                                    ),
+                                  ),
+                                  child: Column(
+                                    children: [
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          const Icon(Icons.hourglass_top_rounded, color: Color(0xFFFFB020), size: 16),
+                                          const SizedBox(width: 5),
+                                          Text(
+                                            '${pendingList.length}',
+                                            style: const TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w900,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 4),
+                                      const Text(
+                                        'Menunggu',
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w800,
+                                          color: Colors.white,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withValues(alpha: 0.08),
+                                    borderRadius: BorderRadius.circular(14),
+                                    border: Border.all(
+                                      color: const Color(0xFF64B5F6).withValues(alpha: 0.4),
+                                      width: 1.0,
+                                    ),
+                                  ),
+                                  child: Column(
+                                    children: [
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          const Icon(Icons.water_drop_rounded, color: Color(0xFF64B5F6), size: 16),
+                                          const SizedBox(width: 5),
+                                          Text(
+                                            totalLiter % 1 == 0 ? '${totalLiter.toInt()}' : totalLiter.toStringAsFixed(1),
+                                            style: const TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w900,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        'Total Liter',
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w500,
+                                          color: Colors.white.withValues(alpha: 0.75),
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        // ── Search Input ────────────────────────────────
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+                          child: TextField(
+                            onChanged: (val) => setModalState(() => searchQuery = val),
+                            style: const TextStyle(fontSize: 13, color: Colors.white),
+                            decoration: InputDecoration(
+                              hintText: 'Cari nama driver, plat kendaraan, atau SPBU...',
+                              hintStyle: TextStyle(
+                                fontSize: 12,
+                                color: Colors.white.withValues(alpha: 0.55),
+                              ),
+                              prefixIcon: const Icon(
+                                Icons.search_rounded,
+                                color: Colors.white70,
+                                size: 18,
+                              ),
+                              suffixIcon: searchQuery.isNotEmpty
+                                  ? IconButton(
+                                      icon: const Icon(Icons.clear_rounded, color: Colors.white70, size: 16),
+                                      onPressed: () => setModalState(() => searchQuery = ''),
+                                    )
+                                  : null,
+                              filled: true,
+                              fillColor: Colors.white.withValues(alpha: 0.14),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide.none,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // ── List Area ──────────────────────────────────────────
+                  Flexible(
+                    child: vp.isLoadingPending
+                        ? const Padding(
+                            padding: EdgeInsets.all(40),
+                            child: Center(child: CircularProgressIndicator()),
+                          )
+                        : displayList.isEmpty
+                            ? _voucherEmptyState(searchQuery.isNotEmpty)
+                            : ListView.separated(
+                                padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                                itemCount: displayList.length,
+                                separatorBuilder: (_, __) => const SizedBox(height: 12),
+                                itemBuilder: (context, i) {
+                                  final v = displayList[i];
+                                  return _buildPendingVoucherCard(modalCtx, v);
+                                },
+                              ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  /// Empty state voucher persis senada kendala maintenance
+  Widget _voucherEmptyState(bool isFiltered) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 48, horizontal: 32),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 72,
+            height: 72,
+            decoration: BoxDecoration(
+              color: isFiltered ? const Color(0xFFEFF6FF) : const Color(0xFFDCFCE7),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              isFiltered ? Icons.search_off_rounded : Icons.check_circle_outline_rounded,
+              size: 36,
+              color: isFiltered ? const Color(0xFF285AC8) : const Color(0xFF16A34A),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            isFiltered ? 'Tidak Ditemukan' : 'Semua Beres!',
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            isFiltered
+                ? 'Tidak ada permintaan voucher yang cocok dengan pencarian.'
+                : 'Tidak ada permintaan voucher BBM yang memerlukan persetujuan saat ini.',
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 13,
+              color: AppColors.textSecondary,
+              height: 1.5,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPendingVoucherCard(BuildContext context, VoucherModel v) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF1E293B).withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+        border: Border.all(
+          color: const Color(0xFFE2E8F0),
+          width: 1.0,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header Baris Plat, Unit, & Status Badge
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEA580C).withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  v.noPolisi != '-' ? v.noPolisi : (v.inventaris?['inv_no']?.toString() ?? 'Unit BBM'),
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFFEA580C),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      v.namaInventaris,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textPrimary,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    Row(
+                      children: [
+                        const Icon(Icons.access_time_rounded, size: 12, color: AppColors.textSecondary),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${v.voucherCreatedAt.day}/${v.voucherCreatedAt.month}/${v.voucherCreatedAt.year}  ${v.voucherCreatedAt.hour.toString().padLeft(2, '0')}:${v.voucherCreatedAt.minute.toString().padLeft(2, '0')}',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: AppColors.textSecondary,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF7ED),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: const Color(0xFFFFEDD5)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFEA580C),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 5),
+                    const Text(
+                      'Menunggu',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFFEA580C),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // Pemohon Driver
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(5),
+                decoration: BoxDecoration(
+                  color: Colors.blue.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.person_rounded, size: 14, color: Colors.blue),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                v.namaPemohon,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              if (v.pemohon?['user_divisi'] != null) ...[
+                const SizedBox(width: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1.5),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    v.pemohon!['user_divisi'].toString(),
+                    style: const TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.blue,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 10),
+
+          // Info SPBU & BBM Container
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFE2E8F0)),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.local_gas_station_rounded, size: 15, color: Color(0xFFEA580C)),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              v.namaSpbu,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.textPrimary,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade200,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              v.voucherJenisBbm,
+                              style: const TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF475569),
+                              ),
+                            ),
+                          ),
+                          if (v.voucherOdometer != null) ...[
+                            const SizedBox(width: 6),
+                            Text(
+                              'Odo: ${v.voucherOdometer} km',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: AppColors.textSecondary,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      '${v.voucherJumlahLiter.toStringAsFixed(1)} L',
+                      style: const TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w900,
+                        color: Color(0xFFEA580C),
+                      ),
+                    ),
+                    const Text(
+                      'Volume BBM',
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: AppColors.textSecondary,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // Action Button Tinjau & Setujui
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              FilledButton.icon(
+                icon: const Icon(Icons.check_circle_rounded, size: 16),
+                label: const Text(
+                  'Tinjau & Setujui',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                ),
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFFEA580C),
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+                onPressed: () async {
+                  await VoucherBonDialog.show(context, voucher: v, isAdmin: true);
+                  if (context.mounted) {
+                    context.read<VoucherProvider>().fetchPendingVouchers();
+                  }
+                },
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showKendalaBottomSheet(
     BuildContext context,
     List<RealisasiModel> initialList, {
@@ -791,6 +1350,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                     ),
                                   ],
                                 ),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.refresh_rounded, size: 20, color: Colors.white),
+                                tooltip: 'Muat ulang',
+                                onPressed: () => provider.fetchKendalaDivisi(divisi: userDivisi),
                               ),
                               IconButton(
                                 icon: Container(
@@ -1398,10 +1962,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
       return;
     }
 
-    if (jadwal.jdwStatus != 'Draft') {
+    if (jadwal.jdwStatus != 'Aktif') {
       await AppNotifier.showError(
         context,
-        'Jadwal harus dalam status Draft untuk direalisasi',
+        'Jadwal harus berstatus Aktif untuk dapat direalisasikan',
       );
       return;
     }
@@ -1564,10 +2128,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
       doneBulanIni = summary['realisasi_bulan_ini'] ?? 0;
       totalTargetBulanIni = summary['total_target_bulan_ini'] ?? 0;
     } else {
-      jadwalAktif = p.jadwalList.where((j) => j.jdwStatus == 'Draft').length;
+      jadwalAktif = p.jadwalList.where((j) => j.jdwStatus == 'Aktif').length;
 
       for (final j in p.jadwalList) {
-        if (j.jdwStatus != 'Draft') continue;
+        if (j.jdwStatus != 'Aktif') continue;
         final diff = _getRemainingDaysDiff(j);
         if (diff < 0) {
           overdueTasks++;
@@ -1577,21 +2141,36 @@ class _DashboardScreenState extends State<DashboardScreen> {
       }
       pendingTasks = overdueTasks + dueTodayTasks;
 
-      doneBulanIni = p.realisasiList.where((r) {
-        return r.realBulan == _selectedTargetMonth.month && r.realTahun == _selectedTargetMonth.year;
-      }).length;
+      final divisiData = _getDivisiTargetRealisasiData(p);
+      if (divisiData.isNotEmpty && (role == 'manager' || role == 'admin')) {
+        int sumTarget = 0;
+        int sumRealisasi = 0;
+        for (final d in divisiData) {
+          sumTarget += DateFormatter.toInt(d['target_unit']);
+          sumRealisasi += DateFormatter.toInt(d['realisasi_unit']);
+        }
+        totalTargetBulanIni = sumTarget;
+        doneBulanIni = sumRealisasi;
+      } else if (p.historySummaryData != null) {
+        totalTargetBulanIni = p.historySummaryData!['total_target'] ?? 0;
+        doneBulanIni = p.historySummaryData!['total_realisasi'] ?? 0;
+      } else {
+        doneBulanIni = p.realisasiList.where((r) {
+          return r.realBulan == _selectedTargetMonth.month && r.realTahun == _selectedTargetMonth.year;
+        }).length;
 
-      final startOfMonth = DateTime(_selectedTargetMonth.year, _selectedTargetMonth.month, 1);
-      final endOfMonth = DateTime(_selectedTargetMonth.year, _selectedTargetMonth.month + 1, 0);
-      final holidayDays = p.getHolidayDaysForMonth(_selectedTargetMonth);
+        final startOfMonth = DateTime(_selectedTargetMonth.year, _selectedTargetMonth.month, 1);
+        final endOfMonth = DateTime(_selectedTargetMonth.year, _selectedTargetMonth.month + 1, 0);
+        final holidayDays = p.getHolidayDaysForMonth(_selectedTargetMonth);
 
-      for (final j in p.jadwalList) {
-        if (j.jdwStatus != 'Draft') continue;
-        final lastRealDate = _getLastRealisasiDateForJadwal(j.jdwId, p.realisasiList);
-        final count =
-            _effectiveScheduleDatesInMonth(j, startOfMonth, endOfMonth, holidayDays, lastRealisasiDate: lastRealDate).length;
-        final perTarget = (j.jdwTarget ?? 0) > 0 ? j.jdwTarget! : (j.jdwTotalUnit ?? 0);
-        totalTargetBulanIni += count * perTarget;
+        for (final j in p.jadwalList) {
+          if (j.jdwStatus != 'Aktif' && j.jdwStatus != 'Selesai') continue;
+          final lastRealDate = _getLastRealisasiDateForJadwal(j.jdwId, p.realisasiList);
+          final count =
+              JadwalProvider.effectiveScheduleDatesInMonth(j, startOfMonth, endOfMonth, holidayDays, lastRealisasiDate: lastRealDate).length;
+          final perTarget = (j.jdwTarget ?? 0) > 0 ? j.jdwTarget! : (j.jdwTotalUnit ?? 0);
+          totalTargetBulanIni += count * perTarget;
+        }
       }
     }
 
@@ -1651,6 +2230,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   auth: auth,
                                   isLoading: _isLoadingData,
                                 ),
+                              ),
+                              Builder(
+                                builder: (context) {
+                                  final String userDivisi = auth.user?['user_divisi']?.toString().toUpperCase() ?? '';
+                                  final bool isDriverAdmin = role == 'admin' && userDivisi == 'DRIVER';
+                                  final bool canSeeVoucherNotif = role == 'manager' || isDriverAdmin;
+
+                                  if (!canSeeVoucherNotif) return const SizedBox.shrink();
+
+                                  return Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Consumer<VoucherProvider>(
+                                        builder: (context, vp, _) {
+                                          return _AnimatedVoucherNotificationBell(
+                                            count: vp.pendingCount,
+                                            isLoading: vp.isLoadingPending,
+                                            onTap: () => _showVoucherPendingBottomSheet(context),
+                                          );
+                                        },
+                                      ),
+                                      const SizedBox(width: 6),
+                                    ],
+                                  );
+                                },
                               ),
                               if (role == 'admin' || role == 'manager') ...[
                                 _AnimatedNotificationBell(
@@ -2004,8 +2608,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  int _toInt(dynamic v) => (v is num) ? v.toInt() : (int.tryParse(v?.toString() ?? '') ?? 0);
-
   List<Map<String, dynamic>> _getDivisiTargetRealisasiData(JadwalProvider p) {
     // 1. Jika data monitoringDivisiList dari Backend tersedia, gunakan langsung 100%
     //    (Sama persis seperti pada Tab Progress Monitoring Divisi)
@@ -2022,14 +2624,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
         for (final jen in jenisList) {
           final jadwalList = jen['jadwal'] as List<dynamic>? ?? [];
           for (final jdw in jadwalList) {
-            divTarget += _toInt(jdw['jdw_target']);
-            divRealisasi += _toInt(jdw['jdw_realisasi']);
+            divTarget += DateFormatter.toInt(jdw['jdw_target']);
+            divRealisasi += DateFormatter.toInt(jdw['jdw_realisasi']);
           }
         }
 
         final int pct = divTarget > 0
             ? ((divRealisasi / divTarget) * 100).round().clamp(0, 100)
-            : 0;
+            : (divRealisasi > 0 ? 100 : 0);
 
         result.add({
           'divisi': div,
@@ -2060,7 +2662,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
       final holidayDays = p.getHolidayDaysForMonth(_selectedTargetMonth, divisi: div);
       final lastRealDate = _getLastRealisasiDateForJadwal(j.jdwId, p.realisasiList);
-      final count = _effectiveScheduleDatesInMonth(
+      final count = JadwalProvider.effectiveScheduleDatesInMonth(
         j, startOfMonth, endOfMonth, holidayDays, lastRealisasiDate: lastRealDate
       ).length;
       final perTarget = (j.jdwTarget ?? 0) > 0 ? j.jdwTarget! : (j.jdwTotalUnit ?? 0);
@@ -2089,7 +2691,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     divisiMap.forEach((div, dataMap) {
       final target = dataMap['target_unit'] as int;
       final realisasi = dataMap['realisasi_unit'] as int;
-      final pct = target > 0 ? ((realisasi / target) * 100).clamp(0, 100).round() : 0;
+      final pct = target > 0 ? ((realisasi / target) * 100).clamp(0, 100).round() : (realisasi > 0 ? 100 : 0);
       dataMap['progress_percent'] = pct;
       result.add(dataMap);
     });
@@ -2144,8 +2746,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
             for (final jen in jenisList) {
               final jadwalList = jen['jadwal'] as List<dynamic>? ?? [];
               for (final jdw in jadwalList) {
-                divTarget += _toInt(jdw['jdw_target']);
-                divRealisasi += _toInt(jdw['jdw_realisasi']);
+                divTarget += DateFormatter.toInt(jdw['jdw_target']);
+                divRealisasi += DateFormatter.toInt(jdw['jdw_realisasi']);
               }
             }
             final double pct = divTarget > 0
@@ -2164,7 +2766,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         for (final j in p.jadwalList) {
           if (j.jdwDivisi.trim().toUpperCase() != div) continue;
           final holidayDays = p.getHolidayDaysForMonth(targetMonth, divisi: div);
-          final count = _effectiveScheduleDatesInMonth(j, startOfMonth, endOfMonth, holidayDays).length;
+          final count = JadwalProvider.effectiveScheduleDatesInMonth(j, startOfMonth, endOfMonth, holidayDays).length;
           final perTarget = (j.jdwTarget ?? 0) > 0 ? j.jdwTarget! : (j.jdwTotalUnit ?? 0);
           targetCount += count * perTarget;
         }
@@ -2250,8 +2852,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
       divisiMap[div] = {
         'divisi': div,
-        'total_jenis': _toInt(item['total_jenis']),
-        'jenis_dijadwalkan': _toInt(item['jenis_dijadwalkan']),
+        'total_jenis': DateFormatter.toInt(item['total_jenis']),
+        'jenis_dijadwalkan': DateFormatter.toInt(item['jenis_dijadwalkan']),
       };
     }
 
@@ -2404,7 +3006,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         child: CustomPaint(
                           painter: _DivisiBarChartPainter(
                             data: data,
-                            toInt: _toInt,
+                            toInt: DateFormatter.toInt,
                             keyTotal: 'total_jenis',
                             keyCurrent: 'jenis_dijadwalkan',
                             activeDivIndex: _activeSchedulingPopupIndex,
@@ -2438,8 +3040,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               ),
                               child: Builder(builder: (context) {
                                 final String div = (activeItem['divisi'] ?? '-').toString();
-                                final int totalVal = _toInt(activeItem['total_jenis']);
-                                final int currentVal = _toInt(activeItem['jenis_dijadwalkan']);
+                                final int totalVal = DateFormatter.toInt(activeItem['total_jenis']);
+                                final int currentVal = DateFormatter.toInt(activeItem['jenis_dijadwalkan']);
                                 final double pct = totalVal > 0 ? (currentVal / totalVal * 100) : 0.0;
                                 final Color divColor = AppDivisiColors.getColor(div);
 
@@ -2978,7 +3580,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
-                            '${_monthNames[_selectedTargetMonth.month - 1]} ${_selectedTargetMonth.year}',
+                            '${DateFormatter.monthNames[_selectedTargetMonth.month - 1]} ${_selectedTargetMonth.year}',
                             style: const TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w700,
@@ -3012,9 +3614,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   runSpacing: 10,
                   children: data.map((item) {
                     final String divisi = item['divisi'] ?? '-';
-                    final int targetUnit = _toInt(item['target_unit']);
-                    final int realisasiUnit = _toInt(item['realisasi_unit']);
-                    final int progressPercent = _toInt(item['progress_percent']);
+                    final int targetUnit = DateFormatter.toInt(item['target_unit']);
+                    final int realisasiUnit = DateFormatter.toInt(item['realisasi_unit']);
+                    final int progressPercent = DateFormatter.toInt(item['progress_percent']);
                     final Color divColor = AppDivisiColors.getColor(divisi);
                     final IconData divIcon = AppDivisiColors.getIcon(divisi);
 
@@ -3122,6 +3724,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   // --- UI COMPONENTS ---
   Widget _buildAdaptiveSystemFlow(bool isDesktop, String? role) {
+    final auth = context.read<AuthProvider>();
     final String r = (role ?? '').toLowerCase();
     final bool isAdmin = r == 'admin';
     final bool isManager = r == 'manager';
@@ -3136,43 +3739,50 @@ class _DashboardScreenState extends State<DashboardScreen> {
           't': '1. Jenis',
           'd': 'Input kategori jenis inventaris',
           'i': Icons.category_rounded,
-          'c': const Color(0xFF0D9488), // teal-600
-          's': const JenisScreen()
+          'c': const Color(0xFF0284C7), // Baris 1: Biru muda
+          's': const JenisScreen(),
         },
         {
           't': '2. Inventaris',
           'd': 'Daftarkan unit inventaris baru',
           'i': Icons.inventory_2_rounded,
-          'c': const Color(0xFF7C3AED), // violet-600
-          's': const InventarisScreen()
+          'c': const Color(0xFF0284C7), // Baris 1: Biru muda
+          's': const InventarisScreen(),
         },
         {
           't': '3. Checklist',
           'd': 'Buat template checklist item',
           'i': Icons.checklist_rounded,
-          'c': const Color(0xFFDC2626), // red-600
-          's': const ChecklistTemplateScreen()
+          'c': const Color(0xFF0284C7), // Baris 1: Biru muda
+          's': const ChecklistTemplateScreen(),
         },
         {
           't': '4. Jadwal',
           'd': 'Susun jadwal pemeliharaan',
           'i': Icons.event_note_rounded,
-          'c': AppColors.primary,
-          's': const jadwal_screen.JadwalScreen()
+          'c': const Color(0xFFEA580C), // Baris 2: Orange
+          's': const jadwal_screen.JadwalScreen(),
         },
         {
           't': '5. Realisasi',
           'd': 'Pantau laporan yang masuk',
           'i': Icons.analytics_rounded,
-          'c': const Color(0xFF059669), // emerald-600
-          's': const RealisasiHistoryScreen()
+          'c': const Color(0xFFEA580C), // Baris 2: Orange
+          's': const RealisasiHistoryScreen(),
         },
         {
           't': '6. User',
           'd': 'Kelola akun teknisi & admin',
           'i': Icons.people_outline_rounded,
-          'c': const Color(0xFF2563EB), // blue-600
-          's': const UserScreen()
+          'c': const Color(0xFFEA580C), // Baris 2: Orange
+          's': const UserScreen(),
+        },
+        {
+          't': '7. Voucher',
+          'd': 'Rekap & approval voucher BBM',
+          'i': Icons.local_gas_station_rounded,
+          'c': const Color(0xFF0D9488), // Baris 3: Teal kalem
+          's': const VoucherScreen(),
         },
       ];
     } else if (isManager) {
@@ -3182,7 +3792,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           't': '1. Monitoring Divisi',
           'd': 'Pantau progress semua divisi',
           'i': Icons.monitor_heart_rounded,
-          'c': const Color(0xFF2563EB),
+          'c': const Color(0xFF0284C7),
           's': null,
           'onTap': () => Navigator.pushNamed(context, AppRoutes.monitoringDivisi),
         },
@@ -3190,55 +3800,81 @@ class _DashboardScreenState extends State<DashboardScreen> {
           't': '2. Jadwal',
           'd': 'Kelola & pantau seluruh jadwal',
           'i': Icons.event_note_rounded,
-          'c': AppColors.primary,
-          's': const jadwal_screen.JadwalScreen()
+          'c': const Color(0xFF0284C7),
+          's': const jadwal_screen.JadwalScreen(),
         },
         {
           't': '3. Realisasi',
           'd': 'Lihat capaian & hasil pengerjaan',
           'i': Icons.analytics_rounded,
-          'c': const Color(0xFF059669),
-          's': const RealisasiHistoryScreen()
+          'c': const Color(0xFF0284C7),
+          's': const RealisasiHistoryScreen(),
         },
         {
           't': '4. User',
           'd': 'Kelola akun pengguna & divisi',
           'i': Icons.people_outline_rounded,
-          'c': const Color(0xFF7C3AED),
-          's': const UserScreen()
+          'c': const Color(0xFFEA580C),
+          's': const UserScreen(),
+        },
+        {
+          't': '5. Voucher',
+          'd': 'Rekap & monitoring voucher BBM',
+          'i': Icons.local_gas_station_rounded,
+          'c': const Color(0xFFEA580C),
+          's': const VoucherScreen(),
         },
       ];
     } else {
-      sectionTitle = "Menu Utama Teknisi";
+      final String userDivisi = auth.user?['user_divisi']?.toString().toUpperCase() ?? '';
+      final bool isDriver = userDivisi == 'DRIVER';
+      sectionTitle = isDriver ? "Menu Utama Driver" : "Menu Utama Teknisi";
       steps = [
         {
           't': '1. Jadwal',
           'd': 'Daftar jadwal pemeliharaan',
           'i': Icons.event_note_rounded,
-          'c': AppColors.primary,
-          's': const jadwal_screen.JadwalScreen()
+          'c': const Color(0xFF0284C7),
+          's': const jadwal_screen.JadwalScreen(),
         },
         {
           't': '2. Inventaris',
           'd': 'Daftar data unit inventaris',
           'i': Icons.inventory_2_rounded,
-          'c': const Color(0xFF7C3AED),
-          's': const InventarisScreen()
+          'c': const Color(0xFF0284C7),
+          's': const InventarisScreen(),
         },
         {
           't': '3. Realisasi',
           'd': 'Riwayat & status realisasi',
           'i': Icons.analytics_rounded,
-          'c': const Color(0xFF059669),
-          's': const RealisasiHistoryScreen()
+          'c': const Color(0xFF0284C7),
+          's': const RealisasiHistoryScreen(),
         },
-        {
-          't': '4. User',
-          'd': 'Informasi akun & pengguna',
-          'i': Icons.people_outline_rounded,
-          'c': const Color(0xFF2563EB),
-          's': const UserScreen()
-        },
+        if (!isDriver)
+          {
+            't': '4. User',
+            'd': 'Informasi akun & pengguna',
+            'i': Icons.people_outline_rounded,
+            'c': const Color(0xFF0284C7),
+            's': const UserScreen(),
+          },
+        if (isDriver) ...[
+          {
+            't': '4. User',
+            'd': 'Informasi akun & pengguna',
+            'i': Icons.people_outline_rounded,
+            'c': const Color(0xFFEA580C),
+            's': const UserScreen(),
+          },
+          {
+            't': '5. Voucher',
+            'd': 'Permintaan voucher BBM inventaris',
+            'i': Icons.local_gas_station_rounded,
+            'c': const Color(0xFFEA580C),
+            's': const VoucherScreen(),
+          },
+        ],
       ];
     }
 
@@ -3252,7 +3888,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               Expanded(
                 child: Text(
                   sectionTitle,
-                  style: const TextStyle(
+                  style: GoogleFonts.plusJakartaSans(
                     fontSize: 16,
                     fontWeight: FontWeight.w800,
                     color: AppColors.textPrimary,
@@ -3267,15 +3903,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   onTap: () => _showSystemFlowInfoDialog(context),
                   borderRadius: BorderRadius.circular(99),
                   child: Container(
-                    width: 22,
-                    height: 22,
+                    width: 24,
+                    height: 24,
                     decoration: BoxDecoration(
                       color: AppColors.primary.withValues(alpha: 0.08),
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(
                       Icons.info_outline_rounded,
-                      size: 13,
+                      size: 14,
                       color: AppColors.primary,
                     ),
                   ),
@@ -3284,15 +3920,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ],
           ),
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 8),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
             decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: const Color(0xFFE2E8F0), width: 1),
+              color: AppColors.cardSurface,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: AppColors.border, width: 1),
               boxShadow: const [
                 BoxShadow(
                   color: Color(0x060F172A),
@@ -3304,31 +3940,72 @@ class _DashboardScreenState extends State<DashboardScreen> {
             child: LayoutBuilder(
               builder: (context, constraints) {
                 final int count = steps.length;
-                if (count <= 4) {
+                final bool isMobile = AppBreakpoints.isMobile(context);
+                final bool isTablet = AppBreakpoints.isTablet(context);
+                final bool isDesktopLayout = AppBreakpoints.isDesktop(context);
+
+                // 1. Desktop layout (>= 960px): jika <= 7 item, tampilkan dalam 1 baris seimbang
+                if (isDesktopLayout && count <= 7) {
                   return Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       for (int i = 0; i < count; i++)
                         Expanded(
-                          child: _buildLargeStepCard(steps[i], i),
+                          child: _buildLargeStepCard(steps[i], i, count),
                         ),
                     ],
                   );
-                } else {
-                  return GridView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 3,
-                      crossAxisSpacing: 10,
-                      mainAxisSpacing: 16,
-                      mainAxisExtent: 104,
-                    ),
-                    itemCount: count,
-                    itemBuilder: (_, i) => _buildLargeStepCard(steps[i], i),
+                }
+
+                // 2. Tablet layout (600 - 960px): jika <= 5 item, tampilkan 1 baris
+                if (isTablet && count <= 5) {
+                  return Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      for (int i = 0; i < count; i++)
+                        Expanded(
+                          child: _buildLargeStepCard(steps[i], i, count),
+                        ),
+                    ],
                   );
                 }
+
+                // 3. Mobile layout (< 600px): jika <= 4 item, tampilkan 1 baris
+                if (isMobile && count <= 4) {
+                  return Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      for (int i = 0; i < count; i++)
+                        Expanded(
+                          child: _buildLargeStepCard(steps[i], i, count),
+                        ),
+                    ],
+                  );
+                }
+
+                // 4. Multi-column grid untuk item yang membungkus:
+                // Desktop: 7 kolom, Tablet: 4 kolom, Mobile: 3 kolom
+                final int cols = isDesktopLayout
+                    ? (count >= 7 ? 7 : count)
+                    : isTablet
+                        ? (count >= 4 ? 4 : count)
+                        : 3;
+
+                return GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: cols,
+                    crossAxisSpacing: isDesktopLayout ? 14 : (isTablet ? 12 : 8),
+                    mainAxisSpacing: 14,
+                    mainAxisExtent: 104,
+                  ),
+                  itemCount: count,
+                  itemBuilder: (_, i) => _buildLargeStepCard(steps[i], i, count),
+                );
               },
             ),
           ),
@@ -3354,7 +4031,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFE2E8F0)),
+          border: Border.all(color: AppColors.border),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -3395,12 +4072,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildLargeStepCard(Map<String, dynamic> step, int index) {
+  Color _getMenuRowColor(int index, int totalCount) {
+    final int rowIndex = totalCount <= 4 ? 0 : (index ~/ 3);
+    switch (rowIndex) {
+      case 0:
+        return const Color(0xFF0284C7); // Baris 1: Biru muda
+      case 1:
+        return const Color(0xFFEA580C); // Baris 2: Orange
+      case 2:
+      default:
+        return const Color(0xFF0D9488); // Baris 3: Teal kalem
+    }
+  }
+
+  Widget _buildLargeStepCard(Map<String, dynamic> step, int index, [int totalCount = 0]) {
     if (_isLoadingData) {
       return _buildLargeStepCardSkeleton();
     }
 
-    final Color color = step['c'] as Color;
+    final Color color = (step['c'] as Color?) ?? _getMenuRowColor(index, totalCount);
     final String title = step['t'] as String;
     final VoidCallback? customTap = step['onTap'] as VoidCallback?;
     final Widget? targetScreen = step['s'] as Widget?;
@@ -3474,8 +4164,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                       child: Text(
                         formattedNum,
-                        style: TextStyle(
-                          fontSize: 11,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 10.5,
                           fontWeight: FontWeight.w900,
                           color: color,
                         ),
@@ -3490,10 +4180,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
             // 2. Menu Title
             Text(
               cleanTitle,
-              style: const TextStyle(
-                fontWeight: FontWeight.w800,
-                fontSize: 13.5,
-                color: Color(0xFF0F172A),
+              style: GoogleFonts.plusJakartaSans(
+                fontWeight: FontWeight.w700,
+                fontSize: 13,
+                color: AppColors.textPrimary,
               ),
               textAlign: TextAlign.center,
               maxLines: 1,
@@ -3676,7 +4366,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     final double percent = (totalTargetBulanIni > 0)
         ? (doneBulanIni / totalTargetBulanIni).clamp(0.0, 1.0)
-        : 0.0;
+        : (doneBulanIni > 0 ? 1.0 : 0.0);
     final int percentInt = (percent * 100).round();
     final bool isCompleted = percent >= 1.0;
     const Color primaryBlue = Color(0xFF0052FF);
@@ -3758,7 +4448,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         children: [
                           const SizedBox(width: 5),
                           Text(
-                            '${_monthNames[_selectedTargetMonth.month - 1]} ${_selectedTargetMonth.year}',
+                            '${DateFormatter.monthNames[_selectedTargetMonth.month - 1]} ${_selectedTargetMonth.year}',
                             style: const TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w700,
@@ -4447,7 +5137,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         : (item.jdwSelesaiUnit ?? 0);
 
     final totalTarget = (item.jdwTarget ?? 0) > 0 ? item.jdwTarget! : (item.jdwTotalUnit ?? 0);
-    final double progressPercent = totalTarget > 0 ? (realisasiSelesai / totalTarget).clamp(0.0, 1.0) : 0.0;
+    final double progressPercent = totalTarget > 0 ? (realisasiSelesai / totalTarget).clamp(0.0, 1.0) : (realisasiSelesai > 0 ? 1.0 : 0.0);
     final int percentInt = (progressPercent * 100).round();
 
     final bool isCompleted = progressPercent >= 1.0;
@@ -5124,15 +5814,6 @@ class __RoleBasedUserGuideDialogState
                           color: AppColors.textPrimary,
                         ),
                       ),
-                      SizedBox(height: 2),
-                      Text(
-                        'Petunjuk langkah kerja berdasarkan peran',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
                     ],
                   ),
                 ),
@@ -5149,7 +5830,7 @@ class __RoleBasedUserGuideDialogState
               ),
               child: Row(
                 children: [
-                  _buildRoleTab(0, 'Teknisi', Icons.engineering_rounded),
+                  _buildRoleTab(0, 'Teknisi / Driver', Icons.engineering_rounded),
                   _buildRoleTab(1, 'Admin', Icons.admin_panel_settings_rounded),
                   _buildRoleTab(2, 'Manager', Icons.shield_rounded),
                 ],
@@ -5166,90 +5847,108 @@ class __RoleBasedUserGuideDialogState
                       _buildTimelineItem(
                         '01',
                         'Jadwal',
-                        'Buat jadwal maintenance untuk setiap jenis inventaris dan tetapkan teknisi yang bertugas.',
-                        AppColors.primary,
+                        'Melihat jadwal yang sudah dijadwalkan oleh Admin',
+                        const Color(0xFF0284C7),
                       ),
                       _buildTimelineItem(
                         '02',
                         'Inventaris',
-                        'Daftarkan unit inventaris beserta detail nya.',
-                        Colors.purple,
+                        'Melihat unit inventaris beserta detail nya.',
+                        const Color(0xFF0284C7),
                       ),
                       _buildTimelineItem(
                         '03',
-                        'Checklist',
-                        'Tentukan daftar poin pemeriksaan pada setiap jenis inventaris.',
-                        Colors.redAccent,
+                        'Realisasi',
+                        'Pantau laporan dan histori realisasi maintenance.',
+                        const Color(0xFF0284C7),
                       ),
                       _buildTimelineItem(
                         '04',
-                        'Realisasi',
-                        'Pantau laporan yang masuk dan histori realisasi maintenance.',
-                        const Color(0xFF059669),
+                        'User',
+                        'Melihat informasi akun dan profil pengguna.',
+                        const Color(0xFFEA580C),
+                      ),
+                      _buildTimelineItem(
+                        '05',
+                        'Voucher',
+                        'Pengajuan dan pencatatan voucher BBM unit (khusus Driver).',
+                        const Color(0xFFEA580C),
                         isLast: true,
                       ),
                     ] else if (_selectedTab == 1) ...[
                       _buildTimelineItem(
                         '01',
                         'Jenis',
-                        'Daftarkan kategori/jenis inventaris (Laptop, Mobil, Mesin Jahit, dll).',
-                        Colors.teal,
+                        'Kelola jenis inventaris (misal: Laptop, Mobil, Mesin Jahit, dll).',
+                        const Color(0xFF0284C7),
                       ),
                       _buildTimelineItem(
                         '02',
                         'Inventaris',
-                        'Daftarkan unit inventaris beserta detail nya.',
-                        Colors.purple,
+                        'Kelola unit inventaris per jenis nya.',
+                        const Color(0xFF0284C7),
                       ),
                       _buildTimelineItem(
                         '03',
                         'Checklist',
-                        'Tentukan daftar poin pemeriksaan pada setiap jenis inventaris.',
-                        Colors.redAccent,
+                        'Kelola daftar checklist pemeriksaan per jenis inventaris.',
+                        const Color(0xFF0284C7),
                       ),
                       _buildTimelineItem(
                         '04',
                         'Jadwal',
-                        'Buat jadwal maintenance untuk setiap jenis inventaris dan tetapkan teknisi yang bertugas.',
-                        AppColors.primary,
+                        'Kelola jadwal maintenance per jenis inventaris.',
+                        const Color(0xFFEA580C),
                       ),
                       _buildTimelineItem(
                         '05',
                         'Realisasi',
-                        'Pantau laporan yang masuk dan histori realisasi maintenance.',
-                        const Color(0xFF059669),
+                        'Pantau laporan dan histori realisasi maintenance.',
+                        const Color(0xFFEA580C),
                       ),
                       _buildTimelineItem(
                         '06',
                         'User',
-                        'Kelola akun user/teknisi divisi masing-masing.',
-                        const Color(0xFF2563EB),
+                        'Kelola akun per divisi.',
+                        const Color(0xFFEA580C),
+                      ),
+                      _buildTimelineItem(
+                        '07',
+                        'Voucher',
+                        'Rekapitulasi, approval, dan monitoring penggunaan voucher BBM unit.',
+                        const Color(0xFF0D9488),
                         isLast: true,
                       ),
                     ] else ...[
                       _buildTimelineItem(
                         '01',
                         'Monitoring Divisi',
-                        'Lihat persentase capaian target realisasi semua divisi.',
-                        const Color(0xFF2563EB),
+                        'Pantau persentase capaian semua divisi.',
+                        const Color(0xFF0284C7),
                       ),
                       _buildTimelineItem(
                         '02',
                         'Jadwal',
-                        'Buat jadwal maintenance untuk setiap jenis inventaris dan tetapkan teknisi yang bertugas.',
-                        AppColors.primary,
+                        'Kelola jadwal maintenance per jenis inventaris.',
+                        const Color(0xFF0284C7),
                       ),
                       _buildTimelineItem(
                         '03',
                         'Realisasi',
-                        'Pantau laporan yang masuk dan histori realisasi maintenance.',
-                        const Color(0xFF059669),
+                        'Pantau laporan dan histori realisasi maintenance.',
+                        const Color(0xFF0284C7),
                       ),
                       _buildTimelineItem(
                         '04',
                         'User',
-                        'Kelola akun user/teknisi divisi masing-masing.',
-                        const Color(0xFF2563EB),
+                        'Kelola akun per divisi.',
+                        const Color(0xFFEA580C),
+                      ),
+                      _buildTimelineItem(
+                        '05',
+                        'Voucher',
+                        'Rekapitulasi dan monitoring voucher BBM antar divisi.',
+                        const Color(0xFFEA580C),
                         isLast: true,
                       ),
                     ],
@@ -5274,7 +5973,7 @@ class __RoleBasedUserGuideDialogState
                   ),
                 ),
                 child: const Text(
-                  'Saya Mengerti',
+                  'Mengerti',
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w800,
@@ -5318,13 +6017,17 @@ class __RoleBasedUserGuideDialogState
                 color: isSelected ? AppColors.primary : AppColors.textSecondary,
               ),
               const SizedBox(width: 5),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-                  color:
-                      isSelected ? AppColors.primary : AppColors.textSecondary,
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                    color:
+                        isSelected ? AppColors.primary : AppColors.textSecondary,
+                  ),
                 ),
               ),
             ],
@@ -5550,6 +6253,149 @@ class _AnimatedNotificationBellState extends State<_AnimatedNotificationBell>
               ),
             ),
 
+        ],
+      ),
+    );
+  }
+}
+
+class _AnimatedVoucherNotificationBell extends StatefulWidget {
+  final int count;
+  final bool isLoading;
+  final VoidCallback onTap;
+
+  const _AnimatedVoucherNotificationBell({
+    required this.count,
+    this.isLoading = false,
+    required this.onTap,
+  });
+
+  @override
+  State<_AnimatedVoucherNotificationBell> createState() =>
+      _AnimatedVoucherNotificationBellState();
+}
+
+class _AnimatedVoucherNotificationBellState
+    extends State<_AnimatedVoucherNotificationBell>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 1400),
+      vsync: this,
+    );
+
+    _animation = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween(begin: 1.0, end: 1.15), weight: 2),
+      TweenSequenceItem(tween: Tween(begin: 1.15, end: 0.95), weight: 2),
+      TweenSequenceItem(tween: Tween(begin: 0.95, end: 1.08), weight: 2),
+      TweenSequenceItem(tween: Tween(begin: 1.08, end: 1.0), weight: 2),
+      TweenSequenceItem(tween: Tween(begin: 1.0, end: 1.0), weight: 4),
+    ]).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+
+    if (widget.count > 0 && !widget.isLoading) {
+      _controller.repeat();
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant _AnimatedVoucherNotificationBell oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.count > 0 && !widget.isLoading && !_controller.isAnimating) {
+      _controller.repeat();
+    } else if ((widget.count == 0 || widget.isLoading) && _controller.isAnimating) {
+      _controller.stop();
+      _controller.reset();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bool showActive = widget.count > 0 && !widget.isLoading;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.15),
+        shape: BoxShape.circle,
+      ),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          IconButton(
+            icon: RepaintBoundary(
+              child: AnimatedBuilder(
+                animation: _animation,
+                builder: (context, child) {
+                  return Transform.scale(
+                    scale: showActive ? _animation.value : 1.0,
+                    child: child,
+                  );
+                },
+                child: Icon(
+                  Icons.local_gas_station_rounded,
+                  color: showActive
+                      ? const Color(0xFFFBBF24)
+                      : Colors.white.withValues(alpha: widget.isLoading ? 0.7 : 1.0),
+                  size: 22,
+                ),
+              ),
+            ),
+            tooltip: widget.count > 0
+                ? '${widget.count} Permintaan Voucher BBM Perlu Disetujui'
+                : 'Permintaan Voucher BBM',
+            onPressed: widget.onTap,
+          ),
+          if (widget.isLoading)
+            Positioned(
+              right: 6,
+              top: 6,
+              child: AppShimmer(
+                child: Container(
+                  width: 14,
+                  height: 14,
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ),
+            )
+          else if (widget.count > 0)
+            Positioned(
+              right: 6,
+              top: 6,
+              child: Container(
+                padding: const EdgeInsets.all(4),
+                decoration: const BoxDecoration(
+                  color: Color(0xFFDC1E32),
+                  shape: BoxShape.circle,
+                ),
+                constraints: const BoxConstraints(
+                  minWidth: 18,
+                  minHeight: 18,
+                ),
+                child: Center(
+                  child: Text(
+                    '${widget.count > 99 ? '99+' : widget.count}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );

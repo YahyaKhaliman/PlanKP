@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/app_notifier.dart';
@@ -279,6 +280,7 @@ class _AiJadwalWizardSheetState extends State<AiJadwalWizardSheet> {
         'jdw_notes': draft['jdwNotes'],
         'jdw_target': draft['jdwTarget'],
         'jdw_gap_hari': draft['jdwGapHari'],
+        'jdw_assigned_to': draft['jdwUserId'],
         'jdw_user_id': draft['jdwUserId'],
         'jdw_pabrik_kode': (draft['jdwPabrikList'] as List<String>).join(','),
       };
@@ -289,17 +291,12 @@ class _AiJadwalWizardSheetState extends State<AiJadwalWizardSheet> {
       if (ok) {
         final judulBaru = draft['jdwJudul'];
         widget.onSaved();
+        await AppNotifier.showSuccess(
+          context,
+          'Jadwal "$judulBaru" berhasil dibuat!',
+        );
+        if (!mounted) return;
         Navigator.pop(context);
-
-        // Berikan notifikasi sukses UI di halaman utama setelah modal tertutup
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) {
-            AppNotifier.showSuccess(
-              context,
-              'Jadwal "$judulBaru" berhasil dibuat!',
-            );
-          }
-        });
       } else {
         AppNotifier.showError(
           context,
@@ -398,7 +395,7 @@ class _AiJadwalWizardSheetState extends State<AiJadwalWizardSheet> {
           maxHeight: mediaQuery.size.height * 0.92,
         ),
         decoration: const BoxDecoration(
-          color: Colors.white,
+          color: AppColors.cardSurface,
           borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
         ),
         child: SafeArea(
@@ -416,7 +413,7 @@ class _AiJadwalWizardSheetState extends State<AiJadwalWizardSheet> {
                       width: 44,
                       height: 5,
                       decoration: BoxDecoration(
-                        color: Colors.grey[300],
+                        color: AppColors.border,
                         borderRadius: BorderRadius.circular(10),
                       ),
                     ),
@@ -454,9 +451,9 @@ class _AiJadwalWizardSheetState extends State<AiJadwalWizardSheet> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text(
+                              Text(
                                 'Asisten AI Penjadwalan',
-                                style: TextStyle(
+                                style: GoogleFonts.plusJakartaSans(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w800,
                                   color: AppColors.textPrimary,
@@ -475,7 +472,7 @@ class _AiJadwalWizardSheetState extends State<AiJadwalWizardSheet> {
                                     ),
                                     child: Text(
                                       'Langkah $_currentStep dari 8',
-                                      style: const TextStyle(
+                                      style: GoogleFonts.plusJakartaSans(
                                         fontSize: 11,
                                         color: AppColors.primary,
                                         fontWeight: FontWeight.w700,
@@ -489,7 +486,8 @@ class _AiJadwalWizardSheetState extends State<AiJadwalWizardSheet> {
                         ),
                         IconButton(
                           style: IconButton.styleFrom(
-                            backgroundColor: Colors.grey[100],
+                            backgroundColor: AppColors.surfaceAlt,
+                            foregroundColor: AppColors.textSecondary,
                             padding: const EdgeInsets.all(8),
                           ),
                           icon: const Icon(Icons.close, size: 20),
@@ -503,7 +501,7 @@ class _AiJadwalWizardSheetState extends State<AiJadwalWizardSheet> {
                       child: LinearProgressIndicator(
                         value: _currentStep / 8,
                         minHeight: 6,
-                        backgroundColor: Colors.grey[200],
+                        backgroundColor: AppColors.surfaceAlt,
                         valueColor:
                             const AlwaysStoppedAnimation<Color>(AppColors.primary),
                       ),
@@ -532,10 +530,10 @@ class _AiJadwalWizardSheetState extends State<AiJadwalWizardSheet> {
                   16 + (bottomInset > 0 ? 0 : bottomPadding),
                 ),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: AppColors.cardSurface,
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.04),
+                      color: AppColors.textPrimary.withValues(alpha: 0.04),
                       blurRadius: 10,
                       offset: const Offset(0, -4),
                     ),
@@ -551,11 +549,14 @@ class _AiJadwalWizardSheetState extends State<AiJadwalWizardSheet> {
                           setState(() => _currentStep--);
                         },
                         icon: const Icon(Icons.arrow_back, size: 16),
-                        label: const Text('Sebelumnya'),
+                        label: Text(
+                          'Sebelumnya',
+                          style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
+                        ),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: AppColors.textPrimary,
                           padding: const EdgeInsets.symmetric(vertical: 14),
-                          side: BorderSide(color: Colors.grey[300]!),
+                          side: const BorderSide(color: AppColors.border),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
@@ -577,7 +578,10 @@ class _AiJadwalWizardSheetState extends State<AiJadwalWizardSheet> {
                                     ),
                                   )
                                 : const Icon(Icons.check_circle, size: 18),
-                            label: Text(_isSaving ? 'Menyimpan...' : 'Buat Jadwal'),
+                            label: Text(
+                              _isSaving ? 'Menyimpan...' : 'Buat Jadwal',
+                              style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
+                            ),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppColors.primary,
                               foregroundColor: Colors.white,
@@ -601,15 +605,15 @@ class _AiJadwalWizardSheetState extends State<AiJadwalWizardSheet> {
                                 borderRadius: BorderRadius.circular(12),
                               ),
                             ),
-                            child: const Row(
+                            child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 Text(
                                   'Lanjut',
-                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                  style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
                                 ),
-                                SizedBox(width: 6),
-                                Icon(Icons.arrow_forward, size: 16),
+                                const SizedBox(width: 6),
+                                const Icon(Icons.arrow_forward, size: 16),
                               ],
                             ),
                           ),
@@ -692,10 +696,10 @@ class _AiJadwalWizardSheetState extends State<AiJadwalWizardSheet> {
                   decoration: BoxDecoration(
                     color: isSelected
                         ? AppColors.primary.withValues(alpha: 0.1)
-                        : Colors.grey[50],
+                        : AppColors.surface,
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(
-                      color: isSelected ? AppColors.primary : Colors.grey[300]!,
+                      color: isSelected ? AppColors.primary : AppColors.border,
                       width: isSelected ? 1.5 : 1,
                     ),
                     boxShadow: isSelected
@@ -716,7 +720,7 @@ class _AiJadwalWizardSheetState extends State<AiJadwalWizardSheet> {
                             ? Icons.check_circle
                             : Icons.category,
                         size: 18,
-                        color: isSelected ? AppColors.primary : Colors.grey[500],
+                        color: isSelected ? AppColors.primary : AppColors.textMuted,
                       ),
                       const SizedBox(width: 8),
                       Text(
@@ -792,10 +796,10 @@ class _AiJadwalWizardSheetState extends State<AiJadwalWizardSheet> {
                 decoration: BoxDecoration(
                   color: isSelected
                       ? AppColors.primary.withValues(alpha: 0.1)
-                      : Colors.grey[50],
+                      : AppColors.surface,
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(
-                    color: isSelected ? AppColors.primary : Colors.grey[300]!,
+                    color: isSelected ? AppColors.primary : AppColors.border,
                     width: isSelected ? 1.5 : 1,
                   ),
                   boxShadow: isSelected
@@ -816,7 +820,7 @@ class _AiJadwalWizardSheetState extends State<AiJadwalWizardSheet> {
                           ? Icons.check_circle
                           : Icons.location_on,
                       size: 18,
-                      color: isSelected ? AppColors.primary : Colors.grey[500],
+                      color: isSelected ? AppColors.primary : AppColors.textMuted,
                     ),
                     const SizedBox(width: 8),
                     Text(
@@ -880,12 +884,12 @@ class _AiJadwalWizardSheetState extends State<AiJadwalWizardSheet> {
         ),
         const SizedBox(height: 16),
         if (displayUsers.isEmpty)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 20),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 20),
             child: Center(
               child: Text(
                 'Tidak ada user/teknisi aktif ditemukan.',
-                style: TextStyle(color: Colors.grey),
+                style: GoogleFonts.plusJakartaSans(color: AppColors.textMuted),
               ),
             ),
           )
@@ -899,15 +903,15 @@ class _AiJadwalWizardSheetState extends State<AiJadwalWizardSheet> {
                 decoration: BoxDecoration(
                   color: isSelected
                       ? AppColors.primary.withValues(alpha: 0.06)
-                      : Colors.white,
+                      : AppColors.cardSurface,
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                    color: isSelected ? AppColors.primary : Colors.grey[200]!,
+                    color: isSelected ? AppColors.primary : AppColors.border,
                     width: isSelected ? 1.5 : 1,
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.02),
+                      color: AppColors.textPrimary.withValues(alpha: 0.03),
                       blurRadius: 8,
                       offset: const Offset(0, 2),
                     ),
@@ -947,14 +951,14 @@ class _AiJadwalWizardSheetState extends State<AiJadwalWizardSheet> {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
-                          color: Colors.grey[100],
+                          color: AppColors.surfaceAlt,
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
                           'Jabatan: ${u.userJabatan} · Divisi: ${u.userDivisi}',
-                          style: TextStyle(
+                          style: GoogleFonts.plusJakartaSans(
                             fontSize: 11,
-                            color: Colors.grey[700],
+                            color: AppColors.textSecondary,
                           ),
                         ),
                       ),
@@ -962,7 +966,7 @@ class _AiJadwalWizardSheetState extends State<AiJadwalWizardSheet> {
                   ),
                   trailing: Icon(
                     isSelected ? Icons.check_circle : Icons.person,
-                    color: isSelected ? AppColors.primary : Colors.grey[400],
+                    color: isSelected ? AppColors.primary : AppColors.textMuted,
                     size: 22,
                   ),
                   onTap: () {
@@ -1110,9 +1114,9 @@ class _AiJadwalWizardSheetState extends State<AiJadwalWizardSheet> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             decoration: BoxDecoration(
-              color: Colors.grey[50],
+              color: AppColors.surface,
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: Colors.grey[300]!),
+              border: Border.all(color: AppColors.border),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1241,9 +1245,9 @@ class _AiJadwalWizardSheetState extends State<AiJadwalWizardSheet> {
           const SizedBox(height: 14),
           const Divider(height: 1),
           const SizedBox(height: 14),
-          const Text(
+          Text(
             'Pilih Nilai Gap Hari Baru untuk Master Jenis:',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5),
+            style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700, fontSize: 12.5),
           ),
           const SizedBox(height: 10),
           _optionCard(
@@ -1305,9 +1309,9 @@ class _AiJadwalWizardSheetState extends State<AiJadwalWizardSheet> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
-                color: Colors.grey[50],
+                color: AppColors.surface,
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: Colors.grey[300]!),
+                border: Border.all(color: AppColors.border),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1416,9 +1420,9 @@ class _AiJadwalWizardSheetState extends State<AiJadwalWizardSheet> {
           icon: Icons.event,
         ),
         const SizedBox(height: 16),
-        const Text(
+        Text(
           'Tanggal Mulai Pertama:',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+          style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700, fontSize: 13),
         ),
         const SizedBox(height: 8),
         InkWell(
@@ -1443,7 +1447,7 @@ class _AiJadwalWizardSheetState extends State<AiJadwalWizardSheet> {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
-              color: Colors.grey[50],
+              color: AppColors.surface,
               borderRadius: BorderRadius.circular(14),
               border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
             ),
@@ -1457,8 +1461,8 @@ class _AiJadwalWizardSheetState extends State<AiJadwalWizardSheet> {
                     const SizedBox(width: 10),
                     Text(
                       DateFormatter.toDisplayFromDate(_tglMulai),
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontWeight: FontWeight.w700,
                         fontSize: 14,
                         color: AppColors.textPrimary,
                       ),
@@ -1475,19 +1479,19 @@ class _AiJadwalWizardSheetState extends State<AiJadwalWizardSheet> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text(
+            Text(
               'Tanggal Selesai (Opsional):',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+              style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700, fontSize: 13),
             ),
             if (_tglSelesai != null)
               GestureDetector(
                 onTap: () => setState(() => _tglSelesai = null),
-                child: const Text(
+                child: Text(
                   'Hapus Batas Selesai',
-                  style: TextStyle(
+                  style: GoogleFonts.plusJakartaSans(
                     fontSize: 11.5,
                     fontWeight: FontWeight.w700,
-                    color: Colors.red,
+                    color: AppColors.danger,
                   ),
                 ),
               ),
@@ -1512,12 +1516,10 @@ class _AiJadwalWizardSheetState extends State<AiJadwalWizardSheet> {
             decoration: BoxDecoration(
               color: _tglSelesai != null
                   ? AppColors.primary.withValues(alpha: 0.05)
-                  : Colors.grey[50],
+                  : AppColors.surface,
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
-                color: _tglSelesai != null
-                    ? AppColors.primary
-                    : Colors.grey[300]!,
+                color: _tglSelesai != null ? AppColors.primary : AppColors.border,
               ),
             ),
             child: Row(
@@ -1529,7 +1531,7 @@ class _AiJadwalWizardSheetState extends State<AiJadwalWizardSheet> {
                       Icons.event,
                       color: _tglSelesai != null
                           ? AppColors.primary
-                          : Colors.grey[600],
+                          : AppColors.textMuted,
                       size: 18,
                     ),
                     const SizedBox(width: 10),
@@ -1537,14 +1539,14 @@ class _AiJadwalWizardSheetState extends State<AiJadwalWizardSheet> {
                       _tglSelesai != null
                           ? DateFormatter.toDisplayFromDate(_tglSelesai!)
                           : 'Tidak ada batas selesai (Berjalan terus)',
-                      style: TextStyle(
+                      style: GoogleFonts.plusJakartaSans(
                         fontWeight: _tglSelesai != null
-                            ? FontWeight.bold
+                            ? FontWeight.w700
                             : FontWeight.w500,
                         fontSize: 13.5,
                         color: _tglSelesai != null
                             ? AppColors.textPrimary
-                            : Colors.grey[600],
+                            : AppColors.textSecondary,
                       ),
                     ),
                   ],
@@ -1553,7 +1555,7 @@ class _AiJadwalWizardSheetState extends State<AiJadwalWizardSheet> {
                   Icons.edit,
                   color: _tglSelesai != null
                       ? AppColors.primary
-                      : Colors.grey[500],
+                      : AppColors.textMuted,
                   size: 18,
                 ),
               ],
@@ -1561,9 +1563,9 @@ class _AiJadwalWizardSheetState extends State<AiJadwalWizardSheet> {
           ),
         ),
         const SizedBox(height: 20),
-        const Text(
+        Text(
           'Target Unit per Jadwal:',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+          style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700, fontSize: 13),
         ),
         const SizedBox(height: 8),
         _optionCard(
@@ -1586,9 +1588,9 @@ class _AiJadwalWizardSheetState extends State<AiJadwalWizardSheet> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             decoration: BoxDecoration(
-              color: Colors.grey[50],
+              color: AppColors.surface,
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: Colors.grey[300]!),
+              border: Border.all(color: AppColors.border),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1700,9 +1702,9 @@ class _AiJadwalWizardSheetState extends State<AiJadwalWizardSheet> {
               padding: const EdgeInsets.symmetric(horizontal: 4),
               child: Text(
                 '* Jumlah unit $_selectedJenisNama pada pabrik $pabrikDisplay: $_maxTargetUnit.',
-                style: TextStyle(
+                style: GoogleFonts.plusJakartaSans(
                   fontSize: 11,
-                  color: Colors.grey[600],
+                  color: AppColors.textMuted,
                   fontStyle: FontStyle.italic,
                 ),
               ),
@@ -1710,9 +1712,9 @@ class _AiJadwalWizardSheetState extends State<AiJadwalWizardSheet> {
           ],
         ],
         const SizedBox(height: 20),
-        const Text(
+        Text(
           'Catatan Jadwal (Opsional):',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+          style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700, fontSize: 13),
         ),
         const SizedBox(height: 8),
         TextField(
@@ -1722,17 +1724,18 @@ class _AiJadwalWizardSheetState extends State<AiJadwalWizardSheet> {
           decoration: InputDecoration(
             hintText:
                 'Misal: Wajib foto kondisi fisik sebelum & sesudah, gunakan oli standar, dan lain-lain...',
-            hintStyle: TextStyle(fontSize: 12, color: Colors.grey[400]),
+            hintStyle: GoogleFonts.plusJakartaSans(
+                fontSize: 12, color: AppColors.textMuted),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
-              borderSide: BorderSide(color: Colors.grey[300]!),
+              borderSide: const BorderSide(color: AppColors.border),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
               borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
             ),
             filled: true,
-            fillColor: Colors.grey[50],
+            fillColor: AppColors.surface,
             contentPadding: const EdgeInsets.all(14),
           ),
         ),
@@ -1756,7 +1759,7 @@ class _AiJadwalWizardSheetState extends State<AiJadwalWizardSheet> {
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: AppColors.cardSurface,
             borderRadius: BorderRadius.circular(18),
             border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
             boxShadow: [
@@ -1793,13 +1796,13 @@ class _AiJadwalWizardSheetState extends State<AiJadwalWizardSheet> {
                           color: Colors.white, size: 16),
                     ),
                     const SizedBox(width: 10),
-                    const Expanded(
+                    Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
                             'Ringkasan Jadwal (AI Assistant)',
-                            style: TextStyle(
+                            style: GoogleFonts.plusJakartaSans(
                               fontSize: 14,
                               fontWeight: FontWeight.w800,
                               color: AppColors.primary,
@@ -1807,7 +1810,7 @@ class _AiJadwalWizardSheetState extends State<AiJadwalWizardSheet> {
                           ),
                           Text(
                             'Periksa kembali data sebelum menyimpan',
-                            style: TextStyle(
+                            style: GoogleFonts.plusJakartaSans(
                               fontSize: 11,
                               color: AppColors.textSecondary,
                             ),
@@ -1938,7 +1941,7 @@ class _AiJadwalWizardSheetState extends State<AiJadwalWizardSheet> {
             Expanded(
               child: Text(
                 title,
-                style: const TextStyle(
+                style: GoogleFonts.plusJakartaSans(
                   fontSize: 15,
                   fontWeight: FontWeight.w800,
                   height: 1.3,
@@ -1954,9 +1957,9 @@ class _AiJadwalWizardSheetState extends State<AiJadwalWizardSheet> {
             padding: const EdgeInsets.only(left: 42),
             child: Text(
               subtitle,
-              style: TextStyle(
+              style: GoogleFonts.plusJakartaSans(
                 fontSize: 12,
-                color: Colors.grey[600],
+                color: AppColors.textSecondary,
                 height: 1.35,
               ),
             ),
@@ -1981,10 +1984,10 @@ class _AiJadwalWizardSheetState extends State<AiJadwalWizardSheet> {
         decoration: BoxDecoration(
           color: isSelected
               ? AppColors.primary.withValues(alpha: 0.08)
-              : Colors.grey[50],
+              : AppColors.surface,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color: isSelected ? AppColors.primary : Colors.grey[300]!,
+            color: isSelected ? AppColors.primary : AppColors.border,
             width: isSelected ? 1.5 : 1,
           ),
           boxShadow: isSelected
@@ -2015,7 +2018,7 @@ class _AiJadwalWizardSheetState extends State<AiJadwalWizardSheet> {
                 children: [
                   Text(
                     title,
-                    style: TextStyle(
+                    style: GoogleFonts.plusJakartaSans(
                       fontWeight: FontWeight.w800,
                       fontSize: 13,
                       color: isSelected
@@ -2026,9 +2029,9 @@ class _AiJadwalWizardSheetState extends State<AiJadwalWizardSheet> {
                   const SizedBox(height: 3),
                   Text(
                     desc,
-                    style: TextStyle(
+                    style: GoogleFonts.plusJakartaSans(
                       fontSize: 11.5,
-                      color: Colors.grey[600],
+                      color: AppColors.textSecondary,
                       height: 1.35,
                     ),
                   ),
@@ -2040,7 +2043,7 @@ class _AiJadwalWizardSheetState extends State<AiJadwalWizardSheet> {
               isSelected
                   ? Icons.check_circle
                   : Icons.circle_outlined,
-              color: isSelected ? AppColors.primary : Colors.grey[400],
+              color: isSelected ? AppColors.primary : AppColors.textMuted,
               size: 20,
             ),
           ],
@@ -2065,9 +2068,9 @@ class _AiJadwalWizardSheetState extends State<AiJadwalWizardSheet> {
             width: 130,
             child: Text(
               label,
-              style: TextStyle(
+              style: GoogleFonts.plusJakartaSans(
                 fontSize: 12,
-                color: Colors.grey[700],
+                color: AppColors.textSecondary,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -2076,7 +2079,7 @@ class _AiJadwalWizardSheetState extends State<AiJadwalWizardSheet> {
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(
+              style: GoogleFonts.plusJakartaSans(
                 fontSize: 12,
                 fontWeight: FontWeight.w800,
                 color: AppColors.textPrimary,

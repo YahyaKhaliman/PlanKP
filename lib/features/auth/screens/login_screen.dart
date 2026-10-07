@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:awesome_dialog/awesome_dialog.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -138,7 +139,8 @@ class _LoginScreenState extends State<LoginScreen> {
     final auth = context.read<AuthProvider>();
     if (auth.loading) return;
 
-    final ok = await auth.login(_usernameCtrl.text.trim().toUpperCase(), _passCtrl.text);
+    final ok = await auth.login(
+        _usernameCtrl.text.trim().toUpperCase(), _passCtrl.text);
     if (ok && mounted) {
       try {
         final prefs = await SharedPreferences.getInstance();
@@ -170,7 +172,9 @@ class _LoginScreenState extends State<LoginScreen> {
               constraints: BoxConstraints(
                 maxWidth: AppBreakpoints.isDesktop(context)
                     ? 1040
-                    : (AppBreakpoints.isTablet(context) ? 580 : double.infinity),
+                    : (AppBreakpoints.isTablet(context)
+                        ? 580
+                        : double.infinity),
               ),
               child: AppBreakpoints.isDesktop(context)
                   ? _buildDesktopLayout(context)
@@ -237,16 +241,27 @@ class _LoginScreenState extends State<LoginScreen> {
     return Container(
       width: double.infinity,
       padding:
-          EdgeInsets.fromLTRB(24, compact ? 30 : 42, 24, compact ? 34 : 42),
+          EdgeInsets.fromLTRB(24, compact ? 28 : 40, 24, compact ? 30 : 40),
       decoration: BoxDecoration(
-        color: AppColors.primary,
-        borderRadius: BorderRadius.circular(32),
+        gradient: const LinearGradient(
+          colors: [Color(0xFF0F2B6B), Color(0xFF1D4ED8)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF0F2B6B).withValues(alpha: 0.28),
+            blurRadius: 20,
+            offset: const Offset(0, 6),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            height: compact ? 56 : 64,
+            height: compact ? 52 : 64,
             child: Image.asset(
               'assets/images/logo.png',
               fit: BoxFit.contain,
@@ -257,14 +272,24 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
           ),
-          const SizedBox(height: 18),
-          const Text(
+          const SizedBox(height: 16),
+          Text(
             'PlanKP',
-            style: TextStyle(
-              fontSize: 36,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 34,
               fontWeight: FontWeight.w800,
               color: Colors.white,
               letterSpacing: -1,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Sistem Manajemen & Pemeliharaan Aset Kencana Print',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 12.5,
+              fontWeight: FontWeight.w500,
+              color: Colors.white.withValues(alpha: 0.85),
+              height: 1.35,
             ),
           ),
         ],
@@ -274,16 +299,16 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Widget _buildLoginCard(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 26),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border.withValues(alpha: 0.8)),
-        boxShadow: [
+        color: AppColors.cardSurface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.border),
+        boxShadow: const [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.025),
-            blurRadius: 16,
-            offset: const Offset(0, 4),
+            color: Color(0x060F172A),
+            blurRadius: 18,
+            offset: Offset(0, 4),
           ),
         ],
       ),
@@ -293,21 +318,25 @@ class _LoginScreenState extends State<LoginScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              'Login',
-              style: Theme.of(context).textTheme.titleLarge,
+              'Masuk',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary,
+              ),
             ),
-            const SizedBox(height: AppSpacing.md),
+            const SizedBox(height: AppSpacing.lg),
             _buildInputField(
               controller: _usernameCtrl,
               label: 'Username',
-              icon: Icons.alternate_email_rounded,
+              icon: Icons.person_outline_rounded,
               textCapitalization: TextCapitalization.characters,
               inputFormatters: [UpperCaseTextFormatter()],
               validator: (v) => (v == null || v.trim().isEmpty)
                   ? 'Username wajib diisi'
                   : null,
             ),
-            const SizedBox(height: AppSpacing.sm),
+            const SizedBox(height: AppSpacing.md),
             _buildInputField(
               controller: _passCtrl,
               label: 'Password',
@@ -347,21 +376,24 @@ class _LoginScreenState extends State<LoginScreen> {
                   },
                   child: Text(
                     'Ingat saya',
-                    style: Theme.of(context).textTheme.bodyMedium,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 12.5,
+                      color: AppColors.textSecondary,
+                    ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: AppSpacing.md),
+            const SizedBox(height: AppSpacing.lg),
             Consumer<AuthProvider>(
               builder: (_, auth, __) => ElevatedButton(
                 onPressed: auth.loading ? null : _submit,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: AppColors.white,
-                  minimumSize: const Size(double.infinity, 44),
+                  minimumSize: const Size(double.infinity, 46),
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppRadius.md)),
+                      borderRadius: BorderRadius.circular(12)),
                   elevation: 0,
                 ),
                 child: auth.loading
@@ -371,17 +403,19 @@ class _LoginScreenState extends State<LoginScreen> {
                         child: CircularProgressIndicator(
                             strokeWidth: 2, color: Colors.white),
                       )
-                    : const Text(
+                    : Text(
                         'Masuk',
-                        style: TextStyle(
-                            fontWeight: FontWeight.w700, fontSize: 14),
+                        style: GoogleFonts.plusJakartaSans(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14,
+                        ),
                       ),
               ),
             ),
             const SizedBox(height: AppSpacing.md),
             Text(
               '$_appVersionLabel • $_updateStatusLabel',
-              style: TextStyle(
+              style: GoogleFonts.plusJakartaSans(
                 color: _updateStatusColor,
                 fontSize: 11,
                 fontWeight: FontWeight.w500,
@@ -411,14 +445,17 @@ class _LoginScreenState extends State<LoginScreen> {
       validator: validator,
       textCapitalization: textCapitalization,
       inputFormatters: inputFormatters,
-      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+      style: GoogleFonts.plusJakartaSans(
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+          color: AppColors.textPrimary),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: const TextStyle(
+        labelStyle: GoogleFonts.plusJakartaSans(
             color: AppColors.textSecondary,
             fontWeight: FontWeight.w500,
-            fontSize: 12),
-        prefixIcon: Icon(icon, color: AppColors.textSecondary, size: 18),
+            fontSize: 12.5),
+        prefixIcon: Icon(icon, color: AppColors.primary, size: 18),
         suffixIcon: isPassword
             ? IconButton(
                 icon: Icon(obscure
@@ -430,21 +467,21 @@ class _LoginScreenState extends State<LoginScreen> {
               )
             : null,
         filled: true,
-        fillColor: AppColors.surface,
+        fillColor: AppColors.surfaceAlt,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppRadius.md),
-          borderSide: BorderSide.none,
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AppColors.border),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppRadius.md),
-          borderSide: BorderSide.none,
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AppColors.border),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppRadius.md),
+          borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
         ),
         contentPadding:
-            const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+            const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
       ),
     );
   }
@@ -455,7 +492,10 @@ class _LoginScreenState extends State<LoginScreen> {
       children: [
         Text(
           'Belum punya akun?',
-          style: Theme.of(context).textTheme.bodyMedium,
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 12.5,
+            color: AppColors.textSecondary,
+          ),
         ),
         TextButton(
           onPressed: () => Navigator.pushNamed(context, AppRoutes.register),
@@ -463,9 +503,9 @@ class _LoginScreenState extends State<LoginScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 6),
             visualDensity: VisualDensity.compact,
           ),
-          child: const Text(
+          child: Text(
             'Daftar',
-            style: TextStyle(
+            style: GoogleFonts.plusJakartaSans(
               fontWeight: FontWeight.w700,
               fontSize: 13,
               color: AppColors.primary,

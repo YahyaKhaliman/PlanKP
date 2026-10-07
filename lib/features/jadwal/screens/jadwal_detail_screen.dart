@@ -1,16 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/date_formatter.dart';
+import '../../../core/utils/responsive_sheet.dart';
 import '../../../core/widgets/app_notifier.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/shimmer_loading.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../../../features/master/providers/master_provider.dart';
 import '../models/jadwal_model.dart';
 import '../models/realisasi_model.dart';
 import '../providers/jadwal_provider.dart';
 import '../widgets/realisasi_detail_sheet.dart';
+import '../widgets/renew_jadwal_sheet.dart';
 
 
 const _kDetailPageBg = AppColors.surface;
@@ -27,71 +31,8 @@ class JadwalDetailScreen extends StatefulWidget {
 class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
   String _realisasiFilter = 'Semua'; // 'Semua', 'Sudah', 'Belum'
 
-
   DateTime _dateOnly(DateTime date) =>
       DateTime(date.year, date.month, date.day);
-
-  static const List<String> _divisiSixDays = [
-    'GA',
-    'TEKNISI',
-    'MAINTENANCE',
-    'PRODUKSI',
-    'WORKSHOP'
-  ];
-
-  bool _isWorkingDay(DateTime date, String? divisi, Set<int> holidays) {
-    if (holidays.contains(date.day)) return false;
-    if (date.weekday == DateTime.sunday) return false;
-    if (date.weekday == DateTime.saturday) {
-      final norm = (divisi ?? '').trim().toUpperCase();
-      return _divisiSixDays.any((d) => d.toUpperCase() == norm);
-    }
-    return true;
-  }
-
-  DateTime? _findNextWorkingDay(
-      DateTime date, DateTime limit, String? divisi, Set<int> holidays) {
-    var d = date;
-    while (!_isWorkingDay(d, divisi, holidays)) {
-      d = d.add(const Duration(days: 1));
-      if (d.isAfter(limit)) return null;
-    }
-    return d;
-  }
-
-  List<DateTime> _getScheduleDatesInRange(
-      JadwalModel j, DateTime rangeStart, DateTime rangeEnd, Set<int> holidays) {
-    List<DateTime> dates = [];
-    final divisi = j.jdwDivisi;
-
-    if (j.jdwFrekuensi == 'Harian') {
-      for (var d = rangeStart;
-          !d.isAfter(rangeEnd);
-          d = d.add(const Duration(days: 1))) {
-        if (_isWorkingDay(d, divisi, holidays)) dates.add(d);
-      }
-    } else if (j.jdwFrekuensi == 'Mingguan') {
-      var curr = rangeStart;
-      final intervalDays = j.jdwGapHari > 0 ? j.jdwGapHari : 7;
-      while (!curr.isAfter(rangeEnd)) {
-        final nextWork = _findNextWorkingDay(curr, rangeEnd, divisi, holidays);
-        if (nextWork != null) {
-          dates.add(nextWork);
-        }
-        curr = curr.add(Duration(days: intervalDays));
-      }
-    } else if (j.jdwFrekuensi == 'Bulanan') {
-      var curr = rangeStart;
-      while (!curr.isAfter(rangeEnd)) {
-        final nextWork = _findNextWorkingDay(curr, rangeEnd, divisi, holidays);
-        if (nextWork != null) {
-          dates.add(nextWork);
-        }
-        curr = DateTime(curr.year, curr.month + 1, curr.day);
-      }
-    }
-    return dates;
-  }
 
   @override
   void initState() {
@@ -105,15 +46,13 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
     final provider = context.read<JadwalProvider>();
     final master = context.read<MasterProvider>();
 
-    await provider.fetchJadwalDetail(widget.jadwalId);
-    await provider.fetchRealisasi(jadwalId: widget.jadwalId, status: 'Selesai');
-
-    if (master.jenisMaster.isEmpty) {
-      await master.fetchJenis();
-    }
-    if (master.userList.isEmpty) {
-      await master.fetchUsers(showLoading: false);
-    }
+    await Future.wait([
+      provider.fetchJadwalDetail(widget.jadwalId),
+      provider.fetchRealisasi(jadwalId: widget.jadwalId, status: 'Selesai'),
+      if (master.inventarisList.isEmpty) master.fetchInventaris(showLoading: false),
+      if (master.jenisMaster.isEmpty) master.fetchJenis(showLoading: false),
+      if (master.userList.isEmpty) master.fetchUsers(showLoading: false),
+    ]);
   }
 
   Future<void> _openRealisasiDetail(RealisasiModel item) async {
@@ -145,6 +84,61 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
     );
   }
 
+  void _openRenewJadwal(JadwalModel item) {
+    final master = context.read<MasterProvider>();
+    final auth = context.read<AuthProvider>();
+    master.fetchJenis(showLoading: false);
+    master.fetchPabrik();
+    final role = auth.user?['user_jabatan'];
+    final isManager = role == 'manager';
+    final userDivisi = isManager ? null : (auth.user?['user_divisi'] ?? '');
+    master.fetchUsers(divisi: userDivisi, showLoading: false);
+
+    showResponsiveSheet(
+      context,
+      maxDesktopWidth: 560,
+      builder: (_) => RenewJadwalSheet(
+        jadwal: item,
+        onRenewSuccess: () => _loadDetailData(),
+      ),
+    );
+  }
+
+  Future<void> _updateStatus(String status, String title, String message) async {
+    await AppNotifier.showConfirm(
+      context,
+      title: title,
+      message: message,
+      onConfirm: () async {
+        final ok = await context
+            .read<JadwalProvider>()
+            .updateStatusJadwal(widget.jadwalId, status);
+        if (ok && mounted) {
+          await AppNotifier.showSuccess(context, 'Status jadwal berhasil diubah');
+          _loadDetailData();
+        }
+      },
+    );
+  }
+
+  Future<void> _confirmAktifkanJadwal(JadwalModel jadwal) => _updateStatus(
+        'Aktif',
+        'Aktifkan Jadwal',
+        'Aktifkan jadwal "${jadwal.jdwJudul}" agar dapat mulai dikerjakan teknisi?',
+      );
+
+  Future<void> _confirmSelesaikanJadwal(JadwalModel jadwal) => _updateStatus(
+        'Selesai',
+        'Selesaikan Jadwal',
+        'Tandai jadwal "${jadwal.jdwJudul}" sebagai Selesai?',
+      );
+
+  Future<void> _confirmBatalkanJadwal(JadwalModel jadwal) => _updateStatus(
+        'Dibatalkan',
+        'Batalkan Jadwal',
+        'Batalkan jadwal "${jadwal.jdwJudul}"?\nJadwal yang dibatalkan tidak akan muncul di teknisi dan tidak dihitung dalam target.',
+      );
+
   @override
   Widget build(BuildContext context) {
     final master = context.read<MasterProvider>();
@@ -166,9 +160,88 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
             return _buildSkeleton(isDesktop, horizontalPadding);
           }
 
-          final jadwal = provider.jadwalDetail;
+          final JadwalModel? jadwal = (provider.jadwalDetail != null &&
+                  provider.jadwalDetail!.jdwId == widget.jadwalId)
+              ? provider.jadwalDetail
+              : provider.jadwalList
+                  .where((j) => j.jdwId == widget.jadwalId)
+                  .firstOrNull;
+
           if (jadwal == null) {
-            return const EmptyState(message: 'Detail jadwal tidak ditemukan');
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(18),
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceAlt,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: const Icon(
+                        Icons.event_busy_rounded,
+                        size: 40,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Detail Jadwal Tidak Ditemukan',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      provider.error ??
+                          'Jadwal #${widget.jadwalId} belum tersedia atau terjadi kendala saat memuat data.',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 12.5,
+                        color: AppColors.textSecondary,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 18),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        OutlinedButton(
+                          onPressed: () => Navigator.pop(context),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.textSecondary,
+                            side: const BorderSide(color: AppColors.border),
+                          ),
+                          child: Text(
+                            'Kembali',
+                            style: GoogleFonts.plusJakartaSans(
+                                fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        ElevatedButton.icon(
+                          onPressed: _loadDetailData,
+                          icon: const Icon(Icons.refresh_rounded, size: 16),
+                          label: Text(
+                            'Coba Lagi',
+                            style: GoogleFonts.plusJakartaSans(
+                                fontWeight: FontWeight.w700),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            foregroundColor: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
           }
 
           final jenisNama = jadwal.jdwInvJenis ??
@@ -185,13 +258,15 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
               : now;
 
           final holidayDays = provider.getHolidayDaysForMonth(now);
-          final scheduleDatesInRange = _getScheduleDatesInRange(
+          final scheduleDatesInRange = JadwalProvider.effectiveScheduleDatesInMonth(
               jadwal, _dateOnly(startDate), _dateOnly(rangeEnd), holidayDays);
 
           final perTarget = (jadwal.jdwTarget ?? 0) > 0
               ? jadwal.jdwTarget!
-              : (jadwal.jdwTotalUnit ?? 0);
-          final targetUnitInRange = scheduleDatesInRange.length * perTarget;
+              : ((jadwal.jdwTotalUnit ?? 0) > 0 ? jadwal.jdwTotalUnit! : 1);
+          final targetUnitInRange = scheduleDatesInRange.isNotEmpty
+              ? scheduleDatesInRange.length * perTarget
+              : perTarget;
 
           final currentPeriodRealisasi = provider.realisasiList.where((item) {
             if (item.realStatus != 'Selesai') return false;
@@ -270,12 +345,12 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.cardSurface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppColors.border),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x06000000),
+            color: Color(0x060F172A),
             blurRadius: 12,
             offset: Offset(0, 4),
           ),
@@ -292,8 +367,8 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
                 final divisiColor = AppDivisiColors.getColor(jadwal.jdwDivisi);
                 final divisiIcon = AppDivisiColors.getIcon(jadwal.jdwDivisi);
                 return Container(
-                  width: 42,
-                  height: 42,
+                  width: 44,
+                  height: 44,
                   decoration: BoxDecoration(
                     color: divisiColor.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(12),
@@ -312,7 +387,7 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
                   children: [
                     Text(
                       jadwal.jdwJudul,
-                      style: const TextStyle(
+                      style: GoogleFonts.plusJakartaSans(
                         color: AppColors.textPrimary,
                         fontSize: 18,
                         fontWeight: FontWeight.w700,
@@ -337,21 +412,52 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
                         _badgeChip(
                           icon: Icons.repeat_rounded,
                           label: jadwal.jdwFrekuensi,
-                          bgColor: AppColors.primary.withValues(alpha: 0.08),
+                          bgColor: AppColors.primarySoft,
                           textColor: AppColors.primary,
                         ),
                         _badgeChip(
                           icon: Icons.category_outlined,
                           label: jenisNama,
-                          bgColor: const Color(0xFFF1F5F9),
+                          bgColor: AppColors.surfaceAlt,
                           textColor: AppColors.textSecondary,
                         ),
                         _badgeChip(
                           icon: Icons.factory_outlined,
                           label: _displayPabrikList(master, jadwal.jdwPabrikList),
-                          bgColor: const Color(0xFFF1F5F9),
+                          bgColor: AppColors.surfaceAlt,
                           textColor: AppColors.textSecondary,
                         ),
+                        Builder(builder: (context) {
+                          Color bg;
+                          Color fg;
+                          switch (jadwal.jdwStatus) {
+                            case 'Aktif':
+                              bg = const Color(0xFFDCFCE7);
+                              fg = const Color(0xFF15803D);
+                              break;
+                            case 'Draft':
+                              bg = const Color(0xFFFEF3C7);
+                              fg = const Color(0xFFB45309);
+                              break;
+                            case 'Selesai':
+                              bg = const Color(0xFFE2E8F0);
+                              fg = const Color(0xFF475569);
+                              break;
+                            case 'Dibatalkan':
+                              bg = const Color(0xFFFEE2E2);
+                              fg = const Color(0xFFB91C1C);
+                              break;
+                            default:
+                              bg = AppColors.surfaceAlt;
+                              fg = AppColors.textSecondary;
+                          }
+                          return _badgeChip(
+                            icon: Icons.flag_outlined,
+                            label: jadwal.jdwStatus,
+                            bgColor: bg,
+                            textColor: fg,
+                          );
+                        }),
                       ],
                     ),
                   ],
@@ -364,18 +470,18 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: const Color(0xFFF8FAFC),
+              color: AppColors.surfaceAlt,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFE2E8F0)),
+              border: Border.all(color: AppColors.border),
             ),
             child: Column(
               children: [
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
-                      'Capaian',
-                      style: TextStyle(
+                    Text(
+                      'Capaian Target',
+                      style: GoogleFonts.plusJakartaSans(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                         color: AppColors.textSecondary,
@@ -386,15 +492,17 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
                         children: [
                           TextSpan(
                             text: '$progressPct%',
-                            style: const TextStyle(
+                            style: GoogleFonts.plusJakartaSans(
                               fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.primary,
+                              fontWeight: FontWeight.w800,
+                              color: progressPct >= 100
+                                  ? AppColors.success
+                                  : AppColors.primary,
                             ),
                           ),
                           TextSpan(
-                            text: ' (Tercapai $selesaiUnit dari $targetUnit unit target)',
-                            style: const TextStyle(
+                            text: ' ($selesaiUnit dari $targetUnit unit)',
+                            style: GoogleFonts.plusJakartaSans(
                               fontSize: 12,
                               fontWeight: FontWeight.w500,
                               color: AppColors.textSecondary,
@@ -413,55 +521,131 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
                     value: targetUnit > 0
                         ? (selesaiUnit / targetUnit).clamp(0.0, 1.0)
                         : 0,
-                    backgroundColor: const Color(0xFFE2E8F0),
+                    backgroundColor: AppColors.border,
                     valueColor: AlwaysStoppedAnimation<Color>(
                       progressPct >= 100
-                          ? const Color(0xFF16A34A)
+                          ? AppColors.success
                           : AppColors.primary,
                     ),
                   ),
                 ),
                 const SizedBox(height: 10),
-                const Divider(height: 1, color: Color(0xFFE2E8F0)),
+                const Divider(height: 1, color: AppColors.border),
                 const SizedBox(height: 8),
                 Row(
                   children: [
                     Expanded(
                       child: _compactBarStat(
                         icon: Icons.inventory_2_outlined,
-                        label: 'Jumlah Inventaris',
+                        label: 'Total Unit',
                         value: '$totalUnit Unit',
                         color: const Color(0xFF7C3AED),
                       ),
                     ),
-                    Container(height: 18, width: 1, color: const Color(0xFFCBD5E1)),
+                    Container(height: 18, width: 1, color: AppColors.border),
                     Expanded(
                       child: _compactBarStat(
                         icon: Icons.play_circle_outline_rounded,
-                        label: 'Tgl Mulai',
+                        label: 'Mulai',
                         value: _displayDate(jadwal.jdwTglMulai),
-                        color: const Color(0xFF2563EB),
+                        color: AppColors.primary,
                       ),
                     ),
-                    Container(height: 18, width: 1, color: const Color(0xFFCBD5E1)),
+                    Container(height: 18, width: 1, color: AppColors.border),
                     Expanded(
                       child: _compactBarStat(
                         icon: Icons.event_available_outlined,
-                        label: 'Tgl Selesai',
+                        label: 'Selesai',
                         value: (jadwal.jdwTglSelesai != null && jadwal.jdwTglSelesai!.trim().isNotEmpty)
                             ? _displayDate(jadwal.jdwTglSelesai)
-                            : 'Tanpa Batas Akhir',
+                            : 'Tanpa Batas',
                         color: (jadwal.jdwTglSelesai != null && jadwal.jdwTglSelesai!.trim().isNotEmpty)
-                            ? const Color(0xFF059669)
-                            : const Color(0xFF64748B),
+                            ? AppColors.success
+                            : AppColors.textSecondary,
                       ),
                     ),
                   ],
                 ),
+                if (context.watch<AuthProvider>().user?['user_jabatan'] ==
+                    'admin') ...[
+                  const SizedBox(height: 10),
+                  const Divider(height: 1, color: AppColors.border),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      if (jadwal.jdwStatus == 'Draft' ||
+                          jadwal.jdwStatus == 'Dibatalkan')
+                        _adminActionBtn(
+                          icon: Icons.play_arrow_rounded,
+                          label: 'Aktifkan',
+                          color: AppColors.success,
+                          onTap: () => _confirmAktifkanJadwal(jadwal),
+                        ),
+                      if (jadwal.jdwStatus == 'Aktif') ...[
+                        _adminActionBtn(
+                          icon: Icons.check_circle_outline_rounded,
+                          label: 'Selesaikan',
+                          color: AppColors.primary,
+                          onTap: () => _confirmSelesaikanJadwal(jadwal),
+                        ),
+                        _adminActionBtn(
+                          icon: Icons.event_busy_outlined,
+                          label: 'Batalkan',
+                          color: AppColors.danger,
+                          onTap: () => _confirmBatalkanJadwal(jadwal),
+                        ),
+                      ],
+                      if (jadwal.jdwStatus == 'Selesai')
+                        _adminActionBtn(
+                          icon: Icons.autorenew_rounded,
+                          label: 'Renew',
+                          color: const Color(0xFF7C3AED),
+                          onTap: () => _openRenewJadwal(jadwal),
+                        ),
+                    ],
+                  ),
+                ],
               ],
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _adminActionBtn({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: color.withValues(alpha: 0.35)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 15, color: color),
+            const SizedBox(width: 5),
+            Text(
+              label,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: color,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -483,7 +667,7 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
             const SizedBox(width: 3),
             Text(
               label,
-              style: const TextStyle(
+              style: GoogleFonts.plusJakartaSans(
                 fontSize: 10.5,
                 color: AppColors.textSecondary,
                 fontWeight: FontWeight.w500,
@@ -495,8 +679,8 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
         const SizedBox(height: 2),
         Text(
           value,
-          style: const TextStyle(
-            fontSize: 11,
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 11.5,
             fontWeight: FontWeight.w700,
             color: AppColors.textPrimary,
           ),
@@ -526,7 +710,7 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
           const SizedBox(width: 4),
           Text(
             label,
-            style: TextStyle(
+            style: GoogleFonts.plusJakartaSans(
               fontSize: 11,
               fontWeight: FontWeight.w600,
               color: textColor,
@@ -701,9 +885,9 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
+        color: AppColors.surfaceAlt,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: AppColors.border),
       ),
       child: Row(
         children: [
@@ -715,7 +899,7 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
               children: [
                 Text(
                   item.label,
-                  style: const TextStyle(
+                  style: GoogleFonts.plusJakartaSans(
                     fontSize: 10.5,
                     color: AppColors.textSecondary,
                     fontWeight: FontWeight.w500,
@@ -724,7 +908,7 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
                 const SizedBox(height: 1),
                 Text(
                   item.value,
-                  style: const TextStyle(
+                  style: GoogleFonts.plusJakartaSans(
                     fontSize: 12.5,
                     fontWeight: FontWeight.w600,
                     color: AppColors.textPrimary,
@@ -767,7 +951,7 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
               children: [
                 Text(
                   title,
-                  style: TextStyle(
+                  style: GoogleFonts.plusJakartaSans(
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
                     color: color,
@@ -776,7 +960,7 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
                 const SizedBox(height: 2),
                 Text(
                   subtitle,
-                  style: TextStyle(
+                  style: GoogleFonts.plusJakartaSans(
                     fontSize: 11.5,
                     color: color,
                     height: 1.35,
@@ -786,9 +970,9 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
                   const SizedBox(height: 4),
                   Text(
                     note,
-                    style: const TextStyle(
+                    style: GoogleFonts.plusJakartaSans(
                       fontSize: 11,
-                      color: Color(0xFFC2410C),
+                      color: const Color(0xFFC2410C),
                       height: 1.35,
                     ),
                   ),
@@ -833,11 +1017,11 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
           });
         }
       },
-      selectedColor: AppColors.primary.withValues(alpha: 0.12),
-      backgroundColor: Colors.white,
-      labelStyle: TextStyle(
+      selectedColor: AppColors.primarySoft,
+      backgroundColor: AppColors.cardSurface,
+      labelStyle: GoogleFonts.plusJakartaSans(
         fontSize: 11.5,
-        fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
         color: isSelected ? AppColors.primary : AppColors.textSecondary,
       ),
       shape: RoundedRectangleBorder(
@@ -862,9 +1046,31 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
     final jenisNama = master.jenisById(jadwal.jdwJenisId)?.jenisNama ??
         'ID ${jadwal.jdwJenisId}';
 
-    final totalCount = provider.inventarisByJenis.length;
+    final List<Map<String, dynamic>> effectiveInventarisList =
+        provider.inventarisByJenis.isNotEmpty
+            ? provider.inventarisByJenis
+                .map((e) => Map<String, dynamic>.from(e as Map))
+                .toList()
+            : master.inventarisList
+                .where((inv) =>
+                    inv.invJenisId == jadwal.jdwJenisId &&
+                    (jadwal.jdwPabrikList.isEmpty ||
+                        jadwal.jdwPabrikList.contains(inv.invPabrikKode)))
+                .map((inv) => <String, dynamic>{
+                      'inv_id': inv.invId,
+                      'inv_nama': inv.invNama,
+                      'inv_no': inv.invNo,
+                      'inv_merk': inv.invMerk,
+                      'inv_pic': inv.invPic,
+                      'inv_serial_number': inv.invSerialNumber,
+                      'inv_pabrik_kode': inv.invPabrikKode,
+                      'inv_is_active': inv.invIsActive,
+                    })
+                .toList();
+
+    final totalCount = effectiveInventarisList.length;
     int sudahCount = 0;
-    for (final inv in provider.inventarisByJenis) {
+    for (final inv in effectiveInventarisList) {
       final invIdRaw = inv['inv_id'];
       final invId = invIdRaw is int ? invIdRaw : int.tryParse('$invIdRaw');
       final isDoneBackend = inv['inv_is_done_current_period'] == true;
@@ -874,7 +1080,7 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
     }
     final belumCount = totalCount - sudahCount;
 
-    final filteredList = provider.inventarisByJenis.where((inv) {
+    final filteredList = effectiveInventarisList.where((inv) {
       final invIdRaw = inv['inv_id'];
       final invId = invIdRaw is int ? invIdRaw : int.tryParse('$invIdRaw');
       final isDoneBackend = inv['inv_is_done_current_period'] == true;
@@ -892,7 +1098,7 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
     return _sectionCard(
       title: 'Unit Inventaris $jenisNama',
       subtitle: 'Total: $totalCount unit inventaris',
-      child: provider.inventarisByJenis.isEmpty
+      child: effectiveInventarisList.isEmpty
           ? const EmptyState(message: 'Belum ada inventaris untuk jadwal ini')
           : Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1006,17 +1212,17 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.cardSurface,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color: sudahTerealisasi
               ? const Color(0xFFBBF7D0)
-              : const Color(0xFFE2E8F0),
+              : AppColors.border,
         ),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x04000000),
-            blurRadius: 6,
+            color: Color(0x060F172A),
+            blurRadius: 8,
             offset: Offset(0, 2),
           ),
         ],
@@ -1049,7 +1255,7 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
                   children: [
                     Text(
                       (inv['inv_nama'] ?? '-').toString(),
-                      style: const TextStyle(
+                      style: GoogleFonts.plusJakartaSans(
                         fontSize: 14,
                         fontWeight: FontWeight.w700,
                         color: AppColors.textPrimary,
@@ -1058,7 +1264,7 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
                     const SizedBox(height: 2),
                     Text(
                       '${inv['inv_serial_number'] ?? inv['inv_no'] ?? '-'} · ${master.displayPabrik(inv['inv_pabrik_kode']?.toString())}',
-                      style: const TextStyle(
+                      style: GoogleFonts.plusJakartaSans(
                         fontSize: 11.5,
                         color: AppColors.textSecondary,
                       ),
@@ -1082,7 +1288,7 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
                     const SizedBox(width: 4),
                     Text(
                       statusText,
-                      style: TextStyle(
+                      style: GoogleFonts.plusJakartaSans(
                         fontSize: 10.5,
                         fontWeight: FontWeight.w600,
                         color: statusColor,
@@ -1126,15 +1332,15 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
                       children: [
                         Text(
                           'Maintenance: ${_displayDate(realisasiItem.realTgl)}',
-                          style: const TextStyle(
+                          style: GoogleFonts.plusJakartaSans(
                             fontSize: 11.5,
                             fontWeight: FontWeight.w600,
-                            color: Color(0xFF15803D),
+                            color: const Color(0xFF15803D),
                           ),
                         ),
                         Text(
                           'Pelaksana: ${_displayTeknisi(master, realisasiItem)}',
-                          style: const TextStyle(
+                          style: GoogleFonts.plusJakartaSans(
                             fontSize: 11,
                             color: AppColors.textSecondary,
                           ),
@@ -1156,11 +1362,11 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
                       ),
                       icon: const Icon(Icons.visibility_outlined,
                           size: 14, color: Color(0xFF15803D)),
-                      label: const Text(
+                      label: Text(
                         'Lihat Detail',
-                        style: TextStyle(
+                        style: GoogleFonts.plusJakartaSans(
                           fontSize: 11,
-                          color: Color(0xFF15803D),
+                          color: const Color(0xFF15803D),
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -1204,12 +1410,12 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.cardSurface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppColors.border),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x04000000),
+            color: Color(0x060F172A),
             blurRadius: 10,
             offset: Offset(0, 3),
           ),
@@ -1220,12 +1426,16 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
         children: [
           Text(
             title,
-            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textPrimary,
+            ),
           ),
           const SizedBox(height: 2),
           Text(
             subtitle,
-            style: const TextStyle(
+            style: GoogleFonts.plusJakartaSans(
               fontSize: 12,
               color: AppColors.textSecondary,
             ),
@@ -1244,8 +1454,9 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: const Color(0xFFF1F5F9),
+        color: AppColors.surfaceAlt,
         borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: AppColors.border, width: 0.8),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -1258,7 +1469,7 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
           const SizedBox(width: 4),
           Text(
             text,
-            style: const TextStyle(
+            style: GoogleFonts.plusJakartaSans(
               fontSize: 11,
               color: AppColors.textSecondary,
               fontWeight: FontWeight.w500,

@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:awesome_dialog/awesome_dialog.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'core/theme/app_theme.dart';
 import 'core/constants/app_constants.dart';
@@ -21,6 +22,9 @@ import 'features/dashboard/screens/dashboard_screen.dart';
 import 'features/jadwal/screens/jadwal_detail_screen.dart';
 import 'features/jadwal/screens/realisasi_form_screen.dart';
 import 'features/dashboard/screens/monitoring_divisi_screen.dart';
+import 'features/voucher/providers/voucher_provider.dart';
+import 'features/voucher/screens/voucher_screen.dart';
+import 'features/voucher/screens/voucher_form_screen.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
@@ -39,6 +43,7 @@ class PlanKPApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => MasterProvider()),
         ChangeNotifierProvider(create: (_) => JadwalProvider()),
+        ChangeNotifierProvider(create: (_) => VoucherProvider()),
       ],
       child: MaterialApp(
         title: 'PlanKP',
@@ -70,6 +75,12 @@ class PlanKPApp extends StatelessWidget {
           AppRoutes.monitoringDivisi: (_) => const _ProtectedRoute(
                 allowedRoles: ['manager'],
                 child: MonitoringDivisiScreen(),
+              ),
+          AppRoutes.voucher: (_) => const _ProtectedRoute(
+                child: VoucherScreen(),
+              ),
+          AppRoutes.voucherForm: (_) => const _ProtectedRoute(
+                child: VoucherFormScreen(),
               ),
         },
         home: const _AuthGate(),
@@ -103,8 +114,55 @@ class _AuthGateState extends State<_AuthGate> {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(child: CircularProgressIndicator()),
+    return Scaffold(
+      backgroundColor: AppColors.surface,
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                color: AppColors.primarySoft,
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: Image.asset(
+                'assets/images/logo.png',
+                width: 56,
+                height: 56,
+              ),
+            ),
+            const SizedBox(height: 18),
+            Text(
+              'PlanKP',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 22,
+                fontWeight: FontWeight.w800,
+                color: AppColors.textPrimary,
+                letterSpacing: -0.5,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Maintenance Planning',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 12.5,
+                color: AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 24),
+            const SizedBox(
+              width: 26,
+              height: 26,
+              child: CircularProgressIndicator(
+                strokeWidth: 2.5,
+                color: AppColors.primary,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -186,11 +244,11 @@ class _MainAppWrapperState extends State<MainAppWrapper> with WidgetsBindingObse
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
+            Text(
               'Pembaruan Tersedia!',
-              style: TextStyle(
+              style: GoogleFonts.plusJakartaSans(
                 fontSize: 20,
-                fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.w800,
                 color: AppColors.textPrimary,
               ),
               textAlign: TextAlign.center,
@@ -198,7 +256,7 @@ class _MainAppWrapperState extends State<MainAppWrapper> with WidgetsBindingObse
             const SizedBox(height: 8),
             Text(
               'Versi terbaru ${manifest.version} siap diunduh.',
-              style: const TextStyle(
+              style: GoogleFonts.plusJakartaSans(
                 fontSize: 14,
                 color: AppColors.textSecondary,
               ),
@@ -210,13 +268,13 @@ class _MainAppWrapperState extends State<MainAppWrapper> with WidgetsBindingObse
                 width: double.infinity,
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade50,
+                  color: AppColors.surface,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: AppColors.border),
                 ),
                 child: Text(
                   manifest.notes!.trim(),
-                  style: const TextStyle(
+                  style: GoogleFonts.plusJakartaSans(
                       fontSize: 13, color: AppColors.textPrimary),
                   textAlign: TextAlign.left,
                 ),
@@ -230,7 +288,10 @@ class _MainAppWrapperState extends State<MainAppWrapper> with WidgetsBindingObse
                   Expanded(
                     child: AnimatedButton(
                       text: 'Nanti Saja',
-                      color: Colors.grey.shade300,
+                      color: AppColors.surfaceAlt,
+                      buttonTextStyle: GoogleFonts.plusJakartaSans(
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textSecondary),
                       pressEvent: () async {
                         // Simpan skip agar tidak ditanya lagi untuk versi ini
                         await _updateService.skipVersion(manifest.buildNumber);
@@ -245,6 +306,8 @@ class _MainAppWrapperState extends State<MainAppWrapper> with WidgetsBindingObse
                   child: AnimatedButton(
                     text: 'Update Sekarang',
                     color: AppColors.primary,
+                    buttonTextStyle: GoogleFonts.plusJakartaSans(
+                        fontWeight: FontWeight.w700, color: Colors.white),
                     pressEvent: () {
                       Navigator.of(context).pop();
                       _startDownloadAndInstall(manifest);
@@ -293,6 +356,7 @@ class _MainAppWrapperState extends State<MainAppWrapper> with WidgetsBindingObse
       context: context,
       barrierDismissible: false,
       builder: (ctx) => Dialog(
+        backgroundColor: AppColors.cardSurface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -301,26 +365,26 @@ class _MainAppWrapperState extends State<MainAppWrapper> with WidgetsBindingObse
             children: [
               Container(
                 padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.green.shade50,
+                decoration: const BoxDecoration(
+                  color: AppColors.successSoft,
                   shape: BoxShape.circle,
                 ),
-                child: Icon(Icons.check_circle,
-                    color: Colors.green.shade600, size: 40),
+                child: const Icon(Icons.check_circle,
+                    color: AppColors.success, size: 40),
               ),
               const SizedBox(height: 16),
-              const Text(
+              Text(
                 'File Update Ditemukan!',
-                style: TextStyle(
+                style: GoogleFonts.plusJakartaSans(
                     fontSize: 18,
-                    fontWeight: FontWeight.bold,
+                    fontWeight: FontWeight.w800,
                     color: AppColors.textPrimary),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
               Text(
                 'File PlanKP-v${manifest.version}.apk sudah tersedia di penyimpanan Anda.',
-                style: const TextStyle(
+                style: GoogleFonts.plusJakartaSans(
                     fontSize: 13, color: AppColors.textSecondary),
                 textAlign: TextAlign.center,
               ),
@@ -340,11 +404,17 @@ class _MainAppWrapperState extends State<MainAppWrapper> with WidgetsBindingObse
                         _showDownloadProgressDialog(manifest);
                       },
                       style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.textSecondary,
+                        side: const BorderSide(color: AppColors.border),
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12)),
                         padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
-                      child: const Text('Unduh Ulang'),
+                      child: Text(
+                        'Unduh Ulang',
+                        style:
+                            GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -360,7 +430,11 @@ class _MainAppWrapperState extends State<MainAppWrapper> with WidgetsBindingObse
                         _handleInstallResult(result, manifest);
                       },
                       icon: const Icon(Icons.install_mobile, size: 18),
-                      label: const Text('Pasang'),
+                      label: Text(
+                        'Pasang',
+                        style: GoogleFonts.plusJakartaSans(
+                            fontWeight: FontWeight.w700),
+                      ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
                         foregroundColor: Colors.white,
@@ -391,17 +465,18 @@ class _MainAppWrapperState extends State<MainAppWrapper> with WidgetsBindingObse
       context: context,
       barrierDismissible: false,
       builder: (ctx) => Dialog(
+        backgroundColor: AppColors.cardSurface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         child: Padding(
           padding: const EdgeInsets.all(24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
+              Text(
                 'Mengunduh Pembaruan',
-                style: TextStyle(
+                style: GoogleFonts.plusJakartaSans(
                   fontSize: 18,
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w800,
                   color: AppColors.textPrimary,
                 ),
                 textAlign: TextAlign.center,
@@ -413,7 +488,7 @@ class _MainAppWrapperState extends State<MainAppWrapper> with WidgetsBindingObse
                   children: [
                     LinearProgressIndicator(
                       value: percent > 0 ? percent : null,
-                      backgroundColor: Colors.grey[200],
+                      backgroundColor: AppColors.surfaceAlt,
                       color: AppColors.primary,
                       minHeight: 8,
                       borderRadius: BorderRadius.circular(4),
@@ -421,9 +496,9 @@ class _MainAppWrapperState extends State<MainAppWrapper> with WidgetsBindingObse
                     const SizedBox(height: 8),
                     Text(
                       '${(percent * 100).round()}%',
-                      style: const TextStyle(
+                      style: GoogleFonts.plusJakartaSans(
                         fontSize: 13,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w700,
                         color: AppColors.textSecondary,
                       ),
                     ),
@@ -440,11 +515,17 @@ class _MainAppWrapperState extends State<MainAppWrapper> with WidgetsBindingObse
                         Navigator.of(ctx).pop();
                       },
                       style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.textSecondary,
+                        side: const BorderSide(color: AppColors.border),
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12)),
                         padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
-                      child: const Text('Batalkan'),
+                      child: Text(
+                        'Batalkan',
+                        style:
+                            GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
+                      ),
                     ),
                   ),
                 ],
@@ -507,6 +588,7 @@ class _MainAppWrapperState extends State<MainAppWrapper> with WidgetsBindingObse
       context: context,
       barrierDismissible: false,
       builder: (ctx) => Dialog(
+        backgroundColor: AppColors.cardSurface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -514,33 +596,40 @@ class _MainAppWrapperState extends State<MainAppWrapper> with WidgetsBindingObse
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Row(
+              Row(
                 children: [
-                  Icon(Icons.download_for_offline,
-                      color: AppColors.primary, size: 30),
-                  SizedBox(width: 12),
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.primarySoft,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.download_for_offline,
+                        color: AppColors.primary, size: 22),
+                  ),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Text(
                       'Panduan Pemasangan',
-                      style:
-                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      style: GoogleFonts.plusJakartaSans(
+                          fontSize: 18, fontWeight: FontWeight.w800),
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: 16),
-              const Text(
+              Text(
                 'File APK sedang diunduh oleh browser. Ikuti langkah berikut untuk memasang pembaruan:',
-                style:
-                    TextStyle(fontSize: 13, color: AppColors.textPrimary),
+                style: GoogleFonts.plusJakartaSans(
+                    fontSize: 13, color: AppColors.textPrimary),
               ),
               const SizedBox(height: 16),
               Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: Colors.blue.shade50,
+                  color: AppColors.primarySoft,
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.blue.shade200),
+                  border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -560,18 +649,19 @@ class _MainAppWrapperState extends State<MainAppWrapper> with WidgetsBindingObse
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: AppColors.cardSurface,
                         borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: AppColors.border),
                       ),
-                      child: const Row(
+                      child: Row(
                         children: [
-                          Icon(Icons.support_agent_rounded,
+                          const Icon(Icons.support_agent_rounded,
                               size: 18, color: AppColors.primary),
-                          SizedBox(width: 8),
+                          const SizedBox(width: 8),
                           Expanded(
                             child: Text(
                               'Mengalami kendala install? Silakan hubungi IT Support.',
-                              style: TextStyle(
+                              style: GoogleFonts.plusJakartaSans(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w600,
                                 color: AppColors.textPrimary,
@@ -598,8 +688,14 @@ class _MainAppWrapperState extends State<MainAppWrapper> with WidgetsBindingObse
                         }
                       },
                       icon: const Icon(Icons.copy, size: 16),
-                      label: const Text('Salin Link'),
+                      label: Text(
+                        'Salin Link',
+                        style:
+                            GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
+                      ),
                       style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.textSecondary,
+                        side: const BorderSide(color: AppColors.border),
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12)),
                         padding: const EdgeInsets.symmetric(vertical: 12),
@@ -617,7 +713,11 @@ class _MainAppWrapperState extends State<MainAppWrapper> with WidgetsBindingObse
                             borderRadius: BorderRadius.circular(12)),
                         padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
-                      child: const Text('Tutup'),
+                      child: Text(
+                        'Tutup',
+                        style:
+                            GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
+                      ),
                     ),
                   ),
                 ],
@@ -638,22 +738,23 @@ class _MainAppWrapperState extends State<MainAppWrapper> with WidgetsBindingObse
           height: 18,
           margin: const EdgeInsets.only(top: 2, right: 8),
           decoration: const BoxDecoration(
-            color: Colors.blueAccent,
+            color: AppColors.primary,
             shape: BoxShape.circle,
           ),
           alignment: Alignment.center,
           child: Text(
             num,
-            style: const TextStyle(
+            style: GoogleFonts.plusJakartaSans(
                 color: Colors.white,
                 fontSize: 11,
-                fontWeight: FontWeight.bold),
+                fontWeight: FontWeight.w800),
           ),
         ),
         Expanded(
           child: Text(
             text,
-            style: const TextStyle(fontSize: 12, color: Colors.black87),
+            style: GoogleFonts.plusJakartaSans(
+                fontSize: 12, color: AppColors.textSecondary),
           ),
         ),
       ],

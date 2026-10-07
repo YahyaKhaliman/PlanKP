@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/utils/api_client.dart';
 import '../../../core/constants/app_constants.dart';
@@ -40,15 +41,15 @@ class RealisasiDetailSheet {
               width: 110,
               child: Text(
                 label,
-                style: const TextStyle(
-                    fontSize: 12, color: AppColors.textSecondary),
+                style: GoogleFonts.plusJakartaSans(
+                    fontSize: 12, color: AppColors.textSecondary, fontWeight: FontWeight.w500),
               ),
             ),
             Expanded(
               child: Text(
                 value,
-                style:
-                    const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                style: GoogleFonts.plusJakartaSans(
+                    fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
               ),
             ),
           ],
@@ -67,11 +68,12 @@ class RealisasiDetailSheet {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SizedBox(
+            SizedBox(
               width: 110,
               child: Text(
                 'TTD',
-                style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                style: GoogleFonts.plusJakartaSans(
+                    fontSize: 12, color: AppColors.textSecondary, fontWeight: FontWeight.w500),
               ),
             ),
             Expanded(
@@ -79,8 +81,9 @@ class RealisasiDetailSheet {
                 height: 100,
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
+                  color: Colors.white,
                   border: Border.all(color: AppColors.border),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(10),
                 ),
                 child: Image.memory(bytes, fit: BoxFit.contain),
               ),
@@ -214,7 +217,7 @@ class _RealisasiDetailContentState extends State<_RealisasiDetailContent> {
       minChildSize: 0.5,
       builder: (_, ctrl) => Container(
         decoration: const BoxDecoration(
-          color: AppColors.bgGray,
+          color: AppColors.cardSurface,
           borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
         ),
         child: ListView(
@@ -228,7 +231,7 @@ class _RealisasiDetailContentState extends State<_RealisasiDetailContent> {
                 height: 4,
                 margin: const EdgeInsets.only(bottom: 12),
                 decoration: BoxDecoration(
-                  color: Colors.grey[300],
+                  color: AppColors.border,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -237,8 +240,11 @@ class _RealisasiDetailContentState extends State<_RealisasiDetailContent> {
             // Title
             Text(
               widget.title,
-              style:
-                  const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 16.5,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary,
+              ),
             ),
             const SizedBox(height: 12),
 
@@ -276,9 +282,13 @@ class _RealisasiDetailContentState extends State<_RealisasiDetailContent> {
             const SizedBox(height: 12),
 
             // === Checklist ===
-            const Text(
-              'Checklist',
-              style: TextStyle(fontWeight: FontWeight.w700),
+            Text(
+              'Checklist Pemeriksaan',
+              style: GoogleFonts.plusJakartaSans(
+                fontWeight: FontWeight.w700,
+                fontSize: 13.5,
+                color: AppColors.textPrimary,
+              ),
             ),
             const SizedBox(height: 8),
             if (_loadingDetail)
@@ -287,8 +297,13 @@ class _RealisasiDetailContentState extends State<_RealisasiDetailContent> {
                 child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
               )
             else if (detail.hasilChecklist.isEmpty)
-              const Text('-',
-                  style: TextStyle(color: AppColors.textSecondary))
+              Text(
+                'Belum ada rincian checklist',
+                style: GoogleFonts.plusJakartaSans(
+                  color: AppColors.textSecondary,
+                  fontSize: 12,
+                ),
+              )
             else
               ...([...detail.hasilChecklist]
                     ..sort((a, b) => a.urutan.compareTo(b.urutan)))
@@ -300,15 +315,19 @@ class _RealisasiDetailContentState extends State<_RealisasiDetailContent> {
                     children: [
                       Text(
                         '• ${h.itemNama} (${h.hcHasil})${(h.hcKondisi ?? '').isNotEmpty ? ' - ${h.hcKondisi}' : ''}',
-                        style: const TextStyle(fontSize: 13),
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary,
+                        ),
                       ),
                       if ((h.hcKeterangan ?? '').trim().isNotEmpty)
                         Padding(
                           padding: const EdgeInsets.only(left: 12, top: 2),
                           child: Text(
                             'Keterangan: ${(h.hcKeterangan ?? '').trim()}',
-                            style: const TextStyle(
-                              fontSize: 12,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 11.5,
                               color: AppColors.textSecondary,
                             ),
                           ),
@@ -330,7 +349,7 @@ class _RealisasiDetailContentState extends State<_RealisasiDetailContent> {
                   const SizedBox(width: 8),
                   Text(
                     'Riwayat Realisasi (${riwayat.length})',
-                    style: const TextStyle(
+                    style: GoogleFonts.plusJakartaSans(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
                       color: AppColors.textPrimary,
@@ -351,11 +370,11 @@ class _RealisasiDetailContentState extends State<_RealisasiDetailContent> {
                   decoration: BoxDecoration(
                     color: isCurrentlyViewed
                         ? AppColors.primarySoft
-                        : AppColors.white,
+                        : AppColors.cardSurface,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
                       color: isCurrentlyViewed
-                          ? AppColors.primary.withOpacity(0.3)
+                          ? AppColors.primary.withValues(alpha: 0.3)
                           : AppColors.border,
                     ),
                   ),
@@ -379,13 +398,13 @@ class _RealisasiDetailContentState extends State<_RealisasiDetailContent> {
                             decoration: BoxDecoration(
                               color: isCurrentlyViewed
                                   ? AppColors.primary
-                                  : AppColors.bgGray,
+                                  : AppColors.surfaceAlt,
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Center(
                               child: Text(
                                 '${idx + 1}',
-                                style: TextStyle(
+                                style: GoogleFonts.plusJakartaSans(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w700,
                                   color: isCurrentlyViewed
@@ -404,7 +423,7 @@ class _RealisasiDetailContentState extends State<_RealisasiDetailContent> {
                                   children: [
                                     Text(
                                       DateFormatter.toDisplay(item.realTgl),
-                                      style: TextStyle(
+                                      style: GoogleFonts.plusJakartaSans(
                                         fontSize: 13,
                                         fontWeight: FontWeight.w600,
                                         color: isCurrentlyViewed
@@ -419,13 +438,13 @@ class _RealisasiDetailContentState extends State<_RealisasiDetailContent> {
                                             horizontal: 6, vertical: 1),
                                         decoration: BoxDecoration(
                                           color: AppColors.primary
-                                              .withOpacity(0.15),
+                                              .withValues(alpha: 0.15),
                                           borderRadius:
                                               BorderRadius.circular(4),
                                         ),
-                                        child: const Text(
+                                        child: Text(
                                           'DILIHAT',
-                                          style: TextStyle(
+                                          style: GoogleFonts.plusJakartaSans(
                                             fontSize: 8,
                                             fontWeight: FontWeight.w800,
                                             color: AppColors.primary,
@@ -439,7 +458,7 @@ class _RealisasiDetailContentState extends State<_RealisasiDetailContent> {
                                 const SizedBox(height: 2),
                                 Text(
                                   'Oleh: $teknisiNama',
-                                  style: const TextStyle(
+                                  style: GoogleFonts.plusJakartaSans(
                                     fontSize: 11,
                                     color: AppColors.textSecondary,
                                   ),
@@ -456,13 +475,13 @@ class _RealisasiDetailContentState extends State<_RealisasiDetailContent> {
                                     horizontal: 8, vertical: 2),
                                 decoration: BoxDecoration(
                                   color: item.realStatus == 'Selesai'
-                                      ? AppColors.success.withOpacity(0.1)
-                                      : AppColors.warning.withOpacity(0.1),
+                                      ? AppColors.successSoft
+                                      : AppColors.warningSoft,
                                   borderRadius: BorderRadius.circular(6),
                                 ),
                                 child: Text(
                                   item.realStatus,
-                                  style: TextStyle(
+                                  style: GoogleFonts.plusJakartaSans(
                                     fontSize: 10,
                                     fontWeight: FontWeight.w700,
                                     color: item.realStatus == 'Selesai'
@@ -475,7 +494,7 @@ class _RealisasiDetailContentState extends State<_RealisasiDetailContent> {
                                 const SizedBox(height: 4),
                                 Text(
                                   item.realKondisiAkhir ?? '',
-                                  style: const TextStyle(
+                                  style: GoogleFonts.plusJakartaSans(
                                     fontSize: 10,
                                     color: AppColors.textSecondary,
                                   ),
