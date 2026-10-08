@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -67,6 +68,29 @@ class _LoginScreenState extends State<LoginScreen> {
     } catch (_) {}
 
     try {
+      if (kIsWeb) {
+        final result = await _updateService.checkWebUpdate();
+        if (!mounted || result == null) return;
+
+        setState(() {
+          if (result.hasUpdate) {
+            final latest = result.manifest;
+            _updateStatusLabel = latest == null
+                ? 'Update web tersedia'
+                : 'Pembaruan web tersedia • Versi ${latest.version} (build ${latest.buildNumber})';
+            _updateStatusColor = const Color(0xFFB45309);
+          } else {
+            _updateStatusLabel = 'Aplikasi web sudah versi terbaru';
+            _updateStatusColor = AppColors.textSecondary;
+          }
+        });
+
+        if (result.hasUpdate && mounted) {
+          _updateService.checkAndPromptWebUpdate(context);
+        }
+        return;
+      }
+
       // Gunakan cached result dari UpdateService jika sudah tersedia,
       // atau lakukan pengecekan baru (throttle berlaku secara global)
       final result = await _updateService.checkForUpdate();

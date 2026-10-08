@@ -25,6 +25,7 @@ import '../../voucher/screens/voucher_screen.dart';
 import '../../voucher/models/voucher_model.dart';
 import '../../voucher/providers/voucher_provider.dart';
 import '../../voucher/widgets/voucher_bon_dialog.dart';
+import '../../../core/update/update_service.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -421,6 +422,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
           _hasCheckedPendingTtd = true;
           _showPendingTtdDialog(drafts);
         }
+      }
+
+      if (mounted) {
+        UpdateService.instance.checkAndPromptWebUpdate(context);
       }
     } catch (e) {
       debugPrint('[Dashboard] Error loading data: $e');

@@ -1,8 +1,10 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'update_checker.dart';
 import 'update_downloader.dart';
+import 'web_update_dialog.dart';
 
 /// Service terpusat untuk semua logika update.
 /// Singleton — satu instance dipakai di seluruh app.
@@ -16,15 +18,63 @@ class UpdateService {
   // ─── Cache & Throttle ───
   AppUpdateCheckResult? _cachedResult;
   DateTime? _lastCheckTime;
+  DateTime? _lastWebCheckTime;
+  bool _isWebPromptShowing = false;
 
   /// Interval minimum antar pengecekan: 1 jam
   static const _throttleDuration = Duration(hours: 1);
+  static const _webThrottleDuration = Duration(minutes: 15);
 
   static const _skippedBuildKey = 'update_skipped_build_number';
 
   // ─── Getters ───
   UpdateDownloader get downloader => _downloader;
   AppUpdateCheckResult? get cachedResult => _cachedResult;
+
+  // ─── Cek Update Web ───
+
+  /// Cek pembaruan khusus Flutter Web.
+  Future<AppUpdateCheckResult?> checkWebUpdate({bool force = false}) async {
+    if (!kIsWeb) return null;
+
+    final now = DateTime.now();
+    if (!force &&
+        _lastWebCheckTime != null &&
+        now.difference(_lastWebCheckTime!) < _webThrottleDuration) {
+      return _cachedResult;
+    }
+
+    _lastWebCheckTime = now;
+    try {
+      final result = await _checker.checkWebUpdate();
+      _cachedResult = result;
+      return result;
+    } catch (e) {
+      debugPrint('[UpdateService Web] Error: $e');
+      return null;
+    }
+  }
+
+  /// Cek versi web dan otomatis tampilkan dialog jika ada versi terbaru di server.
+  Future<void> checkAndPromptWebUpdate(BuildContext context, {bool force = false}) async {
+    if (!kIsWeb || _isWebPromptShowing || !context.mounted) return;
+
+    final result = await checkWebUpdate(force: force);
+    if (result != null && result.hasUpdate && context.mounted && !_isWebPromptShowing) {
+      _isWebPromptShowing = true;
+      try {
+        await WebUpdateDialog.show(
+          context,
+          currentVersion: result.currentVersion,
+          newVersion: result.manifest?.version ?? result.currentVersion,
+          currentBuildNumber: result.currentBuildNumber,
+          newBuildNumber: result.manifest?.buildNumber,
+        );
+      } finally {
+        _isWebPromptShowing = false;
+      }
+    }
+  }
 
   // ─── Cek Update (dengan throttle & skip) ───
 

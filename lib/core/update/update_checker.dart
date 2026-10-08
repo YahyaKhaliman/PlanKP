@@ -131,5 +131,73 @@ class UpdateChecker {
       );
     }
   }
+
+  /// Khusus Flutter Web: Cek apakah versi di server web lebih tinggi daripada versi yang sedang dibuka user.
+  Future<AppUpdateCheckResult> checkWebUpdate() async {
+    final packageInfo = await PackageInfo.fromPlatform();
+    final currentBuild = int.tryParse(packageInfo.buildNumber) ?? 0;
+    final currentVersion = packageInfo.version;
+
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+
+    // 1. Coba baca /version.json bawaan Flutter Web
+    try {
+      final uri = Uri.parse('/version.json?t=$timestamp');
+      final res = await _httpClient.get(uri, headers: const {'Accept': 'application/json'});
+      if (res.statusCode >= 200 && res.statusCode < 300) {
+        final decoded = jsonDecode(res.body);
+        if (decoded is Map<String, dynamic>) {
+          final serverVersion = decoded['version']?.toString() ?? '';
+          final serverBuild = int.tryParse(decoded['build_number']?.toString() ?? '') ?? 0;
+
+          final isHigherBuild = serverBuild > currentBuild;
+          final isDifferentVersion = serverVersion.isNotEmpty &&
+              currentVersion.isNotEmpty &&
+              serverVersion != currentVersion;
+
+          if (isHigherBuild || (serverBuild == currentBuild && isDifferentVersion)) {
+            return AppUpdateCheckResult(
+              status: AppUpdateStatus.updateAvailable,
+              currentVersion: currentVersion,
+              currentBuildNumber: currentBuild,
+              manifest: AppUpdateManifest(
+                version: serverVersion.isNotEmpty ? serverVersion : currentVersion,
+                buildNumber: serverBuild > 0 ? serverBuild : currentBuild,
+                mandatory: false,
+                url: '',
+              ),
+            );
+          }
+        }
+      }
+    } catch (_) {}
+
+    // 2. Fallback: Cek ke manifest /latest.json di VPS
+    try {
+      final uri = Uri.parse('$_manifestUrl?t=$timestamp');
+      final res = await _httpClient.get(uri, headers: const {'Accept': 'application/json'});
+      if (res.statusCode >= 200 && res.statusCode < 300) {
+        final decoded = jsonDecode(res.body);
+        if (decoded is Map<String, dynamic>) {
+          final manifest = AppUpdateManifest.fromJson(decoded);
+          if (manifest.buildNumber > currentBuild ||
+              (manifest.version.isNotEmpty && manifest.version != currentVersion)) {
+            return AppUpdateCheckResult(
+              status: AppUpdateStatus.updateAvailable,
+              manifest: manifest,
+              currentVersion: currentVersion,
+              currentBuildNumber: currentBuild,
+            );
+          }
+        }
+      }
+    } catch (_) {}
+
+    return AppUpdateCheckResult(
+      status: AppUpdateStatus.upToDate,
+      currentVersion: currentVersion,
+      currentBuildNumber: currentBuild,
+    );
+  }
 }
 
