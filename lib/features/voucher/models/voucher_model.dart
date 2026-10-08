@@ -53,8 +53,13 @@ class VoucherModel {
       voucherOdometer: json['voucher_odometer'] != null ? int.tryParse('${json['voucher_odometer']}') : null,
       voucherStatus: json['voucher_status']?.toString() ?? 'Menunggu',
       voucherApprovedBy: json['voucher_approved_by'] != null ? int.tryParse('${json['voucher_approved_by']}') : null,
-      voucherApprovedAt: json['voucher_approved_at'] != null ? DateTime.tryParse('${json['voucher_approved_at']}') : null,
-      voucherCreatedAt: json['voucher_created_at'] != null ? DateTime.tryParse('${json['voucher_created_at']}') ?? DateTime.now() : DateTime.now(),
+      voucherApprovedAt: json['voucher_approved_at'] != null
+          ? (DateTime.tryParse('${json['voucher_approved_at']}')?.toLocal())
+          : null,
+      voucherCreatedAt: json['voucher_created_at'] != null
+          ? (DateTime.tryParse('${json['voucher_created_at']}')?.toLocal() ??
+              DateTime.now())
+          : DateTime.now(),
       pemohon: json['pemohon'] is Map<String, dynamic> ? json['pemohon'] : null,
       inventaris: json['inventaris'] is Map<String, dynamic> ? json['inventaris'] : null,
       spbu: json['spbu'] is Map<String, dynamic> ? SpbuModel.fromJson(json['spbu']) : null,

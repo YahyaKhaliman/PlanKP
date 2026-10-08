@@ -3,8 +3,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
-import '../../../core/theme/app_theme.dart';
 import '../../../core/constants/app_constants.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/app_notifier.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../models/voucher_model.dart';
@@ -22,7 +23,12 @@ class _VoucherScreenState extends State<VoucherScreen> {
   static const _kPageBg = AppColors.surface;
   final TextEditingController _searchCtrl = TextEditingController();
   String _searchQuery = '';
-  final List<String> _filterTabs = ['Semua', 'Menunggu', 'Disetujui', 'Ditolak'];
+  final List<String> _filterTabs = [
+    'Semua',
+    'Menunggu',
+    'Disetujui',
+    'Ditolak'
+  ];
 
   @override
   void initState() {
@@ -65,7 +71,9 @@ class _VoucherScreenState extends State<VoucherScreen> {
 
   int _countByStatus(List<VoucherModel> list, String status) {
     if (status == 'Semua') return list.length;
-    return list.where((v) => v.voucherStatus.toLowerCase() == status.toLowerCase()).length;
+    return list
+        .where((v) => v.voucherStatus.toLowerCase() == status.toLowerCase())
+        .length;
   }
 
   @override
@@ -94,7 +102,8 @@ class _VoucherScreenState extends State<VoucherScreen> {
       floatingActionButton: (isDriver || isAdmin)
           ? FloatingActionButton.extended(
               onPressed: () async {
-                final result = await Navigator.pushNamed(context, AppRoutes.voucherForm);
+                final result =
+                    await Navigator.pushNamed(context, AppRoutes.voucherForm);
                 if (result == true) {
                   p.fetchVouchers();
                 }
@@ -139,7 +148,8 @@ class _VoucherScreenState extends State<VoucherScreen> {
                           decoration: BoxDecoration(
                             color: AppColors.cardSurface,
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: AppColors.border, width: 1),
+                            border:
+                                Border.all(color: AppColors.border, width: 1),
                             boxShadow: const [
                               BoxShadow(
                                 color: Color(0x040F172A),
@@ -207,20 +217,29 @@ class _VoucherScreenState extends State<VoucherScreen> {
                                 padding: const EdgeInsets.only(right: 8),
                                 child: ChoiceChip(
                                   label: Text(
-                                    tab == 'Semua' ? 'Semua ($count)' : '$tab ($count)',
+                                    tab == 'Semua'
+                                        ? 'Semua ($count)'
+                                        : '$tab ($count)',
                                   ),
                                   selected: isSelected,
                                   selectedColor: AppColors.primarySoft,
                                   backgroundColor: Colors.white,
                                   labelStyle: GoogleFonts.plusJakartaSans(
-                                    color: isSelected ? AppColors.primary : AppColors.textSecondary,
-                                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                                    color: isSelected
+                                        ? AppColors.primary
+                                        : AppColors.textSecondary,
+                                    fontWeight: isSelected
+                                        ? FontWeight.w700
+                                        : FontWeight.w600,
                                     fontSize: 12,
                                   ),
                                   shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(AppRadius.full),
+                                    borderRadius:
+                                        BorderRadius.circular(AppRadius.full),
                                     side: BorderSide(
-                                      color: isSelected ? AppColors.primary : AppColors.border,
+                                      color: isSelected
+                                          ? AppColors.primary
+                                          : AppColors.border,
                                     ),
                                   ),
                                   onSelected: (selected) {
@@ -277,7 +296,8 @@ class _VoucherScreenState extends State<VoucherScreen> {
                         : filteredList.isEmpty
                             ? _searchQuery.isNotEmpty
                                 ? EmptyState(
-                                    message: 'Tidak ada voucher yang cocok dengan pencarian "$_searchQuery"',
+                                    message:
+                                        'Tidak ada voucher yang cocok dengan pencarian "$_searchQuery"',
                                     actionLabel: 'Reset Pencarian',
                                     onAction: () => _searchCtrl.clear(),
                                   )
@@ -285,10 +305,13 @@ class _VoucherScreenState extends State<VoucherScreen> {
                                     message: p.selectedStatus == 'Semua'
                                         ? 'Belum ada data voucher BBM'
                                         : 'Tidak ada voucher dengan status "${p.selectedStatus}"',
-                                    actionLabel: (isDriver || isAdmin) ? 'Ajukan Sekarang' : null,
+                                    actionLabel: (isDriver || isAdmin)
+                                        ? 'Ajukan Sekarang'
+                                        : null,
                                     onAction: (isDriver || isAdmin)
                                         ? () async {
-                                            final res = await Navigator.pushNamed(
+                                            final res =
+                                                await Navigator.pushNamed(
                                               context,
                                               AppRoutes.voucherForm,
                                             );
@@ -324,7 +347,8 @@ class _VoucherScreenState extends State<VoucherScreen> {
 
   Widget _buildVoucherCard(VoucherModel voucher, bool isAdmin) {
     final statusColor = _getStatusColor(voucher.voucherStatus);
-    final hasNoBon = voucher.voucherNoBon != null && voucher.voucherNoBon!.trim().isNotEmpty;
+    final hasNoBon =
+        voucher.voucherNoBon != null && voucher.voucherNoBon!.trim().isNotEmpty;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -345,7 +369,19 @@ class _VoucherScreenState extends State<VoucherScreen> {
         borderRadius: BorderRadius.circular(16),
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
-          onTap: () => VoucherBonDialog.show(context, voucher: voucher, isAdmin: isAdmin),
+          onTap: () async {
+            final result = await VoucherBonDialog.show(context,
+                voucher: voucher, isAdmin: isAdmin);
+            if (!context.mounted) return;
+            if (result == 'approved') {
+              AppNotifier.showSuccess(
+                  context, 'Voucher berhasil disetujui & nomor bon tercatat');
+              context.read<VoucherProvider>().fetchVouchers();
+            } else if (result == 'rejected') {
+              AppNotifier.showSuccess(context, 'Voucher telah ditolak');
+              context.read<VoucherProvider>().fetchVouchers();
+            }
+          },
           child: Padding(
             padding: const EdgeInsets.all(15),
             child: Column(
@@ -355,12 +391,17 @@ class _VoucherScreenState extends State<VoucherScreen> {
                 Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: hasNoBon ? AppColors.primarySoft : const Color(0xFFF1F5F9),
+                        color: hasNoBon
+                            ? AppColors.primarySoft
+                            : const Color(0xFFF1F5F9),
                         borderRadius: BorderRadius.circular(AppRadius.sm),
                         border: Border.all(
-                          color: hasNoBon ? AppColors.primary.withValues(alpha: 0.3) : AppColors.border,
+                          color: hasNoBon
+                              ? AppColors.primary.withValues(alpha: 0.3)
+                              : AppColors.border,
                         ),
                       ),
                       child: Row(
@@ -369,15 +410,21 @@ class _VoucherScreenState extends State<VoucherScreen> {
                           Icon(
                             Icons.receipt_long_rounded,
                             size: 13,
-                            color: hasNoBon ? AppColors.primary : AppColors.textSecondary,
+                            color: hasNoBon
+                                ? AppColors.primary
+                                : AppColors.textSecondary,
                           ),
                           const SizedBox(width: 5),
                           Text(
-                            hasNoBon ? 'No. Permintaan: ${voucher.voucherNoBon}' : 'Menunggu No. Permintaan',
+                            hasNoBon
+                                ? 'No. Permintaan: ${voucher.voucherNoBon}'
+                                : 'Menunggu No. Permintaan',
                             style: GoogleFonts.plusJakartaSans(
                               fontSize: 12,
                               fontWeight: FontWeight.w700,
-                              color: hasNoBon ? AppColors.primaryDark : AppColors.textSecondary,
+                              color: hasNoBon
+                                  ? AppColors.primaryDark
+                                  : AppColors.textSecondary,
                             ),
                           ),
                         ],
@@ -385,11 +432,13 @@ class _VoucherScreenState extends State<VoucherScreen> {
                     ),
                     const Spacer(),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3.5),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 9, vertical: 3.5),
                       decoration: BoxDecoration(
                         color: statusColor.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(AppRadius.full),
-                        border: Border.all(color: statusColor.withValues(alpha: 0.3)),
+                        border: Border.all(
+                            color: statusColor.withValues(alpha: 0.3)),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -426,7 +475,8 @@ class _VoucherScreenState extends State<VoucherScreen> {
                       width: 44,
                       height: 44,
                       decoration: BoxDecoration(
-                        color: const Color(0xFF0D9488).withValues(alpha: 0.1), // Driver Teal
+                        color: const Color(0xFF0D9488)
+                            .withValues(alpha: 0.1), // Driver Teal
                         borderRadius: BorderRadius.circular(AppRadius.md),
                       ),
                       child: const Icon(
@@ -443,12 +493,13 @@ class _VoucherScreenState extends State<VoucherScreen> {
                           Row(
                             children: [
                               Text(
-                                voucher.noPolisi,
+                                voucher.namaInventaris,
                                 style: GoogleFonts.plusJakartaSans(
-                                  fontWeight: FontWeight.w800,
+                                  fontWeight: FontWeight.w700,
                                   fontSize: 14,
-                                  color: AppColors.textPrimary,
+                                  color: AppColors.textSecondary,
                                 ),
+                                overflow: TextOverflow.ellipsis,
                               ),
                               const SizedBox(width: 6),
                               Container(
@@ -462,13 +513,12 @@ class _VoucherScreenState extends State<VoucherScreen> {
                               const SizedBox(width: 6),
                               Expanded(
                                 child: Text(
-                                  voucher.namaInventaris,
+                                  voucher.noPolisi,
                                   style: GoogleFonts.plusJakartaSans(
-                                    fontWeight: FontWeight.w600,
+                                    fontWeight: FontWeight.w700,
                                     fontSize: 13,
-                                    color: AppColors.textSecondary,
+                                    color: AppColors.textPrimary,
                                   ),
-                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                             ],
@@ -477,7 +527,8 @@ class _VoucherScreenState extends State<VoucherScreen> {
                           Row(
                             children: [
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 6, vertical: 2),
                                 decoration: BoxDecoration(
                                   color: const Color(0xFFEFF6FF),
                                   borderRadius: BorderRadius.circular(4),

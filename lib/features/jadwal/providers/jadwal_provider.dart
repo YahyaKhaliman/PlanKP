@@ -62,6 +62,48 @@ class JadwalProvider extends ChangeNotifier {
   
   // (sisanya tetap sama, mari kita sesuaikan fetchMonitoringDivisi di bawah)
   
+  final Map<String, List<dynamic>> _monitoringDivisiByMonth = {};
+
+  List<dynamic> getMonitoringDivisiForMonth(int bulan, int tahun) {
+    return _monitoringDivisiByMonth['$tahun-$bulan'] ?? const [];
+  }
+
+  Future<void> fetchMonitoringDivisiHistory({
+    required int targetBulan,
+    required int targetTahun,
+    int monthsCount = 6,
+  }) async {
+    final futures = <Future<void>>[];
+    for (int i = 0; i < monthsCount; i++) {
+      final m = DateTime(targetTahun, targetBulan - i, 1);
+      final key = '${m.year}-${m.month}';
+      if (!_monitoringDivisiByMonth.containsKey(key)) {
+        futures.add(_fetchSingleMonitoringMonth(m.month, m.year));
+      }
+    }
+    if (futures.isNotEmpty) {
+      await Future.wait(futures);
+      notifyListeners();
+    }
+  }
+
+  Future<void> _fetchSingleMonitoringMonth(int bulan, int tahun) async {
+    try {
+      final res = await ApiClient.get(
+        ApiConfig.monitoringDivisi,
+        query: {'bulan': bulan, 'tahun': tahun},
+      );
+      final responseData = res['data'];
+      List<dynamic> list = [];
+      if (responseData is Map<String, dynamic>) {
+        list = responseData['data'] ?? [];
+      } else if (responseData is List) {
+        list = responseData;
+      }
+      _monitoringDivisiByMonth['$tahun-$bulan'] = list;
+    } catch (_) {}
+  }
+
   Future<void> fetchMonitoringDivisi({int? bulan, int? tahun}) async {
     _setLoading(true);
     try {
@@ -79,6 +121,10 @@ class JadwalProvider extends ChangeNotifier {
         monitoringDivisiList = responseData ?? [];
         monitoringBulan = bulan;
         monitoringTahun = tahun;
+      }
+      if (monitoringBulan != null && monitoringTahun != null) {
+        _monitoringDivisiByMonth['$monitoringTahun-$monitoringBulan'] =
+            monitoringDivisiList;
       }
       _setError(null);
     } on ApiException catch (e) {

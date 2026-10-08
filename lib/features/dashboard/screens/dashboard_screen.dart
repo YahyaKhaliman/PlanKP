@@ -42,7 +42,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   final PageController _heroCardPageController = PageController();
   int _managerChartPageIndex = 0;
   final PageController _managerChartPageController = PageController();
-  DateTime _selectedTargetMonth = DateTime(DateTime.now().year, DateTime.now().month);
+  DateTime _selectedTargetMonth =
+      DateTime(DateTime.now().year, DateTime.now().month);
   String? _selectedDivisiHighlight;
   int? _activeMonthPopupIndex;
   Timer? _popoverDismissTimer;
@@ -87,7 +88,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
       dialogType: DialogType.warning,
       animType: AnimType.bottomSlide,
       title: 'Tanda Tangan Tertunda',
-      desc: 'Anda memiliki ${drafts.length} realisasi pemeliharaan yang belum ditandatangani oleh PIC. Harap segera menyelesaikan tanda tangan.',
+      desc:
+          'Anda memiliki ${drafts.length} realisasi pemeliharaan yang belum ditandatangani oleh PIC. Harap segera menyelesaikan tanda tangan.',
       btnCancelText: 'Nanti',
       btnOkText: 'Lihat Riwayat',
       btnCancelOnPress: () {},
@@ -194,7 +196,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       itemBuilder: (context, index) {
                         final bulanNum = index + 1;
                         final isSelected = tempBulan == bulanNum;
-                        final name = DateFormatter.monthNames[index].substring(0, 3);
+                        final name =
+                            DateFormatter.monthNames[index].substring(0, 3);
 
                         return InkWell(
                           onTap: () {
@@ -243,13 +246,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       _selectedTargetMonth = DateTime(tempTahun, tempBulan);
                     });
                     final auth = context.read<AuthProvider>();
-                    final role = auth.user?['user_jabatan']?.toString().toLowerCase();
+                    final role =
+                        auth.user?['user_jabatan']?.toString().toLowerCase();
                     final p = context.read<JadwalProvider>();
                     for (int i = 5; i >= 0; i--) {
-                      p.fetchHariLiburForMonth(DateTime(tempTahun, tempBulan - i, 1));
+                      p.fetchHariLiburForMonth(
+                          DateTime(tempTahun, tempBulan - i, 1));
                     }
                     if (role == 'manager' || role == 'admin') {
-                      p.fetchMonitoringDivisi(bulan: tempBulan, tahun: tempTahun);
+                      p.fetchMonitoringDivisi(
+                          bulan: tempBulan, tahun: tempTahun);
+                      p.fetchMonitoringDivisiHistory(
+                          targetBulan: tempBulan, targetTahun: tempTahun);
                     }
                     p.fetchRealisasi(
                       status: 'Selesai',
@@ -257,7 +265,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       tahun: tempTahun,
                       byDivisi: role == 'admin',
                     );
-                    p.fetchRealisasiHistorySummary(bulan: tempBulan, tahun: tempTahun);
+                    p.fetchRealisasiHistorySummary(
+                        bulan: tempBulan, tahun: tempTahun);
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
@@ -309,8 +318,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return false;
   }
 
-  DateTime? _getLastRealisasiDateForJadwal(int jdwId, List<RealisasiModel> realisasiList) {
-    final list = realisasiList.where((r) => r.realJadwalId == jdwId && r.realStatus == 'Selesai').toList();
+  DateTime? _getLastRealisasiDateForJadwal(
+      int jdwId, List<RealisasiModel> realisasiList) {
+    final list = realisasiList
+        .where((r) => r.realJadwalId == jdwId && r.realStatus == 'Selesai')
+        .toList();
     if (list.isEmpty) return null;
     list.sort((a, b) => b.realTgl.compareTo(a.realTgl));
     return DateTime.tryParse(list.first.realTgl);
@@ -356,14 +368,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
           p.fetchJadwal(),
           p.fetchRealisasi(status: 'Selesai'),
           p.fetchDashboardSummary(),
-          p.fetchMonitoringDivisi(bulan: _selectedTargetMonth.month, tahun: _selectedTargetMonth.year),
+          p.fetchMonitoringDivisi(
+              bulan: _selectedTargetMonth.month,
+              tahun: _selectedTargetMonth.year),
+          p.fetchMonitoringDivisiHistory(
+              targetBulan: _selectedTargetMonth.month,
+              targetTahun: _selectedTargetMonth.year),
         ]);
       } else if (role == 'admin') {
         await Future.wait([
           p.fetchJadwalByDivisi(),
           p.fetchRealisasi(status: 'Selesai'),
           p.fetchDashboardSummary(),
-          p.fetchMonitoringDivisi(bulan: _selectedTargetMonth.month, tahun: _selectedTargetMonth.year),
+          p.fetchMonitoringDivisi(
+              bulan: _selectedTargetMonth.month,
+              tahun: _selectedTargetMonth.year),
+          p.fetchMonitoringDivisiHistory(
+              targetBulan: _selectedTargetMonth.month,
+              targetTahun: _selectedTargetMonth.year),
         ]);
       } else {
         await Future.wait([
@@ -374,12 +396,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
       }
       final currentYear = _selectedTargetMonth.year;
       for (int i = 5; i >= 0; i--) {
-        p.fetchHariLiburForMonth(DateTime(currentYear, _selectedTargetMonth.month - i, 1));
+        p.fetchHariLiburForMonth(
+            DateTime(currentYear, _selectedTargetMonth.month - i, 1));
       }
       if (!mounted) return;
       await context.read<MasterProvider>().fetchJenis();
 
-      final String userDivisi = auth.user?['user_divisi']?.toString().toUpperCase() ?? '';
+      final String userDivisi =
+          auth.user?['user_divisi']?.toString().toUpperCase() ?? '';
       final bool isDriverAdmin = role == 'admin' && userDivisi == 'DRIVER';
       final bool canSeeVoucherNotif = isManager || isDriverAdmin;
       if (canSeeVoucherNotif && mounted) {
@@ -408,7 +432,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
       }
     }
   }
-
 
   String _userName(Map<String, dynamic>? user) =>
       (user?['user_nama'] ?? 'User').toString().trim();
@@ -592,44 +615,48 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-
   void _showVoucherPendingBottomSheet(BuildContext context) {
     context.read<VoucherProvider>().fetchPendingVouchers();
+    context.read<VoucherProvider>().fetchApprovedVouchers();
     showResponsiveSheet(
       context,
       maxDesktopWidth: 680,
       builder: (ctx) {
+        String currentTab = 'pending'; // 'pending' | 'approved'
         String searchQuery = '';
 
         return StatefulBuilder(
           builder: (modalCtx, setModalState) {
             final vp = modalCtx.watch<VoucherProvider>();
             final pendingList = vp.pendingVouchers;
-            final auth = modalCtx.read<AuthProvider>();
-            final role = auth.user?['user_jabatan']?.toString().toLowerCase();
-            final isManager = role == 'manager';
-            final userDivisi = auth.user?['user_divisi']?.toString();
+            final approvedList = vp.approvedVouchers;
+            final isPendingTab = currentTab == 'pending';
+            final activeList = isPendingTab ? pendingList : approvedList;
+            final isTabLoading =
+                isPendingTab ? vp.isLoadingPending : vp.isLoadingApproved;
 
-            final double totalLiter = pendingList.fold(
+            final double totalLiter = activeList.fold(
               0.0,
               (sum, item) => sum + item.voucherJumlahLiter,
             );
 
             // Filter pencarian
             final displayList = searchQuery.trim().isEmpty
-                ? pendingList
-                : pendingList.where((v) {
+                ? activeList
+                : activeList.where((v) {
                     final q = searchQuery.trim().toLowerCase();
                     final driver = v.namaPemohon.toLowerCase();
                     final unit = v.namaInventaris.toLowerCase();
                     final plat = v.noPolisi.toLowerCase();
                     final spbu = v.namaSpbu.toLowerCase();
                     final bbm = v.voucherJenisBbm.toLowerCase();
+                    final noBon = (v.voucherNoBon ?? '').toLowerCase();
                     return driver.contains(q) ||
                         unit.contains(q) ||
                         plat.contains(q) ||
                         spbu.contains(q) ||
-                        bbm.contains(q);
+                        bbm.contains(q) ||
+                        noBon.contains(q);
                   }).toList();
 
             return Container(
@@ -651,7 +678,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         end: Alignment.bottomRight,
                         colors: [Color(0xFF1A3A7C), Color(0xFF3B6FE0)],
                       ),
-                      borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+                      borderRadius:
+                          BorderRadius.vertical(top: Radius.circular(28)),
                     ),
                     child: Column(
                       children: [
@@ -685,11 +713,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 ),
                               ),
                               const SizedBox(width: 12),
-                              Expanded(
+                              const Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const Text(
+                                    Text(
                                       'Permintaan Voucher BBM',
                                       style: TextStyle(
                                         fontSize: 18,
@@ -698,25 +726,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                         letterSpacing: -0.3,
                                       ),
                                     ),
-                                    Text(
-                                      isManager
-                                          ? 'Semua Divisi'
-                                          : (userDivisi != null && userDivisi.isNotEmpty
-                                              ? 'Divisi: $userDivisi'
-                                              : 'Divisi: Driver'),
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.white.withValues(alpha: 0.75),
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
                                   ],
                                 ),
                               ),
                               IconButton(
-                                icon: const Icon(Icons.refresh_rounded, size: 20, color: Colors.white),
+                                icon: const Icon(Icons.refresh_rounded,
+                                    size: 20, color: Colors.white),
                                 tooltip: 'Muat ulang',
-                                onPressed: () => vp.fetchPendingVouchers(),
+                                onPressed: () {
+                                  vp.fetchPendingVouchers();
+                                  vp.fetchApprovedVouchers();
+                                },
                               ),
                               IconButton(
                                 icon: Container(
@@ -736,94 +756,230 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             ],
                           ),
                         ),
-                        const SizedBox(height: 16),
-                        // ── Integrated Header Button Group ────────────────
+                        const SizedBox(height: 14),
+
+                        // ── Tab Bar (Menunggu vs Disetujui) ────────────────
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          child: Container(
+                            padding: const EdgeInsets.all(3.5),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.18),
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            child: Row(
+                              children: [
+                                // Tab 1: Menunggu
+                                Expanded(
+                                  child: InkWell(
+                                    onTap: () {
+                                      if (currentTab != 'pending') {
+                                        setModalState(
+                                            () => currentTab = 'pending');
+                                      }
+                                    },
+                                    borderRadius: BorderRadius.circular(11),
+                                    child: AnimatedContainer(
+                                      duration:
+                                          const Duration(milliseconds: 180),
+                                      padding: const EdgeInsets.symmetric(
+                                          vertical: 8),
+                                      decoration: BoxDecoration(
+                                        color: isPendingTab
+                                            ? Colors.white
+                                            : Colors.transparent,
+                                        borderRadius: BorderRadius.circular(11),
+                                        boxShadow: isPendingTab
+                                            ? [
+                                                BoxShadow(
+                                                  color: Colors.black
+                                                      .withValues(alpha: 0.1),
+                                                  blurRadius: 6,
+                                                  offset: const Offset(0, 2),
+                                                ),
+                                              ]
+                                            : null,
+                                      ),
+                                      child: Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Icon(
+                                            Icons.hourglass_top_rounded,
+                                            size: 14,
+                                            color: isPendingTab
+                                                ? const Color(0xFFEA580C)
+                                                : Colors.white70,
+                                          ),
+                                          const SizedBox(width: 5),
+                                          Text(
+                                            'Menunggu',
+                                            style: TextStyle(
+                                              fontSize: 12.5,
+                                              fontWeight: isPendingTab
+                                                  ? FontWeight.w800
+                                                  : FontWeight.w600,
+                                              color: isPendingTab
+                                                  ? const Color(0xFF0F172A)
+                                                  : Colors.white,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 6),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 6, vertical: 1),
+                                            decoration: BoxDecoration(
+                                              color: isPendingTab
+                                                  ? const Color(0xFFFFEDD5)
+                                                  : Colors.white
+                                                      .withValues(alpha: 0.2),
+                                              borderRadius:
+                                                  BorderRadius.circular(99),
+                                            ),
+                                            child: Text(
+                                              '${pendingList.length}',
+                                              style: TextStyle(
+                                                fontSize: 10.5,
+                                                fontWeight: FontWeight.w800,
+                                                color: isPendingTab
+                                                    ? const Color(0xFFEA580C)
+                                                    : Colors.white,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+
+                                // Tab 2: Disetujui
+                                Expanded(
+                                  child: InkWell(
+                                    onTap: () {
+                                      if (currentTab != 'approved') {
+                                        setModalState(
+                                            () => currentTab = 'approved');
+                                      }
+                                    },
+                                    borderRadius: BorderRadius.circular(11),
+                                    child: AnimatedContainer(
+                                      duration:
+                                          const Duration(milliseconds: 180),
+                                      padding: const EdgeInsets.symmetric(
+                                          vertical: 8),
+                                      decoration: BoxDecoration(
+                                        color: !isPendingTab
+                                            ? Colors.white
+                                            : Colors.transparent,
+                                        borderRadius: BorderRadius.circular(11),
+                                        boxShadow: !isPendingTab
+                                            ? [
+                                                BoxShadow(
+                                                  color: Colors.black
+                                                      .withValues(alpha: 0.1),
+                                                  blurRadius: 6,
+                                                  offset: const Offset(0, 2),
+                                                ),
+                                              ]
+                                            : null,
+                                      ),
+                                      child: Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Icon(
+                                            Icons.check_circle_rounded,
+                                            size: 14,
+                                            color: !isPendingTab
+                                                ? const Color(0xFF059669)
+                                                : Colors.white70,
+                                          ),
+                                          const SizedBox(width: 5),
+                                          Text(
+                                            'Disetujui',
+                                            style: TextStyle(
+                                              fontSize: 12.5,
+                                              fontWeight: !isPendingTab
+                                                  ? FontWeight.w800
+                                                  : FontWeight.w600,
+                                              color: !isPendingTab
+                                                  ? const Color(0xFF0F172A)
+                                                  : Colors.white,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 6),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 6, vertical: 1),
+                                            decoration: BoxDecoration(
+                                              color: !isPendingTab
+                                                  ? const Color(0xFFDCFCE7)
+                                                  : Colors.white
+                                                      .withValues(alpha: 0.2),
+                                              borderRadius:
+                                                  BorderRadius.circular(99),
+                                            ),
+                                            child: Text(
+                                              '${approvedList.length}',
+                                              style: TextStyle(
+                                                fontSize: 10.5,
+                                                fontWeight: FontWeight.w800,
+                                                color: !isPendingTab
+                                                    ? const Color(0xFF059669)
+                                                    : Colors.white,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+
+                        // ── Integrated Header Stat (Volume Total) ────────────────
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 20),
                           child: Row(
                             children: [
                               Expanded(
                                 child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 10, vertical: 8),
                                   decoration: BoxDecoration(
-                                    color: Colors.white.withValues(alpha: 0.18),
-                                    borderRadius: BorderRadius.circular(14),
-                                    border: Border.all(
-                                      color: const Color(0xFFFFB020),
-                                      width: 1.5,
-                                    ),
+                                    color: Colors.white.withValues(alpha: 0.12),
+                                    borderRadius: BorderRadius.circular(12),
                                   ),
-                                  child: Column(
+                                  child: Row(
                                     children: [
-                                      Row(
-                                        mainAxisAlignment: MainAxisAlignment.center,
-                                        children: [
-                                          const Icon(Icons.hourglass_top_rounded, color: Color(0xFFFFB020), size: 16),
-                                          const SizedBox(width: 5),
-                                          Text(
-                                            '${pendingList.length}',
-                                            style: const TextStyle(
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.w900,
-                                              color: Colors.white,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 4),
-                                      const Text(
-                                        'Menunggu',
+                                      const Icon(Icons.water_drop_rounded,
+                                          color: Color(0xFF93C5FD), size: 16),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        'Total Volume ${isPendingTab ? "Diminta" : "Disetujui"}:',
                                         style: TextStyle(
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.w800,
+                                          fontSize: 11.5,
+                                          color: Colors.white
+                                              .withValues(alpha: 0.85),
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                      const Spacer(),
+                                      Text(
+                                        totalLiter % 1 == 0
+                                            ? '${totalLiter.toInt()} L'
+                                            : '${totalLiter.toStringAsFixed(1)} L',
+                                        style: const TextStyle(
+                                          fontSize: 14.5,
+                                          fontWeight: FontWeight.w900,
                                           color: Colors.white,
                                         ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withValues(alpha: 0.08),
-                                    borderRadius: BorderRadius.circular(14),
-                                    border: Border.all(
-                                      color: const Color(0xFF64B5F6).withValues(alpha: 0.4),
-                                      width: 1.0,
-                                    ),
-                                  ),
-                                  child: Column(
-                                    children: [
-                                      Row(
-                                        mainAxisAlignment: MainAxisAlignment.center,
-                                        children: [
-                                          const Icon(Icons.water_drop_rounded, color: Color(0xFF64B5F6), size: 16),
-                                          const SizedBox(width: 5),
-                                          Text(
-                                            totalLiter % 1 == 0 ? '${totalLiter.toInt()}' : totalLiter.toStringAsFixed(1),
-                                            style: const TextStyle(
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.w900,
-                                              color: Colors.white,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        'Total Liter',
-                                        style: TextStyle(
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.w500,
-                                          color: Colors.white.withValues(alpha: 0.75),
-                                        ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
                                       ),
                                     ],
                                   ),
@@ -832,15 +988,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             ],
                           ),
                         ),
-                        const SizedBox(height: 14),
+                        const SizedBox(height: 12),
+
                         // ── Search Input ────────────────────────────────
                         Padding(
-                          padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+                          padding: const EdgeInsets.fromLTRB(20, 0, 20, 14),
                           child: TextField(
-                            onChanged: (val) => setModalState(() => searchQuery = val),
-                            style: const TextStyle(fontSize: 13, color: Colors.white),
+                            onChanged: (val) =>
+                                setModalState(() => searchQuery = val),
+                            style: const TextStyle(
+                                fontSize: 13, color: Colors.white),
                             decoration: InputDecoration(
-                              hintText: 'Cari nama driver, plat kendaraan, atau SPBU...',
+                              hintText: isPendingTab
+                                  ? 'Cari nama driver, plat, atau SPBU...'
+                                  : 'Cari driver, no. bon, plat, atau SPBU...',
                               hintStyle: TextStyle(
                                 fontSize: 12,
                                 color: Colors.white.withValues(alpha: 0.55),
@@ -852,13 +1013,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               ),
                               suffixIcon: searchQuery.isNotEmpty
                                   ? IconButton(
-                                      icon: const Icon(Icons.clear_rounded, color: Colors.white70, size: 16),
-                                      onPressed: () => setModalState(() => searchQuery = ''),
+                                      icon: const Icon(Icons.clear_rounded,
+                                          color: Colors.white70, size: 16),
+                                      onPressed: () =>
+                                          setModalState(() => searchQuery = ''),
                                     )
                                   : null,
                               filled: true,
                               fillColor: Colors.white.withValues(alpha: 0.14),
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                              contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 14, vertical: 9),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
                                 borderSide: BorderSide.none,
@@ -872,20 +1036,59 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
                   // ── List Area ──────────────────────────────────────────
                   Flexible(
-                    child: vp.isLoadingPending
+                    child: isTabLoading
                         ? const Padding(
                             padding: EdgeInsets.all(40),
                             child: Center(child: CircularProgressIndicator()),
                           )
                         : displayList.isEmpty
-                            ? _voucherEmptyState(searchQuery.isNotEmpty)
-                            : ListView.separated(
-                                padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-                                itemCount: displayList.length,
-                                separatorBuilder: (_, __) => const SizedBox(height: 12),
-                                itemBuilder: (context, i) {
-                                  final v = displayList[i];
-                                  return _buildPendingVoucherCard(modalCtx, v);
+                            ? _voucherEmptyState(
+                                isFiltered: searchQuery.isNotEmpty,
+                                isPendingTab: isPendingTab,
+                              )
+                            : LayoutBuilder(
+                                builder: (context, constraints) {
+                                  final isWide = constraints.maxWidth >=
+                                      AppBreakpoints.mobile;
+                                  if (!isWide) {
+                                    return ListView.separated(
+                                      padding: const EdgeInsets.fromLTRB(
+                                          16, 12, 16, 24),
+                                      itemCount: displayList.length,
+                                      separatorBuilder: (_, __) =>
+                                          const SizedBox(height: 10),
+                                      itemBuilder: (context, i) =>
+                                          _buildPendingVoucherCard(
+                                        modalCtx,
+                                        displayList[i],
+                                        isApprovedTab: !isPendingTab,
+                                      ),
+                                    );
+                                  }
+                                  // Tablet / Desktop: 2 kolom kartu kompak
+                                  const gap = 12.0;
+                                  final cardW =
+                                      (constraints.maxWidth - 32 - gap) / 2;
+                                  return SingleChildScrollView(
+                                    padding: const EdgeInsets.fromLTRB(
+                                        16, 12, 16, 24),
+                                    child: Wrap(
+                                      spacing: gap,
+                                      runSpacing: gap,
+                                      children: [
+                                        for (final v in displayList)
+                                          SizedBox(
+                                            width: cardW,
+                                            child: _buildPendingVoucherCard(
+                                              modalCtx,
+                                              v,
+                                              isWide: true,
+                                              isApprovedTab: !isPendingTab,
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                  );
                                 },
                               ),
                   ),
@@ -899,7 +1102,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   /// Empty state voucher persis senada kendala maintenance
-  Widget _voucherEmptyState(bool isFiltered) {
+  Widget _voucherEmptyState({
+    required bool isFiltered,
+    required bool isPendingTab,
+  }) {
+    final title = isFiltered
+        ? 'Tidak Ditemukan'
+        : (isPendingTab ? 'Semua Beres!' : 'Belum Ada Data');
+    final desc = isFiltered
+        ? 'Tidak ada data voucher yang cocok dengan pencarian.'
+        : (isPendingTab
+            ? 'Tidak ada permintaan voucher BBM yang memerlukan persetujuan saat ini.'
+            : 'Belum ada riwayat permintaan voucher BBM yang telah disetujui.');
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 48, horizontal: 32),
       child: Column(
@@ -909,18 +1124,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
             width: 72,
             height: 72,
             decoration: BoxDecoration(
-              color: isFiltered ? const Color(0xFFEFF6FF) : const Color(0xFFDCFCE7),
+              color: isFiltered
+                  ? const Color(0xFFEFF6FF)
+                  : const Color(0xFFDCFCE7),
               shape: BoxShape.circle,
             ),
             child: Icon(
-              isFiltered ? Icons.search_off_rounded : Icons.check_circle_outline_rounded,
+              isFiltered
+                  ? Icons.search_off_rounded
+                  : Icons.check_circle_outline_rounded,
               size: 36,
-              color: isFiltered ? const Color(0xFF285AC8) : const Color(0xFF16A34A),
+              color: isFiltered
+                  ? const Color(0xFF285AC8)
+                  : const Color(0xFF16A34A),
             ),
           ),
           const SizedBox(height: 16),
           Text(
-            isFiltered ? 'Tidak Ditemukan' : 'Semua Beres!',
+            title,
             style: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w800,
@@ -929,9 +1150,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           const SizedBox(height: 6),
           Text(
-            isFiltered
-                ? 'Tidak ada permintaan voucher yang cocok dengan pencarian.'
-                : 'Tidak ada permintaan voucher BBM yang memerlukan persetujuan saat ini.',
+            desc,
             textAlign: TextAlign.center,
             style: const TextStyle(
               fontSize: 13,
@@ -944,162 +1163,191 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildPendingVoucherCard(BuildContext context, VoucherModel v) {
+  Widget _buildPendingVoucherCard(
+    BuildContext context,
+    VoucherModel v, {
+    bool isWide = false,
+    bool isApprovedTab = false,
+  }) {
+    final isApproved = isApprovedTab || v.voucherStatus == 'Disetujui';
+    final serialNo = v.noPolisi != '-'
+        ? v.noPolisi
+        : (v.inventaris?['inv_serial_number']?.toString().trim().isNotEmpty ==
+                true
+            ? v.inventaris!['inv_serial_number'].toString().trim()
+            : (v.inventaris?['inv_no']?.toString() ?? '-'));
+
+    final primaryAccent =
+        isApproved ? const Color(0xFF059669) : const Color(0xFFEA580C);
+
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(isWide ? 14 : 12),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        color: AppColors.cardSurface,
+        borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF1E293B).withValues(alpha: 0.05),
+            color: AppColors.textPrimary.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 3),
           ),
         ],
-        border: Border.all(
-          color: const Color(0xFFE2E8F0),
-          width: 1.0,
-        ),
+        border: Border.all(color: AppColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header Baris Plat, Unit, & Status Badge
+          // ── 1. Nama User yang Mengajukan & Waktu ──
           Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.all(4),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFEA580C).withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
+                  color: isApproved
+                      ? AppColors.successSoft
+                      : AppColors.primarySoft,
+                  shape: BoxShape.circle,
                 ),
-                child: Text(
-                  v.noPolisi != '-' ? v.noPolisi : (v.inventaris?['inv_no']?.toString() ?? 'Unit BBM'),
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w800,
-                    color: Color(0xFFEA580C),
-                  ),
-                ),
+                child: Icon(Icons.person_rounded,
+                    size: 13,
+                    color: isApproved ? AppColors.success : AppColors.primary),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 6),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                child: Row(
                   children: [
-                    Text(
-                      v.namaInventaris,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.textPrimary,
+                    Flexible(
+                      child: Text(
+                        v.namaPemohon,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.textPrimary,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 2),
-                    Row(
-                      children: [
-                        const Icon(Icons.access_time_rounded, size: 12, color: AppColors.textSecondary),
-                        const SizedBox(width: 4),
-                        Text(
-                          '${v.voucherCreatedAt.day}/${v.voucherCreatedAt.month}/${v.voucherCreatedAt.year}  ${v.voucherCreatedAt.hour.toString().padLeft(2, '0')}:${v.voucherCreatedAt.minute.toString().padLeft(2, '0')}',
+                    if (v.pemohon?['user_divisi'] != null) ...[
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 1.5),
+                        decoration: BoxDecoration(
+                          color: AppColors.primarySoft,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          v.pemohon!['user_divisi'].toString(),
                           style: const TextStyle(
-                            fontSize: 11,
-                            color: AppColors.textSecondary,
-                            fontWeight: FontWeight.w500,
+                            fontSize: 9.5,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.primary,
                           ),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ],
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFF7ED),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: const Color(0xFFFFEDD5)),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 6,
-                      height: 6,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFEA580C),
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: 5),
-                    const Text(
-                      'Menunggu',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFFEA580C),
-                      ),
-                    ),
-                  ],
-                ),
+              const SizedBox(width: 6),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.access_time_rounded,
+                      size: 11.5, color: AppColors.textMuted),
+                  const SizedBox(width: 3.5),
+                  Builder(
+                    builder: (_) {
+                      final dt = v.voucherCreatedAt.toLocal();
+                      final dd = dt.day.toString().padLeft(2, '0');
+                      final mm = dt.month.toString().padLeft(2, '0');
+                      final yyyy = dt.year.toString();
+                      final hh = dt.hour.toString().padLeft(2, '0');
+                      final min = dt.minute.toString().padLeft(2, '0');
+                      return Text(
+                        '$dd-$mm-$yyyy  $hh:$min',
+                        style: const TextStyle(
+                          fontSize: 10.5,
+                          color: AppColors.textSecondary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      );
+                    },
+                  ),
+                ],
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
 
-          // Pemohon Driver
-          Row(
+          // ── 2. Keterangan Inventaris: inv_nama (lingkaran) inv_serial_number & odometer ──
+          Wrap(
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 6,
+            runSpacing: 4,
             children: [
-              Container(
-                padding: const EdgeInsets.all(5),
-                decoration: BoxDecoration(
-                  color: Colors.blue.withValues(alpha: 0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.person_rounded, size: 14, color: Colors.blue),
-              ),
-              const SizedBox(width: 8),
               Text(
-                v.namaPemohon,
+                v.namaInventaris,
                 style: const TextStyle(
                   fontSize: 13,
-                  fontWeight: FontWeight.w700,
+                  fontWeight: FontWeight.w800,
                   color: AppColors.textPrimary,
                 ),
               ),
-              if (v.pemohon?['user_divisi'] != null) ...[
-                const SizedBox(width: 6),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1.5),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(4),
+              Container(
+                width: 3.5,
+                height: 3.5,
+                decoration: const BoxDecoration(
+                  color: AppColors.textMuted,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                decoration: BoxDecoration(
+                  color: primaryAccent.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(5),
+                ),
+                child: Text(
+                  serialNo,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    color: primaryAccent,
                   ),
-                  child: Text(
-                    v.pemohon!['user_divisi'].toString(),
-                    style: const TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.blue,
-                    ),
+                ),
+              ),
+              if (v.voucherOdometer != null) ...[
+                Container(
+                  width: 3.5,
+                  height: 3.5,
+                  decoration: const BoxDecoration(
+                    color: AppColors.textMuted,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                Text(
+                  'Odo: ${v.voucherOdometer} km',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ],
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
 
-          // Info SPBU & BBM Container
+          // ── 3. Keterangan Permintaan: SPBU Pilihan, Jenis BBM & Jumlah Liter ──
           Container(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
             decoration: BoxDecoration(
-              color: const Color(0xFFF8FAFC),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFE2E8F0)),
+              color: AppColors.surfaceAlt,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppColors.border),
             ),
             child: Row(
               children: [
@@ -1107,10 +1355,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // SPBU Pilihan
                       Row(
                         children: [
-                          const Icon(Icons.local_gas_station_rounded, size: 15, color: Color(0xFFEA580C)),
-                          const SizedBox(width: 6),
+                          Icon(Icons.local_gas_station_rounded,
+                              size: 13, color: primaryAccent),
+                          const SizedBox(width: 5),
                           Expanded(
                             child: Text(
                               v.namaSpbu,
@@ -1126,31 +1376,45 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ],
                       ),
                       const SizedBox(height: 4),
+                      // Jenis BBM & No. Bon jika ada
                       Row(
                         children: [
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 1.5),
                             decoration: BoxDecoration(
-                              color: Colors.grey.shade200,
+                              color: Colors.white,
                               borderRadius: BorderRadius.circular(4),
+                              border: Border.all(color: AppColors.border),
                             ),
                             child: Text(
                               v.voucherJenisBbm,
                               style: const TextStyle(
                                 fontSize: 10,
                                 fontWeight: FontWeight.w700,
-                                color: Color(0xFF475569),
+                                color: AppColors.textSecondary,
                               ),
                             ),
                           ),
-                          if (v.voucherOdometer != null) ...[
+                          if (isApproved &&
+                              v.voucherNoBon != null &&
+                              v.voucherNoBon!.isNotEmpty) ...[
                             const SizedBox(width: 6),
-                            Text(
-                              'Odo: ${v.voucherOdometer} km',
-                              style: const TextStyle(
-                                fontSize: 11,
-                                color: AppColors.textSecondary,
-                                fontWeight: FontWeight.w500,
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 1.5),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFDCFCE7),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                'Bon: ${v.voucherNoBon}',
+                                style: const TextStyle(
+                                  fontFamily: 'Courier',
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w800,
+                                  color: Color(0xFF166534),
+                                ),
                               ),
                             ),
                           ],
@@ -1159,23 +1423,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ],
                   ),
                 ),
+                const SizedBox(width: 10),
+                // Jumlah Liter
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
                       '${v.voucherJumlahLiter.toStringAsFixed(1)} L',
-                      style: const TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w900,
-                        color: Color(0xFFEA580C),
-                      ),
-                    ),
-                    const Text(
-                      'Volume BBM',
                       style: TextStyle(
-                        fontSize: 10,
-                        color: AppColors.textSecondary,
-                        fontWeight: FontWeight.w500,
+                        fontSize: 15.5,
+                        fontWeight: FontWeight.w900,
+                        color: primaryAccent,
                       ),
                     ),
                   ],
@@ -1183,29 +1441,47 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
 
-          // Action Button Tinjau & Setujui
+          // ── 4. Tombol Aksi Tinjau / Lihat Bon ──
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
               FilledButton.icon(
-                icon: const Icon(Icons.check_circle_rounded, size: 16),
-                label: const Text(
-                  'Tinjau & Setujui',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                icon: Icon(
+                  isApproved
+                      ? Icons.receipt_long_rounded
+                      : Icons.assignment_turned_in_rounded,
+                  size: 14,
+                ),
+                label: Text(
+                  isApproved ? 'Lihat Bon' : 'Tinjau',
+                  style: const TextStyle(
+                      fontSize: 11.5, fontWeight: FontWeight.w700),
                 ),
                 style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFFEA580C),
+                  backgroundColor: primaryAccent,
                   foregroundColor: Colors.white,
                   elevation: 0,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  minimumSize: const Size(86, 34),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8)),
                 ),
                 onPressed: () async {
-                  await VoucherBonDialog.show(context, voucher: v, isAdmin: true);
-                  if (context.mounted) {
+                  final result = await VoucherBonDialog.show(context,
+                      voucher: v, isAdmin: !isApproved);
+                  if (!context.mounted) return;
+                  if (result == 'approved') {
+                    AppNotifier.showSuccess(context,
+                        'Voucher berhasil disetujui & nomor bon tercatat');
                     context.read<VoucherProvider>().fetchPendingVouchers();
+                    context.read<VoucherProvider>().fetchApprovedVouchers();
+                  } else if (result == 'rejected') {
+                    AppNotifier.showSuccess(context, 'Voucher telah ditolak');
+                    context.read<VoucherProvider>().fetchPendingVouchers();
+                    context.read<VoucherProvider>().fetchApprovedVouchers();
                   }
                 },
               ),
@@ -1265,10 +1541,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     final q = searchQuery.trim().toLowerCase();
                     final inv = e.invNama.toLowerCase();
                     final sn = e.invSerialNumber.toLowerCase();
-                    final jdw = (e.jadwal?['jdw_judul'] ?? '').toString().toLowerCase();
-                    final tek = (e.teknisi?['user_nama'] ?? e.realTtdPicNama ?? '').toString().toLowerCase();
+                    final jdw =
+                        (e.jadwal?['jdw_judul'] ?? '').toString().toLowerCase();
+                    final tek =
+                        (e.teknisi?['user_nama'] ?? e.realTtdPicNama ?? '')
+                            .toString()
+                            .toLowerCase();
                     final ket = (e.realKeterangan ?? '').toLowerCase();
-                    return inv.contains(q) || sn.contains(q) || jdw.contains(q) || tek.contains(q) || ket.contains(q);
+                    return inv.contains(q) ||
+                        sn.contains(q) ||
+                        jdw.contains(q) ||
+                        tek.contains(q) ||
+                        ket.contains(q);
                   }).toList();
 
             return Container(
@@ -1290,8 +1574,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         end: Alignment.bottomRight,
                         colors: [Color(0xFF1A3A7C), Color(0xFF3B6FE0)],
                       ),
-                      borderRadius: BorderRadius.vertical(
-                          top: Radius.circular(28)),
+                      borderRadius:
+                          BorderRadius.vertical(top: Radius.circular(28)),
                     ),
                     child: Column(
                       children: [
@@ -1339,12 +1623,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                       ),
                                     ),
                                     Text(
-                                      userDivisi != null && userDivisi.isNotEmpty
+                                      userDivisi != null &&
+                                              userDivisi.isNotEmpty
                                           ? 'Divisi: $userDivisi'
                                           : 'Semua Divisi',
                                       style: TextStyle(
                                         fontSize: 12,
-                                        color: Colors.white.withValues(alpha: 0.75),
+                                        color: Colors.white
+                                            .withValues(alpha: 0.75),
                                         fontWeight: FontWeight.w500,
                                       ),
                                     ),
@@ -1352,9 +1638,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 ),
                               ),
                               IconButton(
-                                icon: const Icon(Icons.refresh_rounded, size: 20, color: Colors.white),
+                                icon: const Icon(Icons.refresh_rounded,
+                                    size: 20, color: Colors.white),
                                 tooltip: 'Muat ulang',
-                                onPressed: () => provider.fetchKendalaDivisi(divisi: userDivisi),
+                                onPressed: () => provider.fetchKendalaDivisi(
+                                    divisi: userDivisi),
                               ),
                               IconButton(
                                 icon: Container(
@@ -1426,10 +1714,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         Padding(
                           padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
                           child: TextField(
-                            onChanged: (val) => setModalState(() => searchQuery = val),
-                            style: const TextStyle(fontSize: 13, color: Colors.white),
+                            onChanged: (val) =>
+                                setModalState(() => searchQuery = val),
+                            style: const TextStyle(
+                                fontSize: 13, color: Colors.white),
                             decoration: InputDecoration(
-                              hintText: 'Cari nama unit, SN, teknisi, atau keterangan...',
+                              hintText:
+                                  'Cari nama unit, SN, teknisi, atau keterangan...',
                               hintStyle: TextStyle(
                                 fontSize: 12,
                                 color: Colors.white.withValues(alpha: 0.55),
@@ -1441,13 +1732,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               ),
                               suffixIcon: searchQuery.isNotEmpty
                                   ? IconButton(
-                                      icon: const Icon(Icons.clear_rounded, color: Colors.white70, size: 16),
-                                      onPressed: () => setModalState(() => searchQuery = ''),
+                                      icon: const Icon(Icons.clear_rounded,
+                                          color: Colors.white70, size: 16),
+                                      onPressed: () =>
+                                          setModalState(() => searchQuery = ''),
                                     )
                                   : null,
                               filled: true,
                               fillColor: Colors.white.withValues(alpha: 0.14),
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                              contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 14, vertical: 10),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
                                 borderSide: BorderSide.none,
@@ -1468,10 +1762,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         : displayList.isEmpty
                             ? _kendalaEmptyState(isBelumTab)
                             : ListView.separated(
-                                padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+                                padding:
+                                    const EdgeInsets.fromLTRB(16, 16, 16, 32),
                                 shrinkWrap: true,
                                 itemCount: displayList.length,
-                                separatorBuilder: (_, __) => const SizedBox(height: 12),
+                                separatorBuilder: (_, __) =>
+                                    const SizedBox(height: 12),
                                 itemBuilder: (context, index) {
                                   final item = displayList[index];
                                   return _kendalaItemCard(
@@ -1558,8 +1854,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-
-
   /// Empty state kendala
   Widget _kendalaEmptyState(bool isBelumTab) {
     return Padding(
@@ -1622,8 +1916,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         item.teknisi?['user_nama'] ?? item.realTtdPicNama ?? 'Teknisi';
     final isRusak = item.isRusak;
     final isTindakLanjut = item.isTindakLanjut;
-    final jadwalJudul =
-        item.jadwal?['jdw_judul'] ?? 'Detail Kendala Realisasi';
+    final jadwalJudul = item.jadwal?['jdw_judul'] ?? 'Detail Kendala Realisasi';
 
     final Color severityColor = isTindakLanjut
         ? const Color(0xFF16A34A)
@@ -1636,10 +1929,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final String kondisiLabel =
         item.realKondisiAkhir ?? (isRusak ? 'Rusak' : 'Perlu Perhatian');
 
-    final String unitLabel =
-        item.invNama != '-' && item.invSerialNumber != '-'
-            ? '${item.invNama}  ·  SN: ${item.invSerialNumber}'
-            : (item.invNama != '-' ? item.invNama : item.invSerialNumber);
+    final String unitLabel = item.invNama != '-' && item.invSerialNumber != '-'
+        ? '${item.invNama}  ·  SN: ${item.invSerialNumber}'
+        : (item.invNama != '-' ? item.invNama : item.invSerialNumber);
 
     return Container(
       decoration: BoxDecoration(
@@ -1736,8 +2028,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               color: severityColor.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(8),
                               border: Border.all(
-                                  color:
-                                      severityColor.withValues(alpha: 0.25)),
+                                  color: severityColor.withValues(alpha: 0.25)),
                             ),
                             child: Text(
                               kondisiLabel,
@@ -1794,8 +2085,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           Icon(
                             Icons.person_outline_rounded,
                             size: 13,
-                            color: AppColors.textSecondary
-                                .withValues(alpha: 0.7),
+                            color:
+                                AppColors.textSecondary.withValues(alpha: 0.7),
                           ),
                           const SizedBox(width: 4),
                           Flexible(
@@ -1810,8 +2101,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             ),
                           ),
                           Container(
-                            margin:
-                                const EdgeInsets.symmetric(horizontal: 8),
+                            margin: const EdgeInsets.symmetric(horizontal: 8),
                             width: 3,
                             height: 3,
                             decoration: const BoxDecoration(
@@ -1822,8 +2112,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           Icon(
                             Icons.calendar_today_rounded,
                             size: 12,
-                            color: AppColors.textSecondary
-                                .withValues(alpha: 0.7),
+                            color:
+                                AppColors.textSecondary.withValues(alpha: 0.7),
                           ),
                           const SizedBox(width: 4),
                           Text(
@@ -1845,14 +2135,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               horizontal: 12, vertical: 10),
                           decoration: BoxDecoration(
                             gradient: const LinearGradient(
-                              colors: [
-                                Color(0xFFF0FDF4),
-                                Color(0xFFDCFCE7)
-                              ],
+                              colors: [Color(0xFFF0FDF4), Color(0xFFDCFCE7)],
                             ),
                             borderRadius: BorderRadius.circular(10),
-                            border: Border.all(
-                                color: const Color(0xFFBBF7D0)),
+                            border: Border.all(color: const Color(0xFFBBF7D0)),
                           ),
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1894,8 +2180,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               title: jadwalJudul,
                             );
                           },
-                          icon: const Icon(Icons.open_in_new_rounded,
-                              size: 14),
+                          icon: const Icon(Icons.open_in_new_rounded, size: 14),
                           label: const Text(
                             'Lihat Detail Realisasi',
                             style: TextStyle(
@@ -1904,8 +2189,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           style: OutlinedButton.styleFrom(
                             foregroundColor: AppColors.primary,
                             side: BorderSide(
-                                color: AppColors.primary
-                                    .withValues(alpha: 0.4)),
+                                color:
+                                    AppColors.primary.withValues(alpha: 0.4)),
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 16, vertical: 10),
                             shape: RoundedRectangleBorder(
@@ -1929,7 +2214,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Future<void> _nav(Widget screen) async {
     if (_isLoadingData) {
-      await AppNotifier.showWarning(context, 'Sedang memuat data, mohon tunggu...');
+      await AppNotifier.showWarning(
+          context, 'Sedang memuat data, mohon tunggu...');
       return;
     }
     await Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
@@ -2121,7 +2407,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final isCurrentMonthSelected = _selectedTargetMonth.month == currentMonth &&
         _selectedTargetMonth.year == currentYear;
 
-    final summary = isCurrentMonthSelected ? p.dashboardSummary['summary_cards'] : null;
+    final summary =
+        isCurrentMonthSelected ? p.dashboardSummary['summary_cards'] : null;
     if (summary != null) {
       jadwalAktif = summary['jadwal_aktif'] ?? 0;
       pendingTasks = summary['pending_tasks'] ?? 0;
@@ -2156,19 +2443,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
         doneBulanIni = p.historySummaryData!['total_realisasi'] ?? 0;
       } else {
         doneBulanIni = p.realisasiList.where((r) {
-          return r.realBulan == _selectedTargetMonth.month && r.realTahun == _selectedTargetMonth.year;
+          return r.realBulan == _selectedTargetMonth.month &&
+              r.realTahun == _selectedTargetMonth.year;
         }).length;
 
-        final startOfMonth = DateTime(_selectedTargetMonth.year, _selectedTargetMonth.month, 1);
-        final endOfMonth = DateTime(_selectedTargetMonth.year, _selectedTargetMonth.month + 1, 0);
+        final startOfMonth =
+            DateTime(_selectedTargetMonth.year, _selectedTargetMonth.month, 1);
+        final endOfMonth = DateTime(
+            _selectedTargetMonth.year, _selectedTargetMonth.month + 1, 0);
         final holidayDays = p.getHolidayDaysForMonth(_selectedTargetMonth);
 
         for (final j in p.jadwalList) {
           if (j.jdwStatus != 'Aktif' && j.jdwStatus != 'Selesai') continue;
-          final lastRealDate = _getLastRealisasiDateForJadwal(j.jdwId, p.realisasiList);
-          final count =
-              JadwalProvider.effectiveScheduleDatesInMonth(j, startOfMonth, endOfMonth, holidayDays, lastRealisasiDate: lastRealDate).length;
-          final perTarget = (j.jdwTarget ?? 0) > 0 ? j.jdwTarget! : (j.jdwTotalUnit ?? 0);
+          final lastRealDate =
+              _getLastRealisasiDateForJadwal(j.jdwId, p.realisasiList);
+          final count = JadwalProvider.effectiveScheduleDatesInMonth(
+                  j, startOfMonth, endOfMonth, holidayDays,
+                  lastRealisasiDate: lastRealDate)
+              .length;
+          final perTarget =
+              (j.jdwTarget ?? 0) > 0 ? j.jdwTarget! : (j.jdwTotalUnit ?? 0);
           totalTargetBulanIni += count * perTarget;
         }
       }
@@ -2194,10 +2488,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     // 1. Modern Gradient Header Section
                     SliverToBoxAdapter(
                       child: Container(
-                        padding: EdgeInsets.fromLTRB(16, MediaQuery.of(context).padding.top + 10, 16, 10),
+                        padding: EdgeInsets.fromLTRB(16,
+                            MediaQuery.of(context).padding.top + 10, 16, 10),
                         decoration: BoxDecoration(
                           gradient: const LinearGradient(
-                            colors: [Color(0xFF0A2257), Color(0xFF1847B0), Color(0xFF2B5FD4)],
+                            colors: [
+                              Color(0xFF0A2257),
+                              Color(0xFF1847B0),
+                              Color(0xFF2B5FD4)
+                            ],
                             begin: Alignment.topCenter,
                             end: Alignment.bottomRight,
                             stops: [0.0, 0.5, 1.0],
@@ -2207,14 +2506,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: const Color(0xFF0A2257).withValues(alpha: 0.28),
+                              color: const Color(0xFF0A2257)
+                                  .withValues(alpha: 0.28),
                               blurRadius: 20,
                               offset: const Offset(0, 6),
                             ),
                           ],
                         ),
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 8),
                           decoration: BoxDecoration(
                             color: Colors.white.withValues(alpha: 0.09),
                             borderRadius: BorderRadius.circular(18),
@@ -2233,11 +2534,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               ),
                               Builder(
                                 builder: (context) {
-                                  final String userDivisi = auth.user?['user_divisi']?.toString().toUpperCase() ?? '';
-                                  final bool isDriverAdmin = role == 'admin' && userDivisi == 'DRIVER';
-                                  final bool canSeeVoucherNotif = role == 'manager' || isDriverAdmin;
+                                  final String userDivisi = auth
+                                          .user?['user_divisi']
+                                          ?.toString()
+                                          .toUpperCase() ??
+                                      '';
+                                  final bool isDriverAdmin =
+                                      role == 'admin' && userDivisi == 'DRIVER';
+                                  final bool canSeeVoucherNotif =
+                                      role == 'manager' || isDriverAdmin;
 
-                                  if (!canSeeVoucherNotif) return const SizedBox.shrink();
+                                  if (!canSeeVoucherNotif) {
+                                    return const SizedBox.shrink();
+                                  }
 
                                   return Row(
                                     mainAxisSize: MainAxisSize.min,
@@ -2247,7 +2556,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                           return _AnimatedVoucherNotificationBell(
                                             count: vp.pendingCount,
                                             isLoading: vp.isLoadingPending,
-                                            onTap: () => _showVoucherPendingBottomSheet(context),
+                                            onTap: () =>
+                                                _showVoucherPendingBottomSheet(
+                                                    context),
                                           );
                                         },
                                       ),
@@ -2258,10 +2569,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               ),
                               if (role == 'admin' || role == 'manager') ...[
                                 _AnimatedNotificationBell(
-                                  count: (p.dashboardSummary['summary_cards']?['total_kendala'] as num?)?.toInt() ?? 0,
+                                  count: (p.dashboardSummary['summary_cards']
+                                              ?['total_kendala'] as num?)
+                                          ?.toInt() ??
+                                      0,
                                   isLoading: _isLoadingData,
                                   onTap: () {
-                                    final targetDiv = (role == 'manager') ? null : auth.user?['user_divisi']?.toString();
+                                    final targetDiv = (role == 'manager')
+                                        ? null
+                                        : auth.user?['user_divisi']?.toString();
                                     p.fetchKendalaDivisi(divisi: targetDiv);
                                     _showKendalaBottomSheet(
                                       context,
@@ -2274,10 +2590,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               ],
                               Container(
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFFDC1E32).withValues(alpha: 0.18),
+                                  color: const Color(0xFFDC1E32)
+                                      .withValues(alpha: 0.18),
                                   shape: BoxShape.circle,
                                   border: Border.all(
-                                    color: const Color(0xFFFF6B6B).withValues(alpha: 0.35),
+                                    color: const Color(0xFFFF6B6B)
+                                        .withValues(alpha: 0.35),
                                     width: 1,
                                   ),
                                 ),
@@ -2304,15 +2622,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           child: Material(
                             color: Colors.transparent,
                             child: InkWell(
-                              onTap: () => _nav(const RealisasiHistoryScreen(initialTab: 'Draft')),
+                              onTap: () => _nav(const RealisasiHistoryScreen(
+                                  initialTab: 'Draft')),
                               borderRadius: BorderRadius.circular(14),
                               child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 8),
                                 decoration: BoxDecoration(
-                                  color: AppColors.warning.withValues(alpha: 0.08),
+                                  color:
+                                      AppColors.warning.withValues(alpha: 0.08),
                                   borderRadius: BorderRadius.circular(14),
                                   border: Border.all(
-                                    color: AppColors.warning.withValues(alpha: 0.4),
+                                    color: AppColors.warning
+                                        .withValues(alpha: 0.4),
                                     width: 1.2,
                                   ),
                                 ),
@@ -2321,7 +2643,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                     Container(
                                       padding: const EdgeInsets.all(6),
                                       decoration: BoxDecoration(
-                                        color: AppColors.warning.withValues(alpha: 0.15),
+                                        color: AppColors.warning
+                                            .withValues(alpha: 0.15),
                                         shape: BoxShape.circle,
                                       ),
                                       child: const Icon(
@@ -2333,7 +2656,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                     const SizedBox(width: 10),
                                     Expanded(
                                       child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
                                           Text(
                                             '${_pendingDrafts.length} Realisasi Belum TTD PIC',
@@ -2357,7 +2681,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                     ),
                                     const SizedBox(width: 6),
                                     Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 9, vertical: 5),
                                       decoration: BoxDecoration(
                                         color: AppColors.warning,
                                         borderRadius: BorderRadius.circular(8),
@@ -2419,13 +2744,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           onTap: role == 'manager'
                               ? () {
                                   setState(() {
-                                    _isManagerJadwalExpanded = !_isManagerJadwalExpanded;
+                                    _isManagerJadwalExpanded =
+                                        !_isManagerJadwalExpanded;
                                   });
                                 }
                               : null,
                           borderRadius: BorderRadius.circular(10),
                           child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
+                            padding: const EdgeInsets.symmetric(
+                                vertical: 4, horizontal: 2),
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
@@ -2443,15 +2770,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                     if (role == 'manager') ...[
                                       const SizedBox(width: 8),
                                       Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 9, vertical: 3),
                                         decoration: BoxDecoration(
                                           color: _isManagerJadwalExpanded
-                                              ? AppColors.textPrimary.withValues(alpha: 0.08)
-                                              : AppColors.textSecondary.withValues(alpha: 0.08),
-                                          borderRadius: BorderRadius.circular(20),
+                                              ? AppColors.textPrimary
+                                                  .withValues(alpha: 0.08)
+                                              : AppColors.textSecondary
+                                                  .withValues(alpha: 0.08),
+                                          borderRadius:
+                                              BorderRadius.circular(20),
                                           border: Border.all(
                                             color: _isManagerJadwalExpanded
-                                                ? AppColors.textPrimary.withValues(alpha: 0.25)
+                                                ? AppColors.textPrimary
+                                                    .withValues(alpha: 0.25)
                                                 : AppColors.border,
                                           ),
                                         ),
@@ -2459,7 +2791,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
                                             Text(
-                                              _isManagerJadwalExpanded ? 'Tutup' : 'Buka',
+                                              _isManagerJadwalExpanded
+                                                  ? 'Tutup'
+                                                  : 'Buka',
                                               style: TextStyle(
                                                 fontSize: 11,
                                                 fontWeight: FontWeight.w700,
@@ -2471,8 +2805,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                             const SizedBox(width: 3),
                                             Icon(
                                               _isManagerJadwalExpanded
-                                                  ? Icons.keyboard_arrow_up_rounded
-                                                  : Icons.keyboard_arrow_down_rounded,
+                                                  ? Icons
+                                                      .keyboard_arrow_up_rounded
+                                                  : Icons
+                                                      .keyboard_arrow_down_rounded,
                                               size: 16,
                                               color: _isManagerJadwalExpanded
                                                   ? AppColors.textPrimary
@@ -2484,18 +2820,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                     ],
                                   ],
                                 ),
-                                if (role != 'manager' || _isManagerJadwalExpanded)
+                                if (role != 'manager' ||
+                                    _isManagerJadwalExpanded)
                                   TextButton(
                                     style: TextButton.styleFrom(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 8, vertical: 2),
                                       minimumSize: Size.zero,
-                                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                      tapTargetSize:
+                                          MaterialTapTargetSize.shrinkWrap,
                                     ),
                                     onPressed: () {
-                                      final sorted = [...p.jadwalList]..sort((a, b) =>
-                                          _getRemainingDaysDiff(a)
-                                              .compareTo(_getRemainingDaysDiff(b)));
-                                      _showAllPlansBottomSheet(context, sorted, p);
+                                      final sorted = [
+                                        ...p.jadwalList
+                                      ]..sort((a, b) => _getRemainingDaysDiff(a)
+                                          .compareTo(_getRemainingDaysDiff(b)));
+                                      _showAllPlansBottomSheet(
+                                          context, sorted, p);
                                     },
                                     child: const Text(
                                       'Lihat Semua',
@@ -2518,7 +2859,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       builder: (_, pProvider, __) {
                         // Khusus Manager: Sembunyikan list jika tertutup/collapsed!
                         if (role == 'manager' && !_isManagerJadwalExpanded) {
-                          return const SliverToBoxAdapter(child: SizedBox.shrink());
+                          return const SliverToBoxAdapter(
+                              child: SizedBox.shrink());
                         }
 
                         final sorted = [...pProvider.jadwalList]..sort((a, b) =>
@@ -2531,12 +2873,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               height: 136,
                               child: AppShimmer(
                                 child: ListView.separated(
-                                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 16),
                                   scrollDirection: Axis.horizontal,
                                   itemCount: 3,
                                   physics: const NeverScrollableScrollPhysics(),
-                                  separatorBuilder: (_, __) => const SizedBox(width: 10),
-                                  itemBuilder: (_, i) => _buildJadwalItemSkeleton(width: 285),
+                                  separatorBuilder: (_, __) =>
+                                      const SizedBox(width: 10),
+                                  itemBuilder: (_, i) =>
+                                      _buildJadwalItemSkeleton(width: 285),
                                 ),
                               ),
                             ),
@@ -2546,7 +2891,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         if (list.isEmpty) {
                           return SliverToBoxAdapter(
                             child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 16),
                               child: Container(
                                 padding: const EdgeInsets.all(14),
                                 decoration: _surfaceCard(),
@@ -2614,7 +2960,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (p.monitoringDivisiList.isNotEmpty) {
       final List<Map<String, dynamic>> result = [];
       for (final item in p.monitoringDivisiList) {
-        final String div = (item['divisi'] ?? '').toString().trim().toUpperCase();
+        final String div =
+            (item['divisi'] ?? '').toString().trim().toUpperCase();
         if (div.isEmpty) continue;
 
         int divTarget = 0;
@@ -2646,44 +2993,60 @@ class _DashboardScreenState extends State<DashboardScreen> {
     // 2. Fallback jika data monitoringDivisiList belum termuat
     final Map<String, Map<String, dynamic>> divisiMap = {};
 
-    final startOfMonth = DateTime(_selectedTargetMonth.year, _selectedTargetMonth.month, 1);
-    final endOfMonth = DateTime(_selectedTargetMonth.year, _selectedTargetMonth.month + 1, 0);
+    final startOfMonth =
+        DateTime(_selectedTargetMonth.year, _selectedTargetMonth.month, 1);
+    final endOfMonth =
+        DateTime(_selectedTargetMonth.year, _selectedTargetMonth.month + 1, 0);
 
     for (final j in p.jadwalList) {
       final String div = j.jdwDivisi.trim().toUpperCase();
       if (div.isEmpty) continue;
 
-      divisiMap.putIfAbsent(div, () => {
-        'divisi': div,
-        'target_unit': 0,
-        'realisasi_unit': 0,
-        'progress_percent': 0,
-      });
+      divisiMap.putIfAbsent(
+          div,
+          () => {
+                'divisi': div,
+                'target_unit': 0,
+                'realisasi_unit': 0,
+                'progress_percent': 0,
+              });
 
-      final holidayDays = p.getHolidayDaysForMonth(_selectedTargetMonth, divisi: div);
-      final lastRealDate = _getLastRealisasiDateForJadwal(j.jdwId, p.realisasiList);
+      final holidayDays =
+          p.getHolidayDaysForMonth(_selectedTargetMonth, divisi: div);
+      final lastRealDate =
+          _getLastRealisasiDateForJadwal(j.jdwId, p.realisasiList);
       final count = JadwalProvider.effectiveScheduleDatesInMonth(
-        j, startOfMonth, endOfMonth, holidayDays, lastRealisasiDate: lastRealDate
-      ).length;
-      final perTarget = (j.jdwTarget ?? 0) > 0 ? j.jdwTarget! : (j.jdwTotalUnit ?? 0);
+              j, startOfMonth, endOfMonth, holidayDays,
+              lastRealisasiDate: lastRealDate)
+          .length;
+      final perTarget =
+          (j.jdwTarget ?? 0) > 0 ? j.jdwTarget! : (j.jdwTotalUnit ?? 0);
 
-      divisiMap[div]!['target_unit'] = (divisiMap[div]!['target_unit'] as int) + (count * perTarget);
+      divisiMap[div]!['target_unit'] =
+          (divisiMap[div]!['target_unit'] as int) + (count * perTarget);
     }
 
     for (final r in p.realisasiList) {
       if (r.realStatus != 'Selesai') continue;
-      if (r.realBulan != _selectedTargetMonth.month || r.realTahun != _selectedTargetMonth.year) continue;
+      if (r.realBulan != _selectedTargetMonth.month ||
+          r.realTahun != _selectedTargetMonth.year) {
+        continue;
+      }
 
       final match = p.jadwalList.where((item) => item.jdwId == r.realJadwalId);
-      final String div = (match.isNotEmpty ? match.first.jdwDivisi : '').trim().toUpperCase();
+      final String div =
+          (match.isNotEmpty ? match.first.jdwDivisi : '').trim().toUpperCase();
       if (div.isNotEmpty) {
-        divisiMap.putIfAbsent(div, () => {
-          'divisi': div,
-          'target_unit': 0,
-          'realisasi_unit': 0,
-          'progress_percent': 0,
-        });
-        divisiMap[div]!['realisasi_unit'] = (divisiMap[div]!['realisasi_unit'] as int) + 1;
+        divisiMap.putIfAbsent(
+            div,
+            () => {
+                  'divisi': div,
+                  'target_unit': 0,
+                  'realisasi_unit': 0,
+                  'progress_percent': 0,
+                });
+        divisiMap[div]!['realisasi_unit'] =
+            (divisiMap[div]!['realisasi_unit'] as int) + 1;
       }
     }
 
@@ -2691,7 +3054,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     divisiMap.forEach((div, dataMap) {
       final target = dataMap['target_unit'] as int;
       final realisasi = dataMap['realisasi_unit'] as int;
-      final pct = target > 0 ? ((realisasi / target) * 100).clamp(0, 100).round() : (realisasi > 0 ? 100 : 0);
+      final pct = target > 0
+          ? ((realisasi / target) * 100).clamp(0, 100).round()
+          : (realisasi > 0 ? 100 : 0);
       dataMap['progress_percent'] = pct;
       result.add(dataMap);
     });
@@ -2703,14 +3068,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final now = _selectedTargetMonth;
     final int currentYear = now.year;
 
-    final List<int> monthList = [];
+    final List<DateTime> dateList = [];
     final List<String> monthLabels = [];
-    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des'];
 
     for (int i = 5; i >= 0; i--) {
       final m = DateTime(currentYear, now.month - i, 1);
-      monthList.add(m.month);
-      monthLabels.add(monthNames[m.month - 1]);
+      dateList.add(m);
+      monthLabels.add(DateFormatter.monthNamesShort[m.month - 1]);
     }
 
     final Set<String> divisions = {};
@@ -2724,7 +3088,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
 
     if (divisions.isEmpty) {
-      divisions.addAll(['UTILITY', 'BOILER', 'ELECTRICAL', 'MAINTENANCE', 'PRODUKSI']);
+      divisions.addAll(
+          ['UTILITY', 'BOILER', 'ELECTRICAL', 'MAINTENANCE', 'PRODUKSI']);
     }
 
     final Map<String, List<double>> seriesMap = {};
@@ -2732,11 +3097,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
     for (final div in divisions) {
       final List<double> monthlyPctList = [];
 
-      for (final monthNum in monthList) {
-        // Jika bulan ini adalah bulan yang dipilih, utamakan data resmi dari monitoringDivisiList
-        if (monthNum == _selectedTargetMonth.month && p.monitoringDivisiList.isNotEmpty) {
-          final match = p.monitoringDivisiList.firstWhere(
-            (item) => (item['divisi'] ?? '').toString().trim().toUpperCase() == div,
+      for (final m in dateList) {
+        final monthNum = m.month;
+        final yearNum = m.year;
+        final monthMonitoring =
+            p.getMonitoringDivisiForMonth(monthNum, yearNum);
+
+        if (monthMonitoring.isNotEmpty) {
+          final match = monthMonitoring.firstWhere(
+            (item) =>
+                (item['divisi'] ?? '').toString().trim().toUpperCase() == div,
             orElse: () => null,
           );
           if (match != null) {
@@ -2758,25 +3128,32 @@ class _DashboardScreenState extends State<DashboardScreen> {
           }
         }
 
-        final targetMonth = DateTime(currentYear, monthNum, 1);
-        final startOfMonth = DateTime(currentYear, monthNum, 1);
-        final endOfMonth = DateTime(currentYear, monthNum + 1, 0);
+        final targetMonth = DateTime(yearNum, monthNum, 1);
+        final startOfMonth = DateTime(yearNum, monthNum, 1);
+        final endOfMonth = DateTime(yearNum, monthNum + 1, 0);
 
         int targetCount = 0;
         for (final j in p.jadwalList) {
           if (j.jdwDivisi.trim().toUpperCase() != div) continue;
-          final holidayDays = p.getHolidayDaysForMonth(targetMonth, divisi: div);
-          final count = JadwalProvider.effectiveScheduleDatesInMonth(j, startOfMonth, endOfMonth, holidayDays).length;
-          final perTarget = (j.jdwTarget ?? 0) > 0 ? j.jdwTarget! : (j.jdwTotalUnit ?? 0);
+          final holidayDays =
+              p.getHolidayDaysForMonth(targetMonth, divisi: div);
+          final count = JadwalProvider.effectiveScheduleDatesInMonth(
+                  j, startOfMonth, endOfMonth, holidayDays)
+              .length;
+          final perTarget =
+              (j.jdwTarget ?? 0) > 0 ? j.jdwTarget! : (j.jdwTotalUnit ?? 0);
           targetCount += count * perTarget;
         }
 
         int realCount = 0;
         for (final r in p.realisasiList) {
           if (r.realStatus != 'Selesai') continue;
-          if (r.realBulan == monthNum && r.realTahun == currentYear) {
-            final match = p.jadwalList.where((item) => item.jdwId == r.realJadwalId);
-            final String rDiv = (match.isNotEmpty ? match.first.jdwDivisi : '').trim().toUpperCase();
+          if (r.realBulan == monthNum && r.realTahun == yearNum) {
+            final match =
+                p.jadwalList.where((item) => item.jdwId == r.realJadwalId);
+            final String rDiv = (match.isNotEmpty ? match.first.jdwDivisi : '')
+                .trim()
+                .toUpperCase();
             if (rDiv == div) {
               realCount++;
             }
@@ -2813,7 +3190,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF2563EB).withValues(alpha: 0.1) : Colors.transparent,
+          color: isSelected
+              ? const Color(0xFF2563EB).withValues(alpha: 0.1)
+              : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
         ),
         child: Row(
@@ -2824,7 +3203,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
               width: isSelected ? 14 : 6,
               height: 6,
               decoration: BoxDecoration(
-                color: isSelected ? const Color(0xFF2563EB) : const Color(0xFFCBD5E1),
+                color: isSelected
+                    ? const Color(0xFF2563EB)
+                    : const Color(0xFFCBD5E1),
                 borderRadius: BorderRadius.circular(99),
               ),
             ),
@@ -2834,7 +3215,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
-                color: isSelected ? const Color(0xFF2563EB) : AppColors.textSecondary,
+                color: isSelected
+                    ? const Color(0xFF2563EB)
+                    : AppColors.textSecondary,
               ),
             ),
           ],
@@ -2866,11 +3249,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
         schedJenisMap.putIfAbsent(div, () => {});
         schedJenisMap[div]!.add(j.jdwJenisId);
 
-        divisiMap.putIfAbsent(div, () => {
-          'divisi': div,
-          'total_jenis': 0,
-          'jenis_dijadwalkan': 0,
-        });
+        divisiMap.putIfAbsent(
+            div,
+            () => {
+                  'divisi': div,
+                  'total_jenis': 0,
+                  'jenis_dijadwalkan': 0,
+                });
       }
 
       schedJenisMap.forEach((div, jenisSet) {
@@ -2913,7 +3298,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   color: AppColors.primary.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(Icons.event_note_rounded, size: 16, color: AppColors.primary),
+                child: const Icon(Icons.event_note_rounded,
+                    size: 16, color: AppColors.primary),
               ),
               const SizedBox(width: 8),
               const Expanded(
@@ -2930,7 +3316,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                     Text(
                       'Presentase Penjadwalan per Divisi',
-                      style: TextStyle(fontSize: 10.5, color: AppColors.textSecondary),
+                      style: TextStyle(
+                          fontSize: 10.5, color: AppColors.textSecondary),
                     ),
                   ],
                 ),
@@ -2943,7 +3330,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
                 child: const Text(
                   'Penjadwalan',
-                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: AppColors.primary),
+                  style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.primary),
                 ),
               ),
             ],
@@ -2955,7 +3345,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
               const double leftPadding = 32.0;
               const double rightPadding = 20.0;
               final double chartWidth = totalW - leftPadding - rightPadding;
-              final double groupWidth = data.isNotEmpty ? chartWidth / data.length : chartWidth;
+              final double groupWidth =
+                  data.isNotEmpty ? chartWidth / data.length : chartWidth;
 
               void handlePosition(Offset localPosition, {required bool isTap}) {
                 final dx = localPosition.dx;
@@ -2984,19 +3375,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 }
               }
 
-              final bool hasActiveDiv = _activeSchedulingPopupIndex != null && _activeSchedulingPopupIndex! < data.length;
-              final Map<String, dynamic>? activeItem = hasActiveDiv ? data[_activeSchedulingPopupIndex!] : null;
+              final bool hasActiveDiv = _activeSchedulingPopupIndex != null &&
+                  _activeSchedulingPopupIndex! < data.length;
+              final Map<String, dynamic>? activeItem =
+                  hasActiveDiv ? data[_activeSchedulingPopupIndex!] : null;
               final double popoverLeft = hasActiveDiv
-                  ? (leftPadding + (_activeSchedulingPopupIndex! + 0.5) * groupWidth - 62)
+                  ? (leftPadding +
+                          (_activeSchedulingPopupIndex! + 0.5) * groupWidth -
+                          62)
                       .clamp(4.0, totalW - 128.0)
                   : 0.0;
 
               return GestureDetector(
                 behavior: HitTestBehavior.opaque,
-                onTapDown: (details) => handlePosition(details.localPosition, isTap: true),
+                onTapDown: (details) =>
+                    handlePosition(details.localPosition, isTap: true),
                 child: MouseRegion(
-                  onHover: (event) => handlePosition(event.localPosition, isTap: false),
-                  onExit: (_) => setState(() => _activeSchedulingPopupIndex = null),
+                  onHover: (event) =>
+                      handlePosition(event.localPosition, isTap: false),
+                  onExit: (_) =>
+                      setState(() => _activeSchedulingPopupIndex = null),
                   child: Stack(
                     clipBehavior: Clip.none,
                     children: [
@@ -3025,11 +3423,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             },
                             child: Container(
                               width: 125,
-                              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 9, vertical: 6),
                               decoration: BoxDecoration(
                                 color: AppColors.white,
                                 borderRadius: BorderRadius.circular(10),
-                                border: Border.all(color: AppColors.border.withValues(alpha: 0.9)),
+                                border: Border.all(
+                                    color: AppColors.border
+                                        .withValues(alpha: 0.9)),
                                 boxShadow: [
                                   BoxShadow(
                                     color: Colors.black.withValues(alpha: 0.08),
@@ -3039,25 +3440,34 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 ],
                               ),
                               child: Builder(builder: (context) {
-                                final String div = (activeItem['divisi'] ?? '-').toString();
-                                final int totalVal = DateFormatter.toInt(activeItem['total_jenis']);
-                                final int currentVal = DateFormatter.toInt(activeItem['jenis_dijadwalkan']);
-                                final double pct = totalVal > 0 ? (currentVal / totalVal * 100) : 0.0;
-                                final Color divColor = AppDivisiColors.getColor(div);
+                                final String div =
+                                    (activeItem['divisi'] ?? '-').toString();
+                                final int totalVal = DateFormatter.toInt(
+                                    activeItem['total_jenis']);
+                                final int currentVal = DateFormatter.toInt(
+                                    activeItem['jenis_dijadwalkan']);
+                                final double pct = totalVal > 0
+                                    ? (currentVal / totalVal * 100)
+                                    : 0.0;
+                                final Color divColor =
+                                    AppDivisiColors.getColor(div);
 
                                 return Column(
                                   mainAxisSize: MainAxisSize.min,
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
                                       children: [
                                         Row(
                                           children: [
                                             Container(
                                               width: 6,
                                               height: 6,
-                                              decoration: BoxDecoration(color: divColor, shape: BoxShape.circle),
+                                              decoration: BoxDecoration(
+                                                  color: divColor,
+                                                  shape: BoxShape.circle),
                                             ),
                                             const SizedBox(width: 4),
                                             Text(
@@ -3073,38 +3483,71 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                         GestureDetector(
                                           onTap: () {
                                             setState(() {
-                                              _activeSchedulingPopupIndex = null;
+                                              _activeSchedulingPopupIndex =
+                                                  null;
                                             });
                                           },
                                           child: const Padding(
                                             padding: EdgeInsets.all(2.0),
-                                            child: Icon(Icons.close_rounded, size: 12, color: AppColors.textSecondary),
+                                            child: Icon(Icons.close_rounded,
+                                                size: 12,
+                                                color: AppColors.textSecondary),
                                           ),
                                         ),
                                       ],
                                     ),
-                                    const Divider(color: AppColors.border, height: 6, thickness: 0.8),
+                                    const Divider(
+                                        color: AppColors.border,
+                                        height: 6,
+                                        thickness: 0.8),
                                     Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
                                       children: [
-                                        const Text('Total Jenis:', style: TextStyle(fontSize: 9, color: AppColors.textSecondary)),
-                                        Text('$totalVal', style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                                        const Text('Total Jenis:',
+                                            style: TextStyle(
+                                                fontSize: 9,
+                                                color:
+                                                    AppColors.textSecondary)),
+                                        Text('$totalVal',
+                                            style: const TextStyle(
+                                                fontSize: 9,
+                                                fontWeight: FontWeight.w700,
+                                                color: AppColors.textPrimary)),
                                       ],
                                     ),
                                     const SizedBox(height: 1.5),
                                     Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
                                       children: [
-                                        const Text('Dijadwalkan:', style: TextStyle(fontSize: 9, color: AppColors.textSecondary)),
-                                        Text('$currentVal', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: divColor)),
+                                        const Text('Dijadwalkan:',
+                                            style: TextStyle(
+                                                fontSize: 9,
+                                                color:
+                                                    AppColors.textSecondary)),
+                                        Text('$currentVal',
+                                            style: TextStyle(
+                                                fontSize: 9,
+                                                fontWeight: FontWeight.w800,
+                                                color: divColor)),
                                       ],
                                     ),
                                     const SizedBox(height: 1.5),
                                     Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
                                       children: [
-                                        const Text('Progres:', style: TextStyle(fontSize: 9, color: AppColors.textSecondary)),
-                                        Text('${pct.round()}%', style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w900, color: divColor)),
+                                        const Text('Progres:',
+                                            style: TextStyle(
+                                                fontSize: 9,
+                                                color:
+                                                    AppColors.textSecondary)),
+                                        Text('${pct.round()}%',
+                                            style: TextStyle(
+                                                fontSize: 9.5,
+                                                fontWeight: FontWeight.w900,
+                                                color: divColor)),
                                       ],
                                     ),
                                   ],
@@ -3128,7 +3571,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildRealisasiChartCard(JadwalProvider p) {
     final monthlyData = _getDivisiMonthlyData(p);
     final List<String> months = (monthlyData['months'] as List).cast<String>();
-    final Map<String, List<double>> series = (monthlyData['series'] as Map).cast<String, List<double>>();
+    final Map<String, List<double>> series =
+        (monthlyData['series'] as Map).cast<String, List<double>>();
 
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
@@ -3155,7 +3599,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   color: AppColors.success.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(Icons.show_chart_rounded, size: 16, color: AppColors.success),
+                child: const Icon(Icons.show_chart_rounded,
+                    size: 16, color: AppColors.success),
               ),
               const SizedBox(width: 8),
               const Expanded(
@@ -3172,7 +3617,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                     Text(
                       'Presentase Realisasi per Divisi',
-                      style: TextStyle(fontSize: 10.5, color: AppColors.textSecondary),
+                      style: TextStyle(
+                          fontSize: 10.5, color: AppColors.textSecondary),
                     ),
                   ],
                 ),
@@ -3185,7 +3631,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
                 child: const Text(
                   'Bulanan',
-                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF059669)),
+                  style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF059669)),
                 ),
               ),
             ],
@@ -3197,7 +3646,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
               const double leftPadding = 32.0;
               const double rightPadding = 20.0;
               final double chartWidth = totalW - leftPadding - rightPadding;
-              final double stepX = months.length > 1 ? chartWidth / (months.length - 1) : chartWidth / 2;
+              final double stepX = months.length > 1
+                  ? chartWidth / (months.length - 1)
+                  : chartWidth / 2;
 
               void handlePosition(Offset localPosition, {required bool isTap}) {
                 final dx = localPosition.dx;
@@ -3205,7 +3656,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 double minDistance = double.infinity;
 
                 for (int i = 0; i < months.length; i++) {
-                  final monthX = leftPadding + (months.length == 1 ? chartWidth / 2 : i * stepX);
+                  final monthX = leftPadding +
+                      (months.length == 1 ? chartWidth / 2 : i * stepX);
                   final dist = (dx - monthX).abs();
                   if (dist < minDistance) {
                     minDistance = dist;
@@ -3226,17 +3678,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 }
               }
 
-              final bool hasActiveMonth = _activeMonthPopupIndex != null && _activeMonthPopupIndex! < months.length;
+              final bool hasActiveMonth = _activeMonthPopupIndex != null &&
+                  _activeMonthPopupIndex! < months.length;
               final double popoverLeft = hasActiveMonth
-                  ? (leftPadding + (months.length == 1 ? chartWidth / 2 : _activeMonthPopupIndex! * stepX) - 60)
+                  ? (leftPadding +
+                          (months.length == 1
+                              ? chartWidth / 2
+                              : _activeMonthPopupIndex! * stepX) -
+                          60)
                       .clamp(4.0, totalW - 124.0)
                   : 0.0;
 
               return GestureDetector(
                 behavior: HitTestBehavior.opaque,
-                onTapDown: (details) => handlePosition(details.localPosition, isTap: true),
+                onTapDown: (details) =>
+                    handlePosition(details.localPosition, isTap: true),
                 child: MouseRegion(
-                  onHover: (event) => handlePosition(event.localPosition, isTap: false),
+                  onHover: (event) =>
+                      handlePosition(event.localPosition, isTap: false),
                   onExit: (_) => setState(() => _activeMonthPopupIndex = null),
                   child: Stack(
                     clipBehavior: Clip.none,
@@ -3266,11 +3725,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             },
                             child: Container(
                               width: 120,
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 5),
                               decoration: BoxDecoration(
                                 color: Colors.white,
                                 borderRadius: BorderRadius.circular(10),
-                                border: Border.all(color: AppColors.border.withValues(alpha: 0.9)),
+                                border: Border.all(
+                                    color: AppColors.border
+                                        .withValues(alpha: 0.9)),
                                 boxShadow: [
                                   BoxShadow(
                                     color: Colors.black.withValues(alpha: 0.08),
@@ -3284,7 +3746,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
                                     children: [
                                       Text(
                                         months[_activeMonthPopupIndex!],
@@ -3302,37 +3765,52 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                         },
                                         child: const Padding(
                                           padding: EdgeInsets.all(2.0),
-                                          child: Icon(Icons.close_rounded, size: 12, color: AppColors.textSecondary),
+                                          child: Icon(Icons.close_rounded,
+                                              size: 12,
+                                              color: AppColors.textSecondary),
                                         ),
                                       ),
                                     ],
                                   ),
-                                  const Divider(color: AppColors.border, height: 6, thickness: 0.8),
+                                  const Divider(
+                                      color: AppColors.border,
+                                      height: 6,
+                                      thickness: 0.8),
                                   ...series.entries.map<Widget>((entry) {
                                     final String div = entry.key;
                                     final List<double> vals = entry.value;
                                     final double pct =
-                                        (_activeMonthPopupIndex! < vals.length) ? vals[_activeMonthPopupIndex!] : 0.0;
-                                    final Color divColor = AppDivisiColors.getColor(div);
+                                        (_activeMonthPopupIndex! < vals.length)
+                                            ? vals[_activeMonthPopupIndex!]
+                                            : 0.0;
+                                    final Color divColor =
+                                        AppDivisiColors.getColor(div);
 
                                     return Padding(
-                                      padding: const EdgeInsets.only(bottom: 1.5),
+                                      padding:
+                                          const EdgeInsets.only(bottom: 1.5),
                                       child: Row(
-                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
                                         children: [
                                           Row(
                                             children: [
                                               Container(
                                                 width: 5,
                                                 height: 5,
-                                                decoration: BoxDecoration(color: divColor, shape: BoxShape.circle),
+                                                decoration: BoxDecoration(
+                                                    color: divColor,
+                                                    shape: BoxShape.circle),
                                               ),
                                               const SizedBox(width: 4),
                                               Text(
-                                                div.length > 7 ? '${div.substring(0, 6)}.' : div,
+                                                div.length > 7
+                                                    ? '${div.substring(0, 6)}.'
+                                                    : div,
                                                 style: const TextStyle(
                                                   fontSize: 9.5,
-                                                  color: AppColors.textSecondary,
+                                                  color:
+                                                      AppColors.textSecondary,
                                                   fontWeight: FontWeight.w700,
                                                 ),
                                               ),
@@ -3384,9 +3862,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     },
                     borderRadius: BorderRadius.circular(12),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2.5),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 2.5),
                       decoration: BoxDecoration(
-                        color: isSelected ? divColor.withValues(alpha: 0.15) : Colors.transparent,
+                        color: isSelected
+                            ? divColor.withValues(alpha: 0.15)
+                            : Colors.transparent,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
                           color: isSelected ? divColor : Colors.transparent,
@@ -3398,15 +3879,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           Container(
                             width: 7,
                             height: 7,
-                            decoration: BoxDecoration(color: divColor, shape: BoxShape.circle),
+                            decoration: BoxDecoration(
+                                color: divColor, shape: BoxShape.circle),
                           ),
                           const SizedBox(width: 4),
                           Text(
                             divisi,
                             style: TextStyle(
                               fontSize: 10,
-                              fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-                              color: isSelected ? divColor : AppColors.textSecondary,
+                              fontWeight: isSelected
+                                  ? FontWeight.w800
+                                  : FontWeight.w600,
+                              color: isSelected
+                                  ? divColor
+                                  : AppColors.textSecondary,
                             ),
                           ),
                         ],
@@ -3426,7 +3912,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final data = _getDivisiTargetRealisasiData(p);
     final isLoading = p.loading || _isLoadingData;
     final isDesktop = MediaQuery.of(context).size.width > 900;
-    final cols = AppBreakpoints.gridColumns(context, mobile: 1, tablet: 2, desktop: 3);
+    final cols =
+        AppBreakpoints.gridColumns(context, mobile: 1, tablet: 2, desktop: 3);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -3454,12 +3941,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
               TextButton.icon(
                 style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   minimumSize: Size.zero,
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
-                onPressed: () => Navigator.pushNamed(context, AppRoutes.monitoringDivisi),
-                icon: const Icon(Icons.arrow_forward_rounded, size: 14, color: AppColors.primary),
+                onPressed: () =>
+                    Navigator.pushNamed(context, AppRoutes.monitoringDivisi),
+                icon: const Icon(Icons.arrow_forward_rounded,
+                    size: 14, color: AppColors.primary),
                 label: const Text(
                   'Monitoring Divisi',
                   style: TextStyle(
@@ -3476,7 +3966,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
           const AppShimmer(
             child: Padding(
               padding: EdgeInsets.symmetric(horizontal: 16),
-              child: AppSkeletonSquircle(width: double.infinity, height: 215, borderRadius: 16),
+              child: AppSkeletonSquircle(
+                  width: double.infinity, height: 215, borderRadius: 16),
             ),
           )
         else if (data.isEmpty)
@@ -3487,12 +3978,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
               decoration: _surfaceCard(),
               child: const Row(
                 children: [
-                  Icon(Icons.info_outline_rounded, color: AppColors.textSecondary, size: 20),
+                  Icon(Icons.info_outline_rounded,
+                      color: AppColors.textSecondary, size: 20),
                   SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       'Belum ada data monitoring divisi. Klik "Detail Divisi" untuk memuat ulang.',
-                      style: TextStyle(fontSize: 12.5, color: AppColors.textSecondary),
+                      style: TextStyle(
+                          fontSize: 12.5, color: AppColors.textSecondary),
                     ),
                   ),
                 ],
@@ -3570,11 +4063,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     onTap: () => _showMonthYearPicker(context),
                     borderRadius: BorderRadius.circular(99),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 5),
                       decoration: BoxDecoration(
                         color: const Color(0xFFF0F5FF),
                         borderRadius: BorderRadius.circular(99),
-                        border: Border.all(color: AppColors.primary.withValues(alpha: 0.15)),
+                        border: Border.all(
+                            color: AppColors.primary.withValues(alpha: 0.15)),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -3608,29 +4103,35 @@ class _DashboardScreenState extends State<DashboardScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: LayoutBuilder(
               builder: (context, constraints) {
-                final double cardWidth = (constraints.maxWidth - (10 * (cols - 1))) / cols;
+                final double cardWidth =
+                    (constraints.maxWidth - (10 * (cols - 1))) / cols;
                 return Wrap(
                   spacing: 10,
                   runSpacing: 10,
                   children: data.map((item) {
                     final String divisi = item['divisi'] ?? '-';
-                    final int targetUnit = DateFormatter.toInt(item['target_unit']);
-                    final int realisasiUnit = DateFormatter.toInt(item['realisasi_unit']);
-                    final int progressPercent = DateFormatter.toInt(item['progress_percent']);
+                    final int targetUnit =
+                        DateFormatter.toInt(item['target_unit']);
+                    final int realisasiUnit =
+                        DateFormatter.toInt(item['realisasi_unit']);
+                    final int progressPercent =
+                        DateFormatter.toInt(item['progress_percent']);
                     final Color divColor = AppDivisiColors.getColor(divisi);
                     final IconData divIcon = AppDivisiColors.getIcon(divisi);
 
                     return SizedBox(
                       width: cardWidth,
                       child: InkWell(
-                        onTap: () => Navigator.pushNamed(context, AppRoutes.monitoringDivisi),
+                        onTap: () => Navigator.pushNamed(
+                            context, AppRoutes.monitoringDivisi),
                         borderRadius: BorderRadius.circular(16),
                         child: Container(
                           padding: const EdgeInsets.all(14),
                           decoration: BoxDecoration(
                             color: AppColors.white,
                             borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: AppColors.border.withValues(alpha: 0.8)),
+                            border: Border.all(
+                                color: AppColors.border.withValues(alpha: 0.8)),
                             boxShadow: [
                               BoxShadow(
                                 color: Colors.black.withValues(alpha: 0.02),
@@ -3650,12 +4151,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                       color: divColor.withValues(alpha: 0.12),
                                       borderRadius: BorderRadius.circular(10),
                                     ),
-                                    child: Icon(divIcon, size: 18, color: divColor),
+                                    child: Icon(divIcon,
+                                        size: 18, color: divColor),
                                   ),
                                   const SizedBox(width: 10),
                                   Expanded(
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Text(
                                           'DIVISI $divisi',
@@ -3680,7 +4183,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                     ),
                                   ),
                                   Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 8, vertical: 3),
                                     decoration: BoxDecoration(
                                       color: divColor.withValues(alpha: 0.12),
                                       borderRadius: BorderRadius.circular(6),
@@ -3700,10 +4204,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               ClipRRect(
                                 borderRadius: BorderRadius.circular(4),
                                 child: LinearProgressIndicator(
-                                  value: targetUnit > 0 ? (realisasiUnit / targetUnit).clamp(0.0, 1.0) : 0.0,
+                                  value: targetUnit > 0
+                                      ? (realisasiUnit / targetUnit)
+                                          .clamp(0.0, 1.0)
+                                      : 0.0,
                                   minHeight: 6,
-                                  backgroundColor: divColor.withValues(alpha: 0.15),
-                                  valueColor: AlwaysStoppedAnimation<Color>(divColor),
+                                  backgroundColor:
+                                      divColor.withValues(alpha: 0.15),
+                                  valueColor:
+                                      AlwaysStoppedAnimation<Color>(divColor),
                                 ),
                               ),
                             ],
@@ -3794,7 +4303,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
           'i': Icons.monitor_heart_rounded,
           'c': const Color(0xFF0284C7),
           's': null,
-          'onTap': () => Navigator.pushNamed(context, AppRoutes.monitoringDivisi),
+          'onTap': () =>
+              Navigator.pushNamed(context, AppRoutes.monitoringDivisi),
         },
         {
           't': '2. Jadwal',
@@ -3826,7 +4336,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         },
       ];
     } else {
-      final String userDivisi = auth.user?['user_divisi']?.toString().toUpperCase() ?? '';
+      final String userDivisi =
+          auth.user?['user_divisi']?.toString().toUpperCase() ?? '';
       final bool isDriver = userDivisi == 'DRIVER';
       sectionTitle = isDriver ? "Menu Utama Driver" : "Menu Utama Teknisi";
       steps = [
@@ -3999,12 +4510,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   physics: const NeverScrollableScrollPhysics(),
                   gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: cols,
-                    crossAxisSpacing: isDesktopLayout ? 14 : (isTablet ? 12 : 8),
+                    crossAxisSpacing:
+                        isDesktopLayout ? 14 : (isTablet ? 12 : 8),
                     mainAxisSpacing: 14,
                     mainAxisExtent: 104,
                   ),
                   itemCount: count,
-                  itemBuilder: (_, i) => _buildLargeStepCard(steps[i], i, count),
+                  itemBuilder: (_, i) =>
+                      _buildLargeStepCard(steps[i], i, count),
                 );
               },
             ),
@@ -4085,12 +4598,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  Widget _buildLargeStepCard(Map<String, dynamic> step, int index, [int totalCount = 0]) {
+  Widget _buildLargeStepCard(Map<String, dynamic> step, int index,
+      [int totalCount = 0]) {
     if (_isLoadingData) {
       return _buildLargeStepCardSkeleton();
     }
 
-    final Color color = (step['c'] as Color?) ?? _getMenuRowColor(index, totalCount);
+    final Color color =
+        (step['c'] as Color?) ?? _getMenuRowColor(index, totalCount);
     final String title = step['t'] as String;
     final VoidCallback? customTap = step['onTap'] as VoidCallback?;
     final Widget? targetScreen = step['s'] as Widget?;
@@ -4206,8 +4721,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-
-
   void _showAllPlansBottomSheet(
     BuildContext context,
     List<JadwalModel> plans,
@@ -4278,7 +4791,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               closeSheetOnTap: true),
                         ),
             ),
-
           ],
         ),
       ),
@@ -4312,14 +4824,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            AppSkeletonSquircle(width: 32, height: 32, borderRadius: 10),
-                            AppSkeletonLine(width: 36, height: 22, borderRadius: 4),
+                            AppSkeletonSquircle(
+                                width: 32, height: 32, borderRadius: 10),
+                            AppSkeletonLine(
+                                width: 36, height: 22, borderRadius: 4),
                           ],
                         ),
                         SizedBox(height: 12),
                         AppSkeletonLine(width: 80, height: 13, borderRadius: 4),
                         SizedBox(height: 6),
-                        AppSkeletonLine(width: 100, height: 10, borderRadius: 3),
+                        AppSkeletonLine(
+                            width: 100, height: 10, borderRadius: 3),
                       ],
                     ),
                   ),
@@ -4335,14 +4850,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            AppSkeletonSquircle(width: 32, height: 32, borderRadius: 10),
-                            AppSkeletonLine(width: 45, height: 18, borderRadius: 4),
+                            AppSkeletonSquircle(
+                                width: 32, height: 32, borderRadius: 10),
+                            AppSkeletonLine(
+                                width: 45, height: 18, borderRadius: 4),
                           ],
                         ),
                         SizedBox(height: 12),
                         AppSkeletonLine(width: 80, height: 13, borderRadius: 4),
                         SizedBox(height: 6),
-                        AppSkeletonSquircle(width: double.infinity, height: 6, borderRadius: 3),
+                        AppSkeletonSquircle(
+                            width: double.infinity, height: 6, borderRadius: 3),
                       ],
                     ),
                   ),
@@ -4371,7 +4889,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final bool isCompleted = percent >= 1.0;
     const Color primaryBlue = Color(0xFF0052FF);
     final Color themeColor = isCompleted ? AppColors.success : primaryBlue;
-    final int sisaTarget = (totalTargetBulanIni > doneBulanIni) ? (totalTargetBulanIni - doneBulanIni) : 0;
+    final int sisaTarget = (totalTargetBulanIni > doneBulanIni)
+        ? (totalTargetBulanIni - doneBulanIni)
+        : 0;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
@@ -4381,7 +4901,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
           color: Colors.white,
           borderRadius: BorderRadius.circular(24),
           border: Border.all(
-            color: isCompleted ? AppColors.success.withValues(alpha: 0.4) : const Color(0xFFE2E8F0),
+            color: isCompleted
+                ? AppColors.success.withValues(alpha: 0.4)
+                : const Color(0xFFE2E8F0),
             width: 1,
           ),
           boxShadow: const [
@@ -4438,7 +4960,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     onTap: () => _showMonthYearPicker(context),
                     borderRadius: BorderRadius.circular(99),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 5),
                       decoration: BoxDecoration(
                         color: const Color(0xFFF0F5FF),
                         borderRadius: BorderRadius.circular(99),
@@ -4558,7 +5081,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                     ),
                                   ),
                                   Row(
-                                    crossAxisAlignment: CrossAxisAlignment.baseline,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.baseline,
                                     textBaseline: TextBaseline.alphabetic,
                                     children: [
                                       Text(
@@ -4619,7 +5143,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                     ),
                                   ),
                                   Row(
-                                    crossAxisAlignment: CrossAxisAlignment.baseline,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.baseline,
                                     textBaseline: TextBaseline.alphabetic,
                                     children: [
                                       Text(
@@ -4680,7 +5205,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                     ),
                                   ),
                                   Row(
-                                    crossAxisAlignment: CrossAxisAlignment.baseline,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.baseline,
                                     textBaseline: TextBaseline.alphabetic,
                                     children: [
                                       Text(
@@ -4719,10 +5245,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               child: ClipRRect(
                                 borderRadius: BorderRadius.circular(99),
                                 child: LinearProgressIndicator(
-                                  value: totalTargetBulanIni > 0 ? percent : 0.0,
+                                  value:
+                                      totalTargetBulanIni > 0 ? percent : 0.0,
                                   minHeight: 8,
                                   backgroundColor: const Color(0xFFE2E8F0),
-                                  valueColor: AlwaysStoppedAnimation<Color>(themeColor),
+                                  valueColor:
+                                      AlwaysStoppedAnimation<Color>(themeColor),
                                 ),
                               ),
                             ),
@@ -4756,7 +5284,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     const Color primaryBlue = Color(0xFF0052FF);
 
     final p = context.read<JadwalProvider>();
-    final rawList = (p.dashboardSummary['monthly_comparison'] as List<dynamic>?) ?? [];
+    final rawList =
+        (p.dashboardSummary['monthly_comparison'] as List<dynamic>?) ?? [];
 
     List<Map<String, dynamic>> months = [];
     if (rawList.isNotEmpty) {
@@ -4777,7 +5306,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
         {'m': 'Apr', 't': 60, 'r': 55},
         {'m': 'Mei', 't': 65, 'r': 62},
         {'m': 'Jun', 't': 70, 'r': 68},
-        {'m': 'Jul', 't': totalTargetBulanIni > 0 ? totalTargetBulanIni : 76, 'r': doneBulanIni > 0 ? doneBulanIni : 64},
+        {
+          'm': 'Jul',
+          't': totalTargetBulanIni > 0 ? totalTargetBulanIni : 76,
+          'r': doneBulanIni > 0 ? doneBulanIni : 64
+        },
       ];
     }
 
@@ -4936,7 +5469,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                       width: 12,
                                       decoration: const BoxDecoration(
                                         color: primaryBlue,
-                                        borderRadius: BorderRadius.vertical(top: Radius.circular(4)),
+                                        borderRadius: BorderRadius.vertical(
+                                            top: Radius.circular(4)),
                                       ),
                                     ),
                                   ),
@@ -4948,7 +5482,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                       width: 12,
                                       decoration: const BoxDecoration(
                                         color: Color(0xFF059669),
-                                        borderRadius: BorderRadius.vertical(top: Radius.circular(4)),
+                                        borderRadius: BorderRadius.vertical(
+                                            top: Radius.circular(4)),
                                       ),
                                     ),
                                   ),
@@ -5049,7 +5584,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 width: _heroCardPageIndex == 0 ? 18 : 6,
                 height: 5,
                 decoration: BoxDecoration(
-                  color: _heroCardPageIndex == 0 ? const Color(0xFF0052FF) : const Color(0xFFCBD5E1),
+                  color: _heroCardPageIndex == 0
+                      ? const Color(0xFF0052FF)
+                      : const Color(0xFFCBD5E1),
                   borderRadius: BorderRadius.circular(99),
                 ),
               ),
@@ -5059,7 +5596,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 width: _heroCardPageIndex == 1 ? 18 : 6,
                 height: 5,
                 decoration: BoxDecoration(
-                  color: _heroCardPageIndex == 1 ? const Color(0xFF0052FF) : const Color(0xFFCBD5E1),
+                  color: _heroCardPageIndex == 1
+                      ? const Color(0xFF0052FF)
+                      : const Color(0xFFCBD5E1),
                   borderRadius: BorderRadius.circular(99),
                 ),
               ),
@@ -5132,12 +5671,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
           _isSameCurrentPeriod(r, item);
     }).length;
 
-    final realisasiSelesai = realisasiFromList > 0
-        ? realisasiFromList
-        : (item.jdwSelesaiUnit ?? 0);
+    final realisasiSelesai =
+        realisasiFromList > 0 ? realisasiFromList : (item.jdwSelesaiUnit ?? 0);
 
-    final totalTarget = (item.jdwTarget ?? 0) > 0 ? item.jdwTarget! : (item.jdwTotalUnit ?? 0);
-    final double progressPercent = totalTarget > 0 ? (realisasiSelesai / totalTarget).clamp(0.0, 1.0) : (realisasiSelesai > 0 ? 1.0 : 0.0);
+    final totalTarget =
+        (item.jdwTarget ?? 0) > 0 ? item.jdwTarget! : (item.jdwTotalUnit ?? 0);
+    final double progressPercent = totalTarget > 0
+        ? (realisasiSelesai / totalTarget).clamp(0.0, 1.0)
+        : (realisasiSelesai > 0 ? 1.0 : 0.0);
     final int percentInt = (progressPercent * 100).round();
 
     final bool isCompleted = progressPercent >= 1.0;
@@ -5164,7 +5705,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         child: Material(
           color: Colors.transparent,
           child: InkWell(
-            onTap: () => _openJadwalDetail(item, closeSheetFirst: closeSheetOnTap),
+            onTap: () =>
+                _openJadwalDetail(item, closeSheetFirst: closeSheetOnTap),
             child: Padding(
               padding: const EdgeInsets.all(12),
               child: Column(
@@ -5175,7 +5717,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   Row(
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 7, vertical: 3),
                         decoration: BoxDecoration(
                           color: divisiColor.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(6),
@@ -5198,13 +5741,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                       const Spacer(),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 7, vertical: 2.5),
                         decoration: BoxDecoration(
                           color: badgeBg,
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
-                          rem == 'Hari ini!' ? 'Hari Ini' : (rem.contains('Terlewat') ? 'Terlewat' : rem),
+                          rem == 'Hari ini!'
+                              ? 'Hari Ini'
+                              : (rem.contains('Terlewat') ? 'Terlewat' : rem),
                           style: TextStyle(
                             color: badgeText,
                             fontWeight: FontWeight.w800,
@@ -5213,7 +5759,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ),
                       ),
                       const SizedBox(width: 4),
-                      const Icon(Icons.chevron_right_rounded, size: 16, color: AppColors.textSecondary),
+                      const Icon(Icons.chevron_right_rounded,
+                          size: 16, color: AppColors.textSecondary),
                     ],
                   ),
                   const SizedBox(height: 8),
@@ -5242,7 +5789,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             value: progressPercent,
                             minHeight: 5,
                             backgroundColor: const Color(0xFFF1F5F9),
-                            valueColor: AlwaysStoppedAnimation<Color>(progressColor),
+                            valueColor:
+                                AlwaysStoppedAnimation<Color>(progressColor),
                           ),
                         ),
                       ),
@@ -5259,8 +5807,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                   () {
                     final auth = context.read<AuthProvider>();
-                    final userRole = (auth.user?['user_jabatan'] ?? '').toString().trim().toLowerCase();
-                    final isUser = userRole == 'user' || userRole == 'teknisi' || userRole == 'it_support';
+                    final userRole = (auth.user?['user_jabatan'] ?? '')
+                        .toString()
+                        .trim()
+                        .toLowerCase();
+                    final isUser = userRole == 'user' ||
+                        userRole == 'teknisi' ||
+                        userRole == 'it_support';
 
                     if (isUser) {
                       return Padding(
@@ -5342,7 +5895,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     SizedBox(height: 5),
                     Row(
                       children: [
-                        AppSkeletonSquircle(width: 50, height: 14, borderRadius: 5),
+                        AppSkeletonSquircle(
+                            width: 50, height: 14, borderRadius: 5),
                         SizedBox(width: 6),
                         AppSkeletonLine(width: 36, height: 9, borderRadius: 3),
                       ],
@@ -5363,7 +5917,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ],
               ),
               SizedBox(height: 4),
-              AppSkeletonLine(width: double.infinity, height: 5, borderRadius: 3),
+              AppSkeletonLine(
+                  width: double.infinity, height: 5, borderRadius: 3),
             ],
           ),
         ],
@@ -5391,7 +5946,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   int _getRemainingDaysDiff(JadwalModel j) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    
+
     // 1. Jika belum mulai (tanggal mulai di masa depan), hitung selisih ke tanggal mulai
     final startDate = _parseDateOnly(j.jdwTglMulai);
     if (startDate != null && startDate.isAfter(today)) {
@@ -5410,7 +5965,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
 
     // 4. Fallback jika tidak ada daysRemaining dari backend
-    final fallbackDate = _parseDateOnly(j.effectiveNextDueDateStr ?? j.jdwTglMulai);
+    final fallbackDate =
+        _parseDateOnly(j.effectiveNextDueDateStr ?? j.jdwTglMulai);
     if (fallbackDate == null) {
       return 0;
     }
@@ -5559,7 +6115,8 @@ class _InventarisPickerSheetState extends State<_InventarisPickerSheet> {
                     decoration: InputDecoration(
                       hintText: 'Cari serial number, nama, atau PIC',
                       suffixIcon: IconButton(
-                        icon: const Icon(Icons.search, color: AppColors.primary),
+                        icon:
+                            const Icon(Icons.search, color: AppColors.primary),
                         onPressed: () {
                           FocusScope.of(context).unfocus();
                           setState(() {
@@ -5569,8 +6126,8 @@ class _InventarisPickerSheetState extends State<_InventarisPickerSheet> {
                       ),
                       filled: true,
                       fillColor: Colors.white,
-                      contentPadding:
-                          const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 12),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(14),
                         borderSide: BorderSide.none,
@@ -5581,8 +6138,8 @@ class _InventarisPickerSheetState extends State<_InventarisPickerSheet> {
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(14),
-                        borderSide:
-                            const BorderSide(color: AppColors.primary, width: 1.5),
+                        borderSide: const BorderSide(
+                            color: AppColors.primary, width: 1.5),
                       ),
                     ),
                   ),
@@ -5599,7 +6156,8 @@ class _InventarisPickerSheetState extends State<_InventarisPickerSheet> {
                           )
                         : ListView.separated(
                             controller: scrollController,
-                            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                            keyboardDismissBehavior:
+                                ScrollViewKeyboardDismissBehavior.onDrag,
                             shrinkWrap: true,
                             itemCount: filteredInventaris.length,
                             separatorBuilder: (_, __) =>
@@ -5615,9 +6173,8 @@ class _InventarisPickerSheetState extends State<_InventarisPickerSheet> {
                               return Card(
                                 margin: EdgeInsets.zero,
                                 child: ListTile(
-                                  contentPadding:
-                                      const EdgeInsets.symmetric(
-                                          horizontal: 14, vertical: 10),
+                                  contentPadding: const EdgeInsets.symmetric(
+                                      horizontal: 14, vertical: 10),
                                   leading: CircleAvatar(
                                     radius: 20,
                                     backgroundColor: AppColors.primary
@@ -5654,18 +6211,15 @@ class _InventarisPickerSheetState extends State<_InventarisPickerSheet> {
                                         Text('$merk · $sn',
                                             style: const TextStyle(
                                                 fontSize: 12,
-                                                color:
-                                                    AppColors.textSecondary,
-                                                fontWeight:
-                                                    FontWeight.w600)),
+                                                color: AppColors.textSecondary,
+                                                fontWeight: FontWeight.w600)),
                                         const SizedBox(height: 2),
                                         Row(
                                           children: [
                                             const Icon(
                                               Icons.person_outline,
                                               size: 14,
-                                              color:
-                                                  AppColors.textSecondary,
+                                              color: AppColors.textSecondary,
                                             ),
                                             const SizedBox(width: 4),
                                             Expanded(
@@ -5673,11 +6227,10 @@ class _InventarisPickerSheetState extends State<_InventarisPickerSheet> {
                                                 'PIC: $picName',
                                                 style: const TextStyle(
                                                   fontSize: 12,
-                                                  color: AppColors
-                                                      .textSecondary,
+                                                  color:
+                                                      AppColors.textSecondary,
                                                 ),
-                                                overflow:
-                                                    TextOverflow.ellipsis,
+                                                overflow: TextOverflow.ellipsis,
                                               ),
                                             ),
                                           ],
@@ -5688,26 +6241,22 @@ class _InventarisPickerSheetState extends State<_InventarisPickerSheet> {
                                             const Icon(
                                               Icons.factory_outlined,
                                               size: 14,
-                                              color:
-                                                  AppColors.textSecondary,
+                                              color: AppColors.textSecondary,
                                             ),
                                             const SizedBox(width: 4),
                                             Text(
                                               pabrik,
                                               style: const TextStyle(
                                                 fontSize: 12,
-                                                color:
-                                                    AppColors.textSecondary,
+                                                color: AppColors.textSecondary,
                                               ),
                                             ),
                                           ],
                                         ),
                                         const SizedBox(height: 4),
                                         Container(
-                                          padding:
-                                              const EdgeInsets.symmetric(
-                                                  horizontal: 8,
-                                                  vertical: 3),
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 8, vertical: 3),
                                           decoration: BoxDecoration(
                                             color: Colors.orange
                                                 .withValues(alpha: 0.12),
@@ -5755,8 +6304,7 @@ class _RoleBasedUserGuideDialog extends StatefulWidget {
       __RoleBasedUserGuideDialogState();
 }
 
-class __RoleBasedUserGuideDialogState
-    extends State<_RoleBasedUserGuideDialog> {
+class __RoleBasedUserGuideDialogState extends State<_RoleBasedUserGuideDialog> {
   late int _selectedTab;
 
   @override
@@ -5776,7 +6324,8 @@ class __RoleBasedUserGuideDialogState
   Widget build(BuildContext context) {
     return Dialog(
       backgroundColor: Colors.white,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.xl)),
+      shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.xl)),
       elevation: 0,
       child: Container(
         width: 440,
@@ -5830,7 +6379,8 @@ class __RoleBasedUserGuideDialogState
               ),
               child: Row(
                 children: [
-                  _buildRoleTab(0, 'Teknisi / Driver', Icons.engineering_rounded),
+                  _buildRoleTab(
+                      0, 'Teknisi / Driver', Icons.engineering_rounded),
                   _buildRoleTab(1, 'Admin', Icons.admin_panel_settings_rounded),
                   _buildRoleTab(2, 'Manager', Icons.shield_rounded),
                 ],
@@ -6025,8 +6575,9 @@ class __RoleBasedUserGuideDialogState
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-                    color:
-                        isSelected ? AppColors.primary : AppColors.textSecondary,
+                    color: isSelected
+                        ? AppColors.primary
+                        : AppColors.textSecondary,
                   ),
                 ),
               ),
@@ -6163,7 +6714,8 @@ class _AnimatedNotificationBellState extends State<_AnimatedNotificationBell>
     super.didUpdateWidget(oldWidget);
     if (widget.count > 0 && !widget.isLoading && !_controller.isAnimating) {
       _controller.repeat();
-    } else if ((widget.count == 0 || widget.isLoading) && _controller.isAnimating) {
+    } else if ((widget.count == 0 || widget.isLoading) &&
+        _controller.isAnimating) {
       _controller.stop();
       _controller.reset();
     }
@@ -6203,7 +6755,8 @@ class _AnimatedNotificationBellState extends State<_AnimatedNotificationBell>
                       : Icons.notifications_rounded,
                   color: showActive
                       ? Colors.amberAccent
-                      : Colors.white.withValues(alpha: widget.isLoading ? 0.7 : 1.0),
+                      : Colors.white
+                          .withValues(alpha: widget.isLoading ? 0.7 : 1.0),
                   size: 22,
                 ),
               ),
@@ -6252,7 +6805,6 @@ class _AnimatedNotificationBellState extends State<_AnimatedNotificationBell>
                 ),
               ),
             ),
-
         ],
       ),
     );
@@ -6307,7 +6859,8 @@ class _AnimatedVoucherNotificationBellState
     super.didUpdateWidget(oldWidget);
     if (widget.count > 0 && !widget.isLoading && !_controller.isAnimating) {
       _controller.repeat();
-    } else if ((widget.count == 0 || widget.isLoading) && _controller.isAnimating) {
+    } else if ((widget.count == 0 || widget.isLoading) &&
+        _controller.isAnimating) {
       _controller.stop();
       _controller.reset();
     }
@@ -6345,7 +6898,8 @@ class _AnimatedVoucherNotificationBellState
                   Icons.local_gas_station_rounded,
                   color: showActive
                       ? const Color(0xFFFBBF24)
-                      : Colors.white.withValues(alpha: widget.isLoading ? 0.7 : 1.0),
+                      : Colors.white
+                          .withValues(alpha: widget.isLoading ? 0.7 : 1.0),
                   size: 22,
                 ),
               ),
@@ -6431,27 +6985,36 @@ class _MultiLineDivisiChartPainter extends CustomPainter {
       ..color = AppColors.border
       ..strokeWidth = 1.0;
 
-    final TextPainter textPainter = TextPainter(textDirection: TextDirection.ltr);
+    final TextPainter textPainter =
+        TextPainter(textDirection: TextDirection.ltr);
 
     // 1. Draw horizontal grid lines (0%, 50%, 100%)
     final gridSteps = [0, 50, 100];
     for (final step in gridSteps) {
       final double y = topPadding + chartHeight * (1.0 - step / 100.0);
-      canvas.drawLine(Offset(leftPadding, y), Offset(size.width - rightPadding, y), gridPaint);
+      canvas.drawLine(Offset(leftPadding, y),
+          Offset(size.width - rightPadding, y), gridPaint);
 
       textPainter.text = TextSpan(
         text: '$step%',
-        style: const TextStyle(fontSize: 10, color: AppColors.textSecondary, fontWeight: FontWeight.w600),
+        style: const TextStyle(
+            fontSize: 10,
+            color: AppColors.textSecondary,
+            fontWeight: FontWeight.w600),
       );
       textPainter.layout();
       textPainter.paint(canvas, Offset(2, y - textPainter.height / 2));
     }
 
-    final double stepX = months.length > 1 ? chartWidth / (months.length - 1) : chartWidth / 2;
+    final double stepX =
+        months.length > 1 ? chartWidth / (months.length - 1) : chartWidth / 2;
 
     // 1.5 Draw vertical active month guide line
-    if (activeMonthIndex != null && activeMonthIndex! >= 0 && activeMonthIndex! < months.length) {
-      final double activeX = leftPadding + (months.length == 1 ? chartWidth / 2 : activeMonthIndex! * stepX);
+    if (activeMonthIndex != null &&
+        activeMonthIndex! >= 0 &&
+        activeMonthIndex! < months.length) {
+      final double activeX = leftPadding +
+          (months.length == 1 ? chartWidth / 2 : activeMonthIndex! * stepX);
       final Paint activeLinePaint = Paint()
         ..color = AppColors.primary.withValues(alpha: 0.4)
         ..strokeWidth = 1.5;
@@ -6468,14 +7031,16 @@ class _MultiLineDivisiChartPainter extends CustomPainter {
       if (values.isEmpty) return;
 
       final Color divColor = AppDivisiColors.getColor(divisi);
-      final bool isHighlighted = highlightedDivisi == null || highlightedDivisi == divisi;
+      final bool isHighlighted =
+          highlightedDivisi == null || highlightedDivisi == divisi;
       final double strokeWidth = isHighlighted ? 2.8 : 1.2;
       final double opacity = isHighlighted ? 1.0 : 0.25;
 
       final points = <Offset>[];
       for (int i = 0; i < values.length; i++) {
         final double pct = values[i].clamp(0.0, 100.0);
-        final double x = leftPadding + (months.length == 1 ? chartWidth / 2 : i * stepX);
+        final double x =
+            leftPadding + (months.length == 1 ? chartWidth / 2 : i * stepX);
         final double y = topPadding + chartHeight * (1.0 - pct / 100.0);
         points.add(Offset(x, y));
       }
@@ -6491,7 +7056,8 @@ class _MultiLineDivisiChartPainter extends CustomPainter {
         final p2 = points[i + 1];
         final controlPoint1 = Offset(p1.dx + (p2.dx - p1.dx) / 2, p1.dy);
         final controlPoint2 = Offset(p1.dx + (p2.dx - p1.dx) / 2, p2.dy);
-        path.cubicTo(controlPoint1.dx, controlPoint1.dy, controlPoint2.dx, controlPoint2.dy, p2.dx, p2.dy);
+        path.cubicTo(controlPoint1.dx, controlPoint1.dy, controlPoint2.dx,
+            controlPoint2.dy, p2.dx, p2.dy);
       }
 
       final Paint linePaint = Paint()
@@ -6509,12 +7075,15 @@ class _MultiLineDivisiChartPainter extends CustomPainter {
         final bool isActiveMonth = activeMonthIndex == i;
 
         if (isActiveMonth && isHighlighted) {
-          final Paint activeGlow = Paint()..color = divColor.withValues(alpha: 0.35);
+          final Paint activeGlow = Paint()
+            ..color = divColor.withValues(alpha: 0.35);
           canvas.drawCircle(pt, 7.0, activeGlow);
         }
 
-        final Paint dotPaint = Paint()..color = divColor.withValues(alpha: opacity);
-        canvas.drawCircle(pt, isHighlighted ? (isActiveMonth ? 4.5 : 3.8) : 2.5, dotPaint);
+        final Paint dotPaint = Paint()
+          ..color = divColor.withValues(alpha: opacity);
+        canvas.drawCircle(
+            pt, isHighlighted ? (isActiveMonth ? 4.5 : 3.8) : 2.5, dotPaint);
 
         if (isHighlighted) {
           final Paint whiteDot = Paint()..color = AppColors.white;
@@ -6535,15 +7104,18 @@ class _MultiLineDivisiChartPainter extends CustomPainter {
           );
           textPainter.layout();
           // Offset above the dot
-          final double textY = (pt.dy - (isActiveMonth ? 14 : 12)).clamp(topPadding - 4, size.height);
-          textPainter.paint(canvas, Offset(pt.dx - textPainter.width / 2, textY));
+          final double textY = (pt.dy - (isActiveMonth ? 14 : 12))
+              .clamp(topPadding - 4, size.height);
+          textPainter.paint(
+              canvas, Offset(pt.dx - textPainter.width / 2, textY));
         }
       }
     });
 
     // 3. Draw X Axis month labels
     for (int i = 0; i < months.length; i++) {
-      final double x = leftPadding + (months.length == 1 ? chartWidth / 2 : i * stepX);
+      final double x =
+          leftPadding + (months.length == 1 ? chartWidth / 2 : i * stepX);
       final bool isActive = activeMonthIndex == i;
 
       textPainter.text = TextSpan(
@@ -6555,12 +7127,14 @@ class _MultiLineDivisiChartPainter extends CustomPainter {
         ),
       );
       textPainter.layout();
-      textPainter.paint(canvas, Offset(x - textPainter.width / 2, topPadding + chartHeight + 6));
+      textPainter.paint(canvas,
+          Offset(x - textPainter.width / 2, topPadding + chartHeight + 6));
     }
   }
 
   @override
-  bool shouldRepaint(covariant _MultiLineDivisiChartPainter oldDelegate) => true;
+  bool shouldRepaint(covariant _MultiLineDivisiChartPainter oldDelegate) =>
+      true;
 }
 
 class _DivisiBarChartPainter extends CustomPainter {
@@ -6604,17 +7178,22 @@ class _DivisiBarChartPainter extends CustomPainter {
       ..color = AppColors.border
       ..strokeWidth = 1.0;
 
-    final TextPainter textPainter = TextPainter(textDirection: TextDirection.ltr);
+    final TextPainter textPainter =
+        TextPainter(textDirection: TextDirection.ltr);
 
     // Draw horizontal grid lines (0, maxVal / 2, maxVal)
     final gridSteps = [0, maxVal ~/ 2, maxVal];
     for (final step in gridSteps) {
       final double y = topPadding + chartHeight * (1.0 - step / maxVal);
-      canvas.drawLine(Offset(leftPadding, y), Offset(size.width - rightPadding, y), gridPaint);
+      canvas.drawLine(Offset(leftPadding, y),
+          Offset(size.width - rightPadding, y), gridPaint);
 
       textPainter.text = TextSpan(
         text: '$step',
-        style: const TextStyle(fontSize: 10, color: AppColors.textSecondary, fontWeight: FontWeight.w600),
+        style: const TextStyle(
+            fontSize: 10,
+            color: AppColors.textSecondary,
+            fontWeight: FontWeight.w600),
       );
       textPainter.layout();
       textPainter.paint(canvas, Offset(8, y - textPainter.height / 2));
@@ -6639,7 +7218,8 @@ class _DivisiBarChartPainter extends CustomPainter {
           ..color = AppColors.primary.withValues(alpha: 0.1)
           ..style = PaintingStyle.fill;
         final RRect activeBgRRect = RRect.fromRectAndRadius(
-          Rect.fromLTWH(centerX - groupWidth * 0.42, topPadding - 4, groupWidth * 0.84, chartHeight + 8),
+          Rect.fromLTWH(centerX - groupWidth * 0.42, topPadding - 4,
+              groupWidth * 0.84, chartHeight + 8),
           const Radius.circular(8),
         );
         canvas.drawRRect(activeBgRRect, activeBgPaint);
@@ -6653,7 +7233,10 @@ class _DivisiBarChartPainter extends CustomPainter {
         Rect.fromLTWH(rect1Left, rect1Top, barWidth, height1),
         const Radius.circular(4),
       );
-      canvas.drawRRect(rrect1, Paint()..color = isActive ? AppColors.textSecondary : AppColors.border);
+      canvas.drawRRect(
+          rrect1,
+          Paint()
+            ..color = isActive ? AppColors.textSecondary : AppColors.border);
 
       // Value label 1 (Total)
       textPainter.text = TextSpan(
@@ -6665,7 +7248,10 @@ class _DivisiBarChartPainter extends CustomPainter {
         ),
       );
       textPainter.layout();
-      textPainter.paint(canvas, Offset(rect1Left + barWidth / 2 - textPainter.width / 2, rect1Top - 12));
+      textPainter.paint(
+          canvas,
+          Offset(
+              rect1Left + barWidth / 2 - textPainter.width / 2, rect1Top - 12));
 
       // Bar 2: Current (Division Color)
       final double height2 = chartHeight * (currentVal / maxVal);
@@ -6687,10 +7273,14 @@ class _DivisiBarChartPainter extends CustomPainter {
         ),
       );
       textPainter.layout();
-      textPainter.paint(canvas, Offset(rect2Left + barWidth / 2 - textPainter.width / 2, rect2Top - 12));
+      textPainter.paint(
+          canvas,
+          Offset(
+              rect2Left + barWidth / 2 - textPainter.width / 2, rect2Top - 12));
 
       // X Axis Label
-      final labelText = divisi.length > 8 ? '${divisi.substring(0, 7)}..' : divisi;
+      final labelText =
+          divisi.length > 8 ? '${divisi.substring(0, 7)}..' : divisi;
       textPainter.text = TextSpan(
         text: labelText,
         style: TextStyle(
@@ -6700,15 +7290,13 @@ class _DivisiBarChartPainter extends CustomPainter {
         ),
       );
       textPainter.layout();
-      textPainter.paint(canvas, Offset(centerX - textPainter.width / 2, topPadding + chartHeight + 6));
+      textPainter.paint(
+          canvas,
+          Offset(
+              centerX - textPainter.width / 2, topPadding + chartHeight + 6));
     }
   }
 
   @override
   bool shouldRepaint(covariant _DivisiBarChartPainter oldDelegate) => true;
 }
-
-
-
-
-

@@ -21,6 +21,13 @@ class VoucherProvider with ChangeNotifier {
   bool _isLoadingPending = false;
   bool get isLoadingPending => _isLoadingPending;
 
+  List<VoucherModel> _approvedVouchers = [];
+  List<VoucherModel> get approvedVouchers => _approvedVouchers;
+  int get approvedCount => _approvedVouchers.length;
+
+  bool _isLoadingApproved = false;
+  bool get isLoadingApproved => _isLoadingApproved;
+
   List<SpbuModel> _spbuList = [];
   List<SpbuModel> get spbuList => _spbuList;
 
@@ -59,6 +66,28 @@ class VoucherProvider with ChangeNotifier {
       _pendingVouchers = [];
     } finally {
       _isLoadingPending = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> fetchApprovedVouchers() async {
+    _isLoadingApproved = true;
+    notifyListeners();
+
+    try {
+      final res = await ApiClient.get(ApiConfig.voucher, query: {'status': 'Disetujui', 'limit': 100});
+      if (res['success'] == true) {
+        final data = res['data'];
+        final List items = data is Map ? (data['items'] ?? []) : (data is List ? data : []);
+        _approvedVouchers = items.map((e) => VoucherModel.fromJson(e)).toList();
+      } else {
+        _approvedVouchers = [];
+      }
+    } catch (e) {
+      debugPrint('[VoucherProvider] Error fetchApprovedVouchers: $e');
+      _approvedVouchers = [];
+    } finally {
+      _isLoadingApproved = false;
       notifyListeners();
     }
   }
@@ -167,6 +196,7 @@ class VoucherProvider with ChangeNotifier {
         await Future.wait([
           fetchVouchers(),
           fetchPendingVouchers(),
+          fetchApprovedVouchers(),
         ]);
         return true;
       } else {
@@ -206,6 +236,7 @@ class VoucherProvider with ChangeNotifier {
         await Future.wait([
           fetchVouchers(),
           fetchPendingVouchers(),
+          fetchApprovedVouchers(),
         ]);
         return true;
       } else {
@@ -232,6 +263,7 @@ class VoucherProvider with ChangeNotifier {
         await Future.wait([
           fetchVouchers(),
           fetchPendingVouchers(),
+          fetchApprovedVouchers(),
         ]);
         return true;
       } else {

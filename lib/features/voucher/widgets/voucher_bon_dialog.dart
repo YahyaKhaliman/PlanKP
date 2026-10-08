@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/date_formatter.dart';
 import '../../../core/widgets/app_notifier.dart';
 import '../models/voucher_model.dart';
 import '../providers/voucher_provider.dart';
@@ -19,8 +20,12 @@ class VoucherBonDialog extends StatefulWidget {
     required this.isAdmin,
   });
 
-  static Future<void> show(BuildContext context, {required VoucherModel voucher, required bool isAdmin}) {
-    return showDialog(
+  static Future<String?> show(
+    BuildContext context, {
+    required VoucherModel voucher,
+    required bool isAdmin,
+  }) {
+    return showDialog<String>(
       context: context,
       barrierDismissible: true,
       builder: (_) => VoucherBonDialog(voucher: voucher, isAdmin: isAdmin),
@@ -43,7 +48,8 @@ class _VoucherBonDialogState extends State<VoucherBonDialog> {
   void initState() {
     super.initState();
     _noBonCtrl = TextEditingController(text: widget.voucher.voucherNoBon ?? '');
-    _literCtrl = TextEditingController(text: widget.voucher.voucherJumlahLiter.toStringAsFixed(1));
+    _literCtrl = TextEditingController(
+        text: widget.voucher.voucherJumlahLiter.toStringAsFixed(1));
     _selectedSpbuId = widget.voucher.voucherSpbuId;
     _selectedBbm = widget.voucher.voucherJenisBbm;
   }
@@ -56,11 +62,7 @@ class _VoucherBonDialogState extends State<VoucherBonDialog> {
   }
 
   String _formatTanggal(DateTime dt) {
-    const bulan = [
-      'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-      'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
-    ];
-    return '${dt.day} ${bulan[dt.month - 1]} ${dt.year}';
+    return '${dt.day} ${DateFormatter.monthNames[dt.month - 1]} ${dt.year}';
   }
 
   Future<void> _handleApprove() async {
@@ -92,10 +94,14 @@ class _VoucherBonDialogState extends State<VoucherBonDialog> {
     setState(() => _isSubmitting = false);
 
     if (success) {
-      AppNotifier.showSuccess(context, 'Voucher berhasil disetujui & nomor bon tercatat');
-      Navigator.of(context).pop();
+      if (mounted) {
+        Navigator.of(context).pop('approved');
+      }
     } else {
-      AppNotifier.showError(context, p.errorMessage ?? 'Gagal menyetujui voucher');
+      if (mounted) {
+        AppNotifier.showError(
+            context, p.errorMessage ?? 'Gagal menyetujui voucher');
+      }
     }
   }
 
@@ -104,7 +110,8 @@ class _VoucherBonDialogState extends State<VoucherBonDialog> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Konfirmasi Penolakan'),
-        content: const Text('Apakah Anda yakin ingin menolak permintaan voucher ini?'),
+        content: const Text(
+            'Apakah Anda yakin ingin menolak permintaan voucher ini?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
@@ -113,7 +120,8 @@ class _VoucherBonDialogState extends State<VoucherBonDialog> {
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.danger),
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Tolak Permintaan', style: TextStyle(color: Colors.white)),
+            child: const Text('Tolak Permintaan',
+                style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -127,10 +135,14 @@ class _VoucherBonDialogState extends State<VoucherBonDialog> {
     setState(() => _isSubmitting = false);
 
     if (success) {
-      AppNotifier.showSuccess(context, 'Voucher telah ditolak');
-      Navigator.of(context).pop();
+      if (mounted) {
+        Navigator.of(context).pop('rejected');
+      }
     } else {
-      AppNotifier.showError(context, p.errorMessage ?? 'Gagal menolak voucher');
+      if (mounted) {
+        AppNotifier.showError(
+            context, p.errorMessage ?? 'Gagal menolak voucher');
+      }
     }
   }
 
@@ -141,350 +153,435 @@ class _VoucherBonDialogState extends State<VoucherBonDialog> {
 
     return Dialog(
       backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
       child: Center(
         child: SingleChildScrollView(
           child: Container(
-            constraints: const BoxConstraints(maxWidth: 460),
+            constraints: const BoxConstraints(maxWidth: 440),
             decoration: BoxDecoration(
               color: AppColors.cardSurface,
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(18),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.18),
-                  blurRadius: 28,
-                  offset: const Offset(0, 10),
+                  color: Colors.black.withValues(alpha: 0.14),
+                  blurRadius: 24,
+                  offset: const Offset(0, 8),
                 ),
               ],
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // 1. Status Bar Header Dialog
+                // ── 1. Header Status Bar ──
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                   decoration: BoxDecoration(
                     color: _getStatusBgColor(widget.voucher.voucherStatus),
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                    borderRadius:
+                        const BorderRadius.vertical(top: Radius.circular(18)),
                   ),
                   child: Row(
                     children: [
                       Icon(
                         _getStatusIcon(widget.voucher.voucherStatus),
-                        size: 18,
-                        color: _getStatusTextColor(widget.voucher.voucherStatus),
+                        size: 16,
+                        color:
+                            _getStatusTextColor(widget.voucher.voucherStatus),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 6),
                       Text(
                         'Status: ${widget.voucher.voucherStatus.toUpperCase()}',
                         style: GoogleFonts.plusJakartaSans(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: _getStatusTextColor(widget.voucher.voucherStatus),
-                          letterSpacing: 0.4,
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w800,
+                          color:
+                              _getStatusTextColor(widget.voucher.voucherStatus),
+                          letterSpacing: 0.3,
                         ),
                       ),
                       const Spacer(),
                       IconButton(
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints(),
-                        icon: const Icon(Icons.close_rounded, size: 20, color: Color(0xFF475569)),
+                        icon: const Icon(Icons.close_rounded,
+                            size: 19, color: AppColors.textSecondary),
                         onPressed: () => Navigator.of(context).pop(),
                       ),
                     ],
                   ),
                 ),
 
-                // 2. Kontainer Bon Fisik Kencana Print (Paper Style)
+                // ── 2. Kontainer Bon Fisik Kencana Print (Paper Style) ──
                 Padding(
-                  padding: const EdgeInsets.all(18),
+                  padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 22),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 14),
                     decoration: BoxDecoration(
                       color: const Color(0xFFFBFDFF),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: const Color(0xFF0F172A), width: 1.5),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: AppColors.border,
+                        width: 1.2,
+                      ),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        // Header Kencana Print
+                        // Kop Surat Kencana Print
                         const Center(
                           child: Text(
                             'KENCANA PRINT',
                             style: TextStyle(
                               fontFamily: 'Courier',
-                              fontSize: 19,
+                              fontSize: 17,
                               fontWeight: FontWeight.w900,
                               color: Color(0xFF0F172A),
-                              letterSpacing: 2.2,
+                              letterSpacing: 2.0,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        // Double Border Divider
+                        Container(
+                          height: 2.5,
+                          decoration: const BoxDecoration(
+                            border: Border(
+                              top: BorderSide(
+                                  color: Color(0xFF0F172A), width: 1.2),
+                              bottom: BorderSide(
+                                  color: Color(0xFF0F172A), width: 0.6),
                             ),
                           ),
                         ),
                         const SizedBox(height: 6),
-                        Container(
-                          height: 3,
-                          decoration: const BoxDecoration(
-                            border: Border(
-                              top: BorderSide(color: Color(0xFF0F172A), width: 1.5),
-                              bottom: BorderSide(color: Color(0xFF0F172A), width: 0.8),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 10),
                         const Center(
                           child: Text(
                             'PERMINTAAN BBM',
                             style: TextStyle(
-                              fontSize: 15,
+                              fontSize: 11.5,
                               fontWeight: FontWeight.w800,
-                              color: Color(0xFF0F172A),
-                              letterSpacing: 1.2,
+                              color: AppColors.textSecondary,
+                              letterSpacing: 0.8,
                             ),
                           ),
-                        ),
-                        const SizedBox(height: 14),
-
-                        // Baris No. Pmt / Bon
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            const SizedBox(
-                              width: 85,
-                              child: Text(
-                                'No. Pmt',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 13.5,
-                                  color: Color(0xFF1E293B),
-                                ),
-                              ),
-                            ),
-                            const Text(':  ', style: TextStyle(fontWeight: FontWeight.w700)),
-                            Expanded(
-                              child: canAdminAction
-                                  ? TextField(
-                                      controller: _noBonCtrl,
-                                      autofocus: true,
-                                      decoration: InputDecoration(
-                                        hintText: 'Isi Nomer Bon',
-                                        hintStyle: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
-                                        isDense: true,
-                                        contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                                        filled: true,
-                                        fillColor: const Color(0xFFFEF3C7),
-                                        border: OutlineInputBorder(
-                                          borderRadius: BorderRadius.circular(4),
-                                          borderSide: const BorderSide(color: Color(0xFFF59E0B)),
-                                        ),
-                                      ),
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.w900,
-                                        color: Color(0xFFB45309),
-                                        fontSize: 14,
-                                      ),
-                                    )
-                                  : Text(
-                                      widget.voucher.voucherNoBon != null && widget.voucher.voucherNoBon!.isNotEmpty
-                                          ? widget.voucher.voucherNoBon!
-                                          : '(Belum ada nomor bon)',
-                                      style: TextStyle(
-                                        fontFamily: 'Courier',
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w900,
-                                        color: widget.voucher.voucherNoBon != null
-                                            ? const Color(0xFF1E3A8A)
-                                            : const Color(0xFF94A3B8),
-                                      ),
-                                    ),
-                            ),
-                          ],
                         ),
                         const SizedBox(height: 10),
 
-                        // Kepada: SPBU
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            const SizedBox(
-                              width: 85,
-                              child: Text(
-                                'Kepada',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 13.5,
-                                  color: Color(0xFF1E293B),
-                                ),
-                              ),
-                            ),
-                            const Text(':  ', style: TextStyle(fontWeight: FontWeight.w700)),
-                            Expanded(
-                              child: _isEditing && canAdminAction
-                                  ? Consumer<VoucherProvider>(
-                                      builder: (_, p, __) => DropdownButtonFormField<int>(
-                                        value: _selectedSpbuId,
-                                        isDense: true,
-                                        isExpanded: true,
-                                        decoration: const InputDecoration(
-                                          isDense: true,
-                                          contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                                          border: OutlineInputBorder(),
-                                        ),
-                                        items: p.spbuList.map((s) {
-                                          return DropdownMenuItem<int>(
-                                            value: s.spbuId,
-                                            child: Text(s.spbuNama, style: const TextStyle(fontSize: 13)),
-                                          );
-                                        }).toList(),
-                                        onChanged: (val) {
-                                          if (val != null) setState(() => _selectedSpbuId = val);
-                                        },
-                                      ),
-                                    )
-                                  : Text(
-                                      _getSpbuDisplayName(),
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.w800,
-                                        fontSize: 13.5,
-                                        color: Color(0xFF0F172A),
-                                      ),
+                        // Baris No. Pmt / No. Bon
+                        _buildRowContainer(
+                          label: 'No. Pmt',
+                          child: canAdminAction
+                              ? TextField(
+                                  controller: _noBonCtrl,
+                                  autofocus: true,
+                                  decoration: InputDecoration(
+                                    hintText: 'Isi Nomor Bon...',
+                                    hintStyle: const TextStyle(
+                                        fontSize: 11.5,
+                                        color: Color(0xFF94A3B8)),
+                                    isDense: true,
+                                    contentPadding: const EdgeInsets.symmetric(
+                                        horizontal: 8, vertical: 6),
+                                    filled: true,
+                                    fillColor: const Color(0xFFFEF3C7),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(6),
+                                      borderSide: const BorderSide(
+                                          color: Color(0xFFF59E0B)),
                                     ),
-                            ),
-                          ],
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(6),
+                                      borderSide: const BorderSide(
+                                          color: Color(0xFFF59E0B)),
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(6),
+                                      borderSide: const BorderSide(
+                                          color: Color(0xFFD97706), width: 1.5),
+                                    ),
+                                  ),
+                                  style: const TextStyle(
+                                    fontFamily: 'Courier',
+                                    fontWeight: FontWeight.w900,
+                                    color: Color(0xFFB45309),
+                                    fontSize: 13.5,
+                                  ),
+                                )
+                              : Text(
+                                  widget.voucher.voucherNoBon != null &&
+                                          widget
+                                              .voucher.voucherNoBon!.isNotEmpty
+                                      ? widget.voucher.voucherNoBon!
+                                      : '(Belum ada nomor bon)',
+                                  style: TextStyle(
+                                    fontFamily: 'Courier',
+                                    fontSize: 13.5,
+                                    fontWeight: FontWeight.w900,
+                                    color: widget.voucher.voucherNoBon != null
+                                        ? const Color(0xFF1E3A8A)
+                                        : AppColors.textMuted,
+                                  ),
+                                ),
                         ),
-                        const SizedBox(height: 14),
+                        const SizedBox(height: 6),
+
+                        // Kepada: SPBU
+                        _buildRowContainer(
+                          label: 'Kepada',
+                          child: _isEditing && canAdminAction
+                              ? Consumer<VoucherProvider>(
+                                  builder: (_, p, __) =>
+                                      DropdownButtonFormField<int>(
+                                    value: _selectedSpbuId,
+                                    isDense: true,
+                                    isExpanded: true,
+                                    decoration: const InputDecoration(
+                                      isDense: true,
+                                      contentPadding: EdgeInsets.symmetric(
+                                          horizontal: 8, vertical: 5),
+                                      border: OutlineInputBorder(),
+                                    ),
+                                    items: p.spbuList.map((s) {
+                                      return DropdownMenuItem<int>(
+                                        value: s.spbuId,
+                                        child: Text(s.spbuNama,
+                                            style:
+                                                const TextStyle(fontSize: 12)),
+                                      );
+                                    }).toList(),
+                                    onChanged: (val) {
+                                      if (val != null) {
+                                        setState(() => _selectedSpbuId = val);
+                                      }
+                                    },
+                                  ),
+                                )
+                              : Text(
+                                  _getSpbuDisplayName(),
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 12.5,
+                                    color: AppColors.textPrimary,
+                                  ),
+                                ),
+                        ),
+                        const SizedBox(height: 8),
 
                         // Keterangan Surat
                         const Text(
-                          'Mohon dapat diberikan BBM kepada pembawa surat ini :',
+                          'Mohon dapat diberikan BBM kepada pembawa surat ini:',
                           style: TextStyle(
-                            fontSize: 12.5,
+                            fontSize: 11,
                             fontStyle: FontStyle.italic,
-                            color: Color(0xFF334155),
+                            color: AppColors.textSecondary,
                           ),
                         ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 6),
 
-                        // Pembawa Surat / Pemohon
-                        _buildPaperRow('Pembawa', widget.voucher.namaPemohon),
-                        const SizedBox(height: 8),
+                        // Pembawa (Driver)
+                        _buildRowContainer(
+                          label: 'Pembawa',
+                          child: Row(
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  widget.voucher.namaPemohon,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 12.5,
+                                    color: AppColors.textPrimary,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              if (widget.voucher.pemohon?['user_divisi'] !=
+                                  null) ...[
+                                const SizedBox(width: 5),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 5, vertical: 1),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primarySoft,
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(
+                                    widget.voucher.pemohon!['user_divisi']
+                                        .toString(),
+                                    style: const TextStyle(
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.primary,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 6),
 
-                        // No. Pol
-                        _buildPaperRow('No. Pol', widget.voucher.noPolisi),
-                        const SizedBox(height: 8),
+                        // No. Pol / Kendaraan
+                        _buildRowContainer(
+                          label: 'Kendaraan',
+                          child: Row(
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  widget.voucher.namaInventaris,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 12,
+                                    color: AppColors.textPrimary,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 5, vertical: 1),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFEA580C)
+                                      .withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  widget.voucher.noPolisi,
+                                  style: const TextStyle(
+                                    fontSize: 10.5,
+                                    fontWeight: FontWeight.w800,
+                                    color: Color(0xFFEA580C),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 6),
 
                         // Odometer
-                        _buildPaperRow(
-                          'Odometer',
-                          widget.voucher.voucherOdometer != null
-                              ? '${widget.voucher.voucherOdometer} KM'
-                              : '-',
-                        ),
-                        const SizedBox(height: 8),
-
-                        // Berupa (Jenis BBM)
-                        Row(
-                          children: [
-                            const SizedBox(
-                              width: 85,
-                              child: Text(
-                                'Berupa',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 13,
-                                  color: Color(0xFF334155),
-                                ),
-                              ),
+                        _buildRowContainer(
+                          label: 'Odometer',
+                          child: Text(
+                            widget.voucher.voucherOdometer != null
+                                ? '${widget.voucher.voucherOdometer} KM'
+                                : '-',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 12,
+                              color: AppColors.textPrimary,
                             ),
-                            const Text(':  ', style: TextStyle(fontWeight: FontWeight.w600)),
-                            Expanded(
-                              child: _isEditing && canAdminAction
-                                  ? Consumer<VoucherProvider>(
-                                      builder: (_, p, __) => DropdownButtonFormField<String>(
-                                        value: _selectedBbm,
-                                        isDense: true,
-                                        decoration: const InputDecoration(
-                                          isDense: true,
-                                          contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                                          border: OutlineInputBorder(),
-                                        ),
-                                        items: p.bbmTypes.map((t) {
-                                          return DropdownMenuItem<String>(
-                                            value: t,
-                                            child: Text(t, style: const TextStyle(fontSize: 13)),
-                                          );
-                                        }).toList(),
-                                        onChanged: (val) {
-                                          if (val != null) setState(() => _selectedBbm = val);
-                                        },
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+
+                        // Jenis BBM
+                        _buildRowContainer(
+                          label: 'Jenis',
+                          child: _isEditing && canAdminAction
+                              ? Consumer<VoucherProvider>(
+                                  builder: (_, p, __) =>
+                                      DropdownButtonFormField<String>(
+                                    value: _selectedBbm,
+                                    isDense: true,
+                                    decoration: const InputDecoration(
+                                      isDense: true,
+                                      contentPadding: EdgeInsets.symmetric(
+                                          horizontal: 8, vertical: 5),
+                                      border: OutlineInputBorder(),
+                                    ),
+                                    items: p.bbmTypes.map((t) {
+                                      return DropdownMenuItem<String>(
+                                        value: t,
+                                        child: Text(t,
+                                            style:
+                                                const TextStyle(fontSize: 12)),
+                                      );
+                                    }).toList(),
+                                    onChanged: (val) {
+                                      if (val != null) {
+                                        setState(() => _selectedBbm = val);
+                                      }
+                                    },
+                                  ),
+                                )
+                              : Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 6, vertical: 1.5),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.surfaceAlt,
+                                        borderRadius: BorderRadius.circular(4),
+                                        border:
+                                            Border.all(color: AppColors.border),
                                       ),
-                                    )
-                                  : Text(
-                                      _selectedBbm ?? widget.voucher.voucherJenisBbm,
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.w800,
-                                        fontSize: 13.5,
-                                        color: Color(0xFF0F172A),
+                                      child: Text(
+                                        _selectedBbm ??
+                                            widget.voucher.voucherJenisBbm,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 11,
+                                          color: AppColors.textPrimary,
+                                        ),
                                       ),
                                     ),
-                            ),
-                          ],
+                                  ],
+                                ),
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 6),
 
                         // Jumlah Liter
-                        Row(
-                          children: [
-                            const SizedBox(
-                              width: 85,
-                              child: Text(
-                                'Jumlah',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 13,
-                                  color: Color(0xFF334155),
-                                ),
-                              ),
-                            ),
-                            const Text(':  ', style: TextStyle(fontWeight: FontWeight.w600)),
-                            Expanded(
-                              child: _isEditing && canAdminAction
-                                  ? Row(
-                                      children: [
-                                        SizedBox(
-                                          width: 90,
-                                          child: TextField(
-                                            controller: _literCtrl,
-                                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                            inputFormatters: [
-                                              FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
-                                            ],
-                                            decoration: const InputDecoration(
-                                              isDense: true,
-                                              contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                                              border: OutlineInputBorder(),
-                                            ),
-                                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
-                                          ),
+                        _buildRowContainer(
+                          label: 'Jumlah',
+                          child: _isEditing && canAdminAction
+                              ? Row(
+                                  children: [
+                                    SizedBox(
+                                      width: 80,
+                                      child: TextField(
+                                        controller: _literCtrl,
+                                        keyboardType: const TextInputType
+                                            .numberWithOptions(decimal: true),
+                                        inputFormatters: [
+                                          FilteringTextInputFormatter.allow(
+                                              RegExp(r'^\d*\.?\d*')),
+                                        ],
+                                        decoration: const InputDecoration(
+                                          isDense: true,
+                                          contentPadding: EdgeInsets.symmetric(
+                                              horizontal: 8, vertical: 5),
+                                          border: OutlineInputBorder(),
                                         ),
-                                        const SizedBox(width: 8),
-                                        const Text('Liter', style: TextStyle(fontWeight: FontWeight.w700)),
-                                      ],
-                                    )
-                                  : Text(
-                                      _getLiterDisplayName(),
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.w900,
-                                        fontSize: 14,
-                                        color: Color(0xFF1E3A8A),
+                                        style: const TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w700),
                                       ),
                                     ),
-                            ),
-                          ],
+                                    const SizedBox(width: 6),
+                                    const Text('Liter',
+                                        style: TextStyle(
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 12)),
+                                  ],
+                                )
+                              : Text(
+                                  _getLiterDisplayName(),
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: 13.5,
+                                    color: Color(0xFF1E3A8A),
+                                  ),
+                                ),
                         ),
-                        const SizedBox(height: 22),
+                        const SizedBox(height: 14),
 
-                        // Bagian Tanda Tangan Kanan Bawah
+                        // Tanda Tangan Kanan Bawah
                         Align(
                           alignment: Alignment.centerRight,
                           child: Column(
@@ -492,61 +589,90 @@ class _VoucherBonDialogState extends State<VoucherBonDialog> {
                             children: [
                               Text(
                                 'Surakarta, ${_formatTanggal(widget.voucher.voucherCreatedAt)}',
-                                style: const TextStyle(fontSize: 12, color: Color(0xFF334155)),
+                                style: const TextStyle(
+                                    fontSize: 11,
+                                    color: AppColors.textSecondary),
                               ),
-                              const SizedBox(height: 4),
+                              const SizedBox(height: 2),
                               const Text(
                                 'Mengetahui,',
-                                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                                style: TextStyle(
+                                    fontSize: 11, fontWeight: FontWeight.w600),
                               ),
                               const Text(
                                 'KENCANA PRINT',
                                 style: TextStyle(
-                                  fontSize: 12.5,
+                                  fontSize: 11.5,
                                   fontWeight: FontWeight.w800,
-                                  letterSpacing: 0.8,
+                                  letterSpacing: 0.6,
                                 ),
                               ),
-                              const SizedBox(height: 28),
+                              const SizedBox(height: 20),
                               Text(
                                 widget.voucher.approver != null
                                     ? '( ${widget.voucher.approver!['user_nama']} )'
                                     : '( ................................... )',
                                 style: const TextStyle(
-                                  fontSize: 12,
+                                  fontSize: 11,
                                   fontWeight: FontWeight.w600,
-                                  color: Color(0xFF1E293B),
+                                  color: AppColors.textPrimary,
                                 ),
                               ),
                             ],
                           ),
                         ),
 
-                        // Tombol toggle edit untuk admin jika perlu menyesuaikan SPBU / Liter
+                        // Tombol Toggle Sesuaikan Data (Khusus Admin Pending)
                         if (canAdminAction) ...[
-                          const SizedBox(height: 12),
+                          const SizedBox(height: 8),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.end,
                             children: [
-                              TextButton.icon(
-                                onPressed: () {
+                              InkWell(
+                                onTap: () {
                                   if (_isEditing) {
-                                    final num = double.tryParse(_literCtrl.text.trim());
+                                    final num =
+                                        double.tryParse(_literCtrl.text.trim());
                                     if (num == null || num <= 0) {
-                                      AppNotifier.showError(context, 'Jumlah liter tidak valid');
+                                      AppNotifier.showError(
+                                          context, 'Jumlah liter tidak valid');
                                       return;
                                     }
                                     if (num > 100) {
-                                      AppNotifier.showError(context, 'Jumlah liter maksimal 100 liter');
+                                      AppNotifier.showError(context,
+                                          'Jumlah liter maksimal 100 liter');
                                       return;
                                     }
                                   }
                                   setState(() => _isEditing = !_isEditing);
                                 },
-                                icon: Icon(_isEditing ? Icons.check_circle_outline : Icons.edit_note_rounded, size: 16),
-                                label: Text(
-                                  _isEditing ? 'Selesai Sesuaikan' : 'Sesuaikan',
-                                  style: const TextStyle(fontSize: 12),
+                                borderRadius: BorderRadius.circular(6),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 6, vertical: 3),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        _isEditing
+                                            ? Icons.check_circle_outline_rounded
+                                            : Icons.edit_note_rounded,
+                                        size: 14,
+                                        color: AppColors.primary,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        _isEditing
+                                            ? 'Selesai Sesuaikan'
+                                            : 'Sesuaikan Data',
+                                        style: const TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w700,
+                                          color: AppColors.primary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ],
@@ -557,9 +683,9 @@ class _VoucherBonDialogState extends State<VoucherBonDialog> {
                   ),
                 ),
 
-                // 3. Tombol Aksi Bawah
-                Container(
-                  padding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
+                // ── 3. Tombol Aksi Bawah ──
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 2, 14, 14),
                   child: canAdminAction
                       ? Row(
                           children: [
@@ -568,37 +694,53 @@ class _VoucherBonDialogState extends State<VoucherBonDialog> {
                                 onPressed: _isSubmitting ? null : _handleReject,
                                 style: OutlinedButton.styleFrom(
                                   foregroundColor: AppColors.danger,
-                                  side: const BorderSide(color: AppColors.danger),
-                                  padding: const EdgeInsets.symmetric(vertical: 12),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                  side:
+                                      const BorderSide(color: AppColors.danger),
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 10),
+                                  minimumSize: const Size(0, 38),
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8)),
                                 ),
-                                child: Text(
+                                child: const Text(
                                   'Tolak',
-                                  style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
+                                  style: TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 12.5),
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 12),
+                            const SizedBox(width: 10),
                             Expanded(
                               flex: 2,
                               child: ElevatedButton.icon(
-                                onPressed: _isSubmitting ? null : _handleApprove,
+                                onPressed:
+                                    _isSubmitting ? null : _handleApprove,
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: const Color(0xFF059669),
                                   foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(vertical: 12),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                  elevation: 0,
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 10),
+                                  minimumSize: const Size(0, 38),
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8)),
                                 ),
                                 icon: _isSubmitting
                                     ? const SizedBox(
-                                        width: 16,
-                                        height: 16,
-                                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                        width: 14,
+                                        height: 14,
+                                        child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            color: Colors.white),
                                       )
-                                    : const Icon(Icons.check_circle_rounded, size: 18),
-                                label: Text(
-                                  'Setujui (Simpan No. Bon)',
-                                  style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
+                                    : const Icon(Icons.check_circle_rounded,
+                                        size: 16),
+                                label: const Text(
+                                  'Setuju',
+                                  style: TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 12.5),
                                 ),
                               ),
                             ),
@@ -609,12 +751,15 @@ class _VoucherBonDialogState extends State<VoucherBonDialog> {
                           child: OutlinedButton(
                             onPressed: () => Navigator.of(context).pop(),
                             style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              padding: const EdgeInsets.symmetric(vertical: 10),
+                              minimumSize: const Size(0, 38),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8)),
                             ),
-                            child: Text(
+                            child: const Text(
                               'Tutup',
-                              style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
+                              style: TextStyle(
+                                  fontWeight: FontWeight.w700, fontSize: 12.5),
                             ),
                           ),
                         ),
@@ -638,37 +783,34 @@ class _VoucherBonDialogState extends State<VoucherBonDialog> {
   String _getSpbuDisplayName() {
     if (_selectedSpbuId != null) {
       final p = context.read<VoucherProvider>();
-      final found = p.spbuList.where((s) => s.spbuId == _selectedSpbuId).toList();
+      final found =
+          p.spbuList.where((s) => s.spbuId == _selectedSpbuId).toList();
       if (found.isNotEmpty) return found.first.spbuNama;
     }
     return widget.voucher.namaSpbu;
   }
 
-  Widget _buildPaperRow(String label, String value) {
+  Widget _buildRowContainer({required String label, required Widget child}) {
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         SizedBox(
-          width: 85,
+          width: 76,
           child: Text(
             label,
-            style: GoogleFonts.plusJakartaSans(
+            style: const TextStyle(
               fontWeight: FontWeight.w600,
-              fontSize: 13,
-              color: const Color(0xFF334155),
+              fontSize: 12,
+              color: AppColors.textSecondary,
             ),
           ),
         ),
-        const Text(':  ', style: TextStyle(fontWeight: FontWeight.w600)),
-        Expanded(
-          child: Text(
-            value,
-            style: GoogleFonts.plusJakartaSans(
-              fontWeight: FontWeight.w800,
-              fontSize: 13.5,
-              color: const Color(0xFF0F172A),
-            ),
-          ),
-        ),
+        const Text(':  ',
+            style: TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 12,
+                color: AppColors.textSecondary)),
+        Expanded(child: child),
       ],
     );
   }
@@ -677,11 +819,11 @@ class _VoucherBonDialogState extends State<VoucherBonDialog> {
     switch (status) {
       case 'Disetujui':
       case 'Selesai':
-        return const Color(0xFFDCFCE7);
+        return AppColors.successSoft;
       case 'Ditolak':
-        return const Color(0xFFFEE2E2);
+        return AppColors.dangerSoft;
       default:
-        return const Color(0xFFFEF3C7);
+        return AppColors.warningSoft;
     }
   }
 
@@ -689,11 +831,11 @@ class _VoucherBonDialogState extends State<VoucherBonDialog> {
     switch (status) {
       case 'Disetujui':
       case 'Selesai':
-        return const Color(0xFF166534);
+        return AppColors.success;
       case 'Ditolak':
-        return const Color(0xFF991B1B);
+        return AppColors.danger;
       default:
-        return const Color(0xFF92400E);
+        return AppColors.warning;
     }
   }
 
