@@ -13,6 +13,7 @@ import 'core/constants/app_constants.dart';
 import 'core/update/update_checker.dart';
 import 'core/update/update_downloader.dart';
 import 'core/update/update_service.dart';
+import 'core/utils/web_reload/web_reload.dart';
 import 'core/widgets/app_notifier.dart';
 import 'features/auth/providers/auth_provider.dart';
 import 'features/master/providers/master_provider.dart';
@@ -60,7 +61,8 @@ class PlanKPApp extends StatelessWidget {
               ),
           AppRoutes.jadwalDetail: (ctx) {
             final rawArgs = ModalRoute.of(ctx)!.settings.arguments;
-            final args = rawArgs is int ? rawArgs : int.tryParse('$rawArgs') ?? 0;
+            final args =
+                rawArgs is int ? rawArgs : int.tryParse('$rawArgs') ?? 0;
             return _ProtectedRoute(
               child: JadwalDetailScreen(jadwalId: args),
             );
@@ -176,10 +178,12 @@ class MainAppWrapper extends StatefulWidget {
   State<MainAppWrapper> createState() => _MainAppWrapperState();
 }
 
-class _MainAppWrapperState extends State<MainAppWrapper> with WidgetsBindingObserver {
+class _MainAppWrapperState extends State<MainAppWrapper>
+    with WidgetsBindingObserver {
   final UpdateService _updateService = UpdateService.instance;
   bool _isChecking = false;
   bool _dialogOpen = false;
+  bool _webBannerDismissed = false;
   Timer? _webUpdateTimer;
 
   @override
@@ -225,7 +229,8 @@ class _MainAppWrapperState extends State<MainAppWrapper> with WidgetsBindingObse
       if (kIsWeb) {
         final navContext = navigatorKey.currentContext;
         if (navContext != null && mounted) {
-          await _updateService.checkAndPromptWebUpdate(navContext, force: force);
+          await _updateService.checkAndPromptWebUpdate(navContext,
+              force: force);
         }
         return;
       }
@@ -264,7 +269,7 @@ class _MainAppWrapperState extends State<MainAppWrapper> with WidgetsBindingObse
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              'Pembaruan Tersedia!',
+              'Versi Baru Tersedia!',
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 20,
                 fontWeight: FontWeight.w800,
@@ -274,7 +279,7 @@ class _MainAppWrapperState extends State<MainAppWrapper> with WidgetsBindingObse
             ),
             const SizedBox(height: 8),
             Text(
-              'Versi terbaru ${manifest.version} siap diunduh.',
+              'Perbarui ke v${manifest.version} untuk mendapatkan versi terbaru.',
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 14,
                 color: AppColors.textSecondary,
@@ -366,8 +371,7 @@ class _MainAppWrapperState extends State<MainAppWrapper> with WidgetsBindingObse
   }
 
   // ─── Dialog 2: File APK Sudah Ada di Lokal ───
-  void _showLocalFileFoundDialog(
-      AppUpdateManifest manifest, String filePath) {
+  void _showLocalFileFoundDialog(AppUpdateManifest manifest, String filePath) {
     final context = navigatorKey.currentContext;
     if (context == null) return;
 
@@ -393,7 +397,7 @@ class _MainAppWrapperState extends State<MainAppWrapper> with WidgetsBindingObse
               ),
               const SizedBox(height: 16),
               Text(
-                'File Update Ditemukan!',
+                'APK Sudah Diunduh',
                 style: GoogleFonts.plusJakartaSans(
                     fontSize: 18,
                     fontWeight: FontWeight.w800,
@@ -402,7 +406,7 @@ class _MainAppWrapperState extends State<MainAppWrapper> with WidgetsBindingObse
               ),
               const SizedBox(height: 8),
               Text(
-                'File PlanKP-v${manifest.version}.apk sudah tersedia di penyimpanan Anda.',
+                'File PlanKP v${manifest.version} sudah ada di perangkat Anda, langsung install?',
                 style: GoogleFonts.plusJakartaSans(
                     fontSize: 13, color: AppColors.textSecondary),
                 textAlign: TextAlign.center,
@@ -431,8 +435,8 @@ class _MainAppWrapperState extends State<MainAppWrapper> with WidgetsBindingObse
                       ),
                       child: Text(
                         'Unduh Ulang',
-                        style:
-                            GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
+                        style: GoogleFonts.plusJakartaSans(
+                            fontWeight: FontWeight.w600),
                       ),
                     ),
                   ),
@@ -442,8 +446,7 @@ class _MainAppWrapperState extends State<MainAppWrapper> with WidgetsBindingObse
                       onPressed: () async {
                         Navigator.of(ctx).pop();
                         // Langsung coba install dari file lokal
-                        final result =
-                            await _updateService.downloadAndInstall(
+                        final result = await _updateService.downloadAndInstall(
                           manifest: manifest,
                         );
                         _handleInstallResult(result, manifest);
@@ -542,8 +545,8 @@ class _MainAppWrapperState extends State<MainAppWrapper> with WidgetsBindingObse
                       ),
                       child: Text(
                         'Batalkan',
-                        style:
-                            GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
+                        style: GoogleFonts.plusJakartaSans(
+                            fontWeight: FontWeight.w600),
                       ),
                     ),
                   ),
@@ -648,7 +651,8 @@ class _MainAppWrapperState extends State<MainAppWrapper> with WidgetsBindingObse
                 decoration: BoxDecoration(
                   color: AppColors.primarySoft,
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+                  border: Border.all(
+                      color: AppColors.primary.withValues(alpha: 0.2)),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -659,8 +663,7 @@ class _MainAppWrapperState extends State<MainAppWrapper> with WidgetsBindingObse
                     _buildStepRow('2',
                         'Buka aplikasi File Manager / File Saya di HP Anda.'),
                     const SizedBox(height: 6),
-                    _buildStepRow(
-                        '3', 'Masuk ke folder Downloads / Unduhan.'),
+                    _buildStepRow('3', 'Masuk ke folder Downloads / Unduhan.'),
                     const SizedBox(height: 6),
                     _buildStepRow('4',
                         'Cari dan klik file APK PlanKP untuk memasangnya.'),
@@ -709,8 +712,8 @@ class _MainAppWrapperState extends State<MainAppWrapper> with WidgetsBindingObse
                       icon: const Icon(Icons.copy, size: 16),
                       label: Text(
                         'Salin Link',
-                        style:
-                            GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
+                        style: GoogleFonts.plusJakartaSans(
+                            fontWeight: FontWeight.w600),
                       ),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppColors.textSecondary,
@@ -734,8 +737,8 @@ class _MainAppWrapperState extends State<MainAppWrapper> with WidgetsBindingObse
                       ),
                       child: Text(
                         'Tutup',
-                        style:
-                            GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
+                        style: GoogleFonts.plusJakartaSans(
+                            fontWeight: FontWeight.w700),
                       ),
                     ),
                   ),
@@ -764,9 +767,7 @@ class _MainAppWrapperState extends State<MainAppWrapper> with WidgetsBindingObse
           child: Text(
             num,
             style: GoogleFonts.plusJakartaSans(
-                color: Colors.white,
-                fontSize: 11,
-                fontWeight: FontWeight.w800),
+                color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800),
           ),
         ),
         Expanded(
@@ -780,9 +781,119 @@ class _MainAppWrapperState extends State<MainAppWrapper> with WidgetsBindingObse
     );
   }
 
+  Widget _buildTopWebUpdateBanner(AppUpdateCheckResult update) {
+    final newVer = update.manifest?.version;
+    final verText = (newVer != null && newVer.isNotEmpty) ? ' (v$newVer)' : '';
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+      decoration: const BoxDecoration(
+        color: Color(0xFF1E3A8A),
+        border: Border(
+          bottom: BorderSide(color: Color(0xFF3B82F6), width: 1.5),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Color(0x33000000),
+            blurRadius: 8,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        bottom: false,
+        top: false,
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(5),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.15),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.info_outline_rounded,
+                color: Colors.white,
+                size: 16,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Versi baru tersedia$verText. Simpan inputan Anda, lalu refresh halaman.',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                  height: 1.3,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(width: 10),
+            FilledButton.icon(
+              onPressed: () => reloadWebPage(),
+              style: FilledButton.styleFrom(
+                backgroundColor: Colors.white,
+                foregroundColor: const Color(0xFF1E3A8A),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                elevation: 0,
+                visualDensity: VisualDensity.compact,
+              ),
+              icon: const Icon(Icons.refresh_rounded, size: 15),
+              label: Text(
+                'Refresh Halaman',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            const SizedBox(width: 4),
+            IconButton(
+              icon: const Icon(Icons.close_rounded,
+                  color: Colors.white, size: 17),
+              tooltip: 'Tutup sementara',
+              visualDensity: VisualDensity.compact,
+              onPressed: () {
+                setState(() {
+                  _webBannerDismissed = true;
+                });
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return widget.child;
+    if (!kIsWeb) return widget.child;
+
+    return ValueListenableBuilder<AppUpdateCheckResult?>(
+      valueListenable: _updateService.webUpdateAvailable,
+      builder: (context, updateResult, _) {
+        final hasUpdate = updateResult != null && updateResult.hasUpdate;
+        final showBanner = hasUpdate && !_webBannerDismissed;
+
+        return Material(
+          color: Colors.transparent,
+          child: Column(
+            children: [
+              if (showBanner) _buildTopWebUpdateBanner(updateResult),
+              Expanded(child: widget.child),
+            ],
+          ),
+        );
+      },
+    );
   }
 }
 

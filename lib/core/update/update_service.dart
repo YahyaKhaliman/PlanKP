@@ -4,7 +4,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'update_checker.dart';
 import 'update_downloader.dart';
-import 'web_update_dialog.dart';
 
 /// Service terpusat untuk semua logika update.
 /// Singleton — satu instance dipakai di seluruh app.
@@ -19,13 +18,15 @@ class UpdateService {
   AppUpdateCheckResult? _cachedResult;
   DateTime? _lastCheckTime;
   DateTime? _lastWebCheckTime;
-  bool _isWebPromptShowing = false;
 
   /// Interval minimum antar pengecekan: 1 jam (APK) dan 2 menit (Web)
   static const _throttleDuration = Duration(hours: 1);
   static const _webThrottleDuration = Duration(minutes: 2);
 
   static const _skippedBuildKey = 'update_skipped_build_number';
+
+  final ValueNotifier<AppUpdateCheckResult?> webUpdateAvailable =
+      ValueNotifier<AppUpdateCheckResult?>(null);
 
   // ─── Getters ───
   UpdateDownloader get downloader => _downloader;
@@ -48,6 +49,9 @@ class UpdateService {
     try {
       final result = await _checker.checkWebUpdate();
       _cachedResult = result;
+      if (result.hasUpdate) {
+        webUpdateAvailable.value = result;
+      }
       return result;
     } catch (e) {
       debugPrint('[UpdateService Web] Error: $e');
@@ -55,25 +59,10 @@ class UpdateService {
     }
   }
 
-  /// Cek versi web dan otomatis tampilkan dialog jika ada versi terbaru di server.
+  /// Cek versi web dan aktifkan notifikasi banner atas jika ada versi terbaru di server.
   Future<void> checkAndPromptWebUpdate(BuildContext context, {bool force = false}) async {
-    if (!kIsWeb || _isWebPromptShowing || !context.mounted) return;
-
-    final result = await checkWebUpdate(force: force);
-    if (result != null && result.hasUpdate && context.mounted && !_isWebPromptShowing) {
-      _isWebPromptShowing = true;
-      try {
-        await WebUpdateDialog.show(
-          context,
-          currentVersion: result.currentVersion,
-          newVersion: result.manifest?.version ?? result.currentVersion,
-          currentBuildNumber: result.currentBuildNumber,
-          newBuildNumber: result.manifest?.buildNumber,
-        );
-      } finally {
-        _isWebPromptShowing = false;
-      }
-    }
+    if (!kIsWeb) return;
+    await checkWebUpdate(force: force);
   }
 
   // ─── Cek Update (dengan throttle & skip) ───

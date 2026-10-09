@@ -76,8 +76,8 @@ class _LoginScreenState extends State<LoginScreen> {
           if (result.hasUpdate) {
             final latest = result.manifest;
             _updateStatusLabel = latest == null
-                ? 'Update web tersedia'
-                : 'Pembaruan web tersedia • Versi ${latest.version} (build ${latest.buildNumber})';
+                ? 'Versi baru tersedia'
+                : 'Versi baru • v${latest.version} (build ${latest.buildNumber})';
             _updateStatusColor = const Color(0xFFB45309);
           } else {
             _updateStatusLabel = 'Aplikasi web sudah versi terbaru';
@@ -101,8 +101,8 @@ class _LoginScreenState extends State<LoginScreen> {
           case AppUpdateStatus.updateAvailable:
             final latest = result.manifest;
             _updateStatusLabel = latest == null
-                ? 'Update tersedia'
-                : 'Update tersedia • Versi ${latest.version} (build ${latest.buildNumber})';
+                ? 'Versi baru tersedia'
+                : 'Versi baru • v${latest.version} (build ${latest.buildNumber})';
             _updateStatusColor = const Color(0xFFB45309);
             break;
           case AppUpdateStatus.failedCheck:
