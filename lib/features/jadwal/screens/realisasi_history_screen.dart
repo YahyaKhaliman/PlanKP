@@ -1629,6 +1629,13 @@ class _RealisasiHistoryScreenState extends State<RealisasiHistoryScreen> {
                                 'invJenisId': invJenisId,
                                 'invId': invId,
                                 'invNama': invNama,
+                                'invNo': item.inventaris?['inv_serial_number'] ??
+                                    item.inventaris?['inv_no'],
+                                'invMerk': item.inventaris?['inv_merk'],
+                                'invKondisi': item.inventaris?['inv_kondisi'],
+                                'invPicNama': item.inventaris?['pic_user']?['user_nama'] ??
+                                    item.inventaris?['inv_pic'] ??
+                                    item.realTtdPicNama,
                               },
                             );
                             _loadData();

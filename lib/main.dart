@@ -1,5 +1,6 @@
 // ignore_for_file: use_build_context_synchronously, unnecessary_cast
 
+import 'dart:async';
 import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
 
 import 'package:flutter/material.dart';
@@ -179,6 +180,7 @@ class _MainAppWrapperState extends State<MainAppWrapper> with WidgetsBindingObse
   final UpdateService _updateService = UpdateService.instance;
   bool _isChecking = false;
   bool _dialogOpen = false;
+  Timer? _webUpdateTimer;
 
   @override
   void initState() {
@@ -190,17 +192,25 @@ class _MainAppWrapperState extends State<MainAppWrapper> with WidgetsBindingObse
         if (mounted) _triggerUpdateCheck();
       });
     });
+
+    // Pemicu khusus Web: Cek berkala setiap 10 menit saat aplikasi sedang dibuka
+    if (kIsWeb) {
+      _webUpdateTimer = Timer.periodic(const Duration(minutes: 10), (_) {
+        if (mounted) _triggerUpdateCheck();
+      });
+    }
   }
 
   @override
   void dispose() {
+    _webUpdateTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // Pemicu 2: Cek saat kembali dari background
+    // Pemicu 2: Cek saat kembali dari background atau tab browser kembali aktif
     if (state == AppLifecycleState.resumed) {
       _triggerUpdateCheck();
     }
@@ -211,7 +221,16 @@ class _MainAppWrapperState extends State<MainAppWrapper> with WidgetsBindingObse
     _isChecking = true;
 
     try {
-      // Throttle & skip sudah dihandle di dalam UpdateService
+      // Khusus Flutter Web: Cek versi server web dan munculkan WebUpdateDialog
+      if (kIsWeb) {
+        final navContext = navigatorKey.currentContext;
+        if (navContext != null && mounted) {
+          await _updateService.checkAndPromptWebUpdate(navContext);
+        }
+        return;
+      }
+
+      // Android: Throttle & skip sudah dihandle di dalam UpdateService
       final result = await _updateService.checkForUpdate();
       if (mounted &&
           result != null &&

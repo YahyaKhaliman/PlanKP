@@ -3,6 +3,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
@@ -96,9 +97,16 @@ class _RealisasiFormScreenState extends State<RealisasiFormScreen> {
         await p.fetchRealisasiDetail(_realId!);
         final detail = p.realisasiDetail;
         if (detail != null && mounted) {
+          final inv = detail.inventaris;
           setState(() {
             _kondisi = detail.realKondisiAkhir ?? 'Baik';
             _ketCtrl.text = detail.realKeterangan ?? '';
+            _invNo ??= inv?['inv_no'] ?? inv?['inv_serial_number'];
+            _invMerk ??= inv?['inv_merk'];
+            _invKondisiAwal ??= inv?['inv_kondisi'];
+            _invPicNama ??= inv?['pic_user']?['user_nama'] ??
+                inv?['inv_pic'] ??
+                detail.realTtdPicNama;
             _checklistItems = detail.hasilChecklist.map((hc) {
               return ChecklistInputModel(
                 ctId: hc.hcCtId,
@@ -121,6 +129,22 @@ class _RealisasiFormScreenState extends State<RealisasiFormScreen> {
       if (!mounted) return;
       setState(() {
         _checklistItems = items;
+        if ((_invPicNama == null || _invPicNama!.trim().isEmpty) &&
+            _invId != null) {
+          final found = p.inventarisByJenis.cast<dynamic>().firstWhere(
+                (e) => e is Map && e['inv_id'] == _invId,
+                orElse: () => null,
+              );
+          if (found is Map) {
+            _invPicNama ??=
+                (found['pic_user']?['user_nama'] ?? found['inv_pic'])
+                    ?.toString();
+            _invNo ??=
+                (found['inv_serial_number'] ?? found['inv_no'])?.toString();
+            _invMerk ??= found['inv_merk']?.toString();
+            _invKondisiAwal ??= found['inv_kondisi']?.toString();
+          }
+        }
         _loadingTemplate = false;
       });
 
@@ -360,11 +384,24 @@ class _RealisasiFormScreenState extends State<RealisasiFormScreen> {
   }
 
   Future<_TtdSubmitData?> _openTtdPopup() async {
+    String? picNama = _invPicNama;
+    if ((picNama == null || picNama.trim().isEmpty) && _invId != null) {
+      final p = context.read<JadwalProvider>();
+      final found = p.inventarisByJenis.cast<dynamic>().firstWhere(
+            (e) => e is Map && e['inv_id'] == _invId,
+            orElse: () => null,
+          );
+      if (found is Map) {
+        picNama =
+            (found['pic_user']?['user_nama'] ?? found['inv_pic'])?.toString();
+      }
+    }
+
     return showDialog<_TtdSubmitData>(
       context: context,
       barrierDismissible: false,
       builder: (_) => _TtdDialog(
-        defaultPicNama: _invPicNama,
+        defaultPicNama: picNama,
         checklistItems: _checklistItems,
       ),
     );
@@ -1594,6 +1631,7 @@ class _TtdDialogState extends State<_TtdDialog> {
   final _formKey = GlobalKey<FormState>();
   final _picCtrl = TextEditingController();
   final _sigController = _SignatureController();
+  Size _canvasSize = const Size(320, 160);
   bool _submitting = false;
   bool _confirmSummary = false;
 
@@ -1631,6 +1669,13 @@ class _TtdDialogState extends State<_TtdDialog> {
       Rect.fromLTWH(0, 0, size.width, size.height),
       Paint()..color = Colors.white,
     );
+
+    // Skalakan goresan dari ukuran kanvas aktual ke ukuran gambar output
+    final scaleX =
+        _canvasSize.width > 0 ? (size.width / _canvasSize.width) : 1.0;
+    final scaleY =
+        _canvasSize.height > 0 ? (size.height / _canvasSize.height) : 1.0;
+    canvas.scale(scaleX, scaleY);
 
     final linePaint = Paint()
       ..color = Colors.black
@@ -1753,13 +1798,6 @@ class _TtdDialogState extends State<_TtdDialog> {
                       onPressed: _submitting ? null : _handleClose,
                     ),
                   ]),
-                  const SizedBox(height: 4),
-                  Text(
-                      'Isi nama PIC dan bubuhkan tanda tangan untuk menyelesaikan maintenance.',
-                      style: GoogleFonts.plusJakartaSans(
-                          fontSize: 12.5,
-                          color: AppColors.textSecondary,
-                          height: 1.35)),
                   const SizedBox(height: 16),
 
                   TextFormField(
@@ -1805,6 +1843,7 @@ class _TtdDialogState extends State<_TtdDialog> {
                       thumbVisibility: true,
                       child: ListView.separated(
                         shrinkWrap: true,
+                        physics: const ClampingScrollPhysics(),
                         padding: const EdgeInsets.all(12),
                         itemCount: widget.checklistItems.length,
                         separatorBuilder: (_, __) =>
@@ -1886,7 +1925,7 @@ class _TtdDialogState extends State<_TtdDialog> {
                         setState(() => _confirmSummary = val ?? false);
                       },
                       title: Text(
-                        'Pernyataan Persetujuan PIC',
+                        'Pernyataan PIC',
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 12.5,
                           fontWeight: FontWeight.w700,
@@ -1950,58 +1989,96 @@ class _TtdDialogState extends State<_TtdDialog> {
                   ),
                   const SizedBox(height: 8),
 
-                  Container(
-                    width: double.infinity,
-                    height: 160,
-                    decoration: BoxDecoration(
-                      color: AppColors.cardSurface,
-                      border: Border.all(color: AppColors.primary, width: 1.5),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(13),
-                      child: Listener(
-                        behavior: HitTestBehavior.opaque,
-                        onPointerDown: (event) {
-                          _sigController.startStroke(event.localPosition);
-                        },
-                        onPointerMove: (event) {
-                          _sigController.updateStroke(event.localPosition);
-                        },
-                        onPointerUp: (_) {
-                          _sigController.endStroke();
-                        },
-                        onPointerCancel: (_) {
-                          _sigController.endStroke();
-                        },
-                        child: ListenableBuilder(
-                          listenable: _sigController,
-                          builder: (context, _) {
-                            return CustomPaint(
-                              painter: _SignaturePainter(
-                                strokes: _sigController.strokes,
-                                currentStroke: _sigController.currentStroke,
-                              ),
-                            );
-                          },
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      _canvasSize = Size(constraints.maxWidth, 160);
+                      return Container(
+                        width: double.infinity,
+                        height: 160,
+                        decoration: BoxDecoration(
+                          color: AppColors.cardSurface,
+                          border:
+                              Border.all(color: AppColors.primary, width: 1.5),
+                          borderRadius: BorderRadius.circular(14),
                         ),
-                      ),
-                    ),
-                  ),
-
-                  ListenableBuilder(
-                    listenable: _sigController,
-                    builder: (context, _) {
-                      if (_sigController.isNotEmpty)
-                        return const SizedBox.shrink();
-                      return Padding(
-                        padding: const EdgeInsets.only(top: 6),
-                        child: Center(
-                          child: Text(
-                            'Tanda tangani pada area di atas',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 11.5,
-                              color: AppColors.textMuted,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(13),
+                          child: RawGestureDetector(
+                            gestures: {
+                              EagerGestureRecognizer:
+                                  GestureRecognizerFactoryWithHandlers<
+                                      EagerGestureRecognizer>(
+                                () => EagerGestureRecognizer(),
+                                (EagerGestureRecognizer instance) {},
+                              ),
+                            },
+                            child: Listener(
+                              behavior: HitTestBehavior.opaque,
+                              onPointerDown: (event) {
+                                FocusScope.of(context).unfocus();
+                                _sigController.startStroke(event.localPosition);
+                              },
+                              onPointerMove: (event) {
+                                _sigController
+                                    .updateStroke(event.localPosition);
+                              },
+                              onPointerUp: (_) {
+                                _sigController.endStroke();
+                              },
+                              onPointerCancel: (_) {
+                                _sigController.endStroke();
+                              },
+                              child: Stack(
+                                fit: StackFit.expand,
+                                children: [
+                                  ListenableBuilder(
+                                    listenable: _sigController,
+                                    builder: (context, _) {
+                                      return CustomPaint(
+                                        painter: _SignaturePainter(
+                                          strokes: _sigController.strokes,
+                                          currentStroke:
+                                              _sigController.currentStroke,
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                  ListenableBuilder(
+                                    listenable: _sigController,
+                                    builder: (context, _) {
+                                      if (_sigController.isNotEmpty) {
+                                        return const SizedBox.shrink();
+                                      }
+                                      return IgnorePointer(
+                                        child: Center(
+                                          child: Column(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(
+                                                Icons.gesture_rounded,
+                                                size: 24,
+                                                color: AppColors.textMuted
+                                                    .withValues(alpha: 0.35),
+                                              ),
+                                              const SizedBox(height: 4),
+                                              Text(
+                                                'Bubuhkan tanda tangan di sini',
+                                                style:
+                                                    GoogleFonts.plusJakartaSans(
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w500,
+                                                  color: AppColors.textMuted
+                                                      .withValues(alpha: 0.7),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ),
