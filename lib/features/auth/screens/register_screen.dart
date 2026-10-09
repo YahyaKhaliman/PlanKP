@@ -118,7 +118,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
               constraints: BoxConstraints(
                 maxWidth: AppBreakpoints.isDesktop(context)
                     ? 1040
-                    : (AppBreakpoints.isTablet(context) ? 620 : double.infinity),
+                    : (AppBreakpoints.isTablet(context)
+                        ? 620
+                        : double.infinity),
               ),
               child: AppBreakpoints.isDesktop(context)
                   ? Row(
@@ -144,7 +146,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             Transform.translate(
                               offset: const Offset(0, -22),
                               child: Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 4),
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 4),
                                 child: _buildFormCard(),
                               ),
                             ),
@@ -180,15 +183,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 52,
-            height: 52,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.18),
-              borderRadius: BorderRadius.circular(14),
+          SizedBox(
+            height: compact ? 52 : 64,
+            child: Image.asset(
+              'assets/images/logo.png',
+              fit: BoxFit.contain,
+              errorBuilder: (_, __, ___) => const Icon(
+                Icons.precision_manufacturing_rounded,
+                color: Colors.white,
+                size: 48,
+              ),
             ),
-            child: const Icon(Icons.person_add_alt_1_rounded,
-                color: Colors.white, size: 28),
           ),
           const SizedBox(height: 16),
           Text(
@@ -201,15 +206,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
             ),
           ),
           const SizedBox(height: 4),
-          Text(
-            'Daftarkan akun teknisi atau staf Kencana Print',
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 12.5,
-              fontWeight: FontWeight.w500,
-              color: Colors.white.withValues(alpha: 0.85),
-              height: 1.35,
-            ),
-          ),
         ],
       ),
     );
@@ -383,10 +379,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
       keyboardType: keyboardType,
       textCapitalization: textCapitalization,
       inputFormatters: inputFormatters,
-      style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+      style: GoogleFonts.plusJakartaSans(
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+          color: AppColors.textPrimary),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: GoogleFonts.plusJakartaSans(color: AppColors.textSecondary, fontWeight: FontWeight.w500, fontSize: 12.5),
+        labelStyle: GoogleFonts.plusJakartaSans(
+            color: AppColors.textSecondary,
+            fontWeight: FontWeight.w500,
+            fontSize: 12.5),
         prefixIcon: Icon(icon, color: AppColors.primary, size: 18),
         suffixIcon: isPassword
             ? IconButton(
@@ -431,10 +433,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
       items: items,
       onChanged: onChanged,
       validator: validator,
-      style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+      style: GoogleFonts.plusJakartaSans(
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+          color: AppColors.textPrimary),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: GoogleFonts.plusJakartaSans(color: AppColors.textSecondary, fontWeight: FontWeight.w500, fontSize: 12.5),
+        labelStyle: GoogleFonts.plusJakartaSans(
+            color: AppColors.textSecondary,
+            fontWeight: FontWeight.w500,
+            fontSize: 12.5),
         prefixIcon: Icon(icon, color: AppColors.primary, size: 18),
         filled: true,
         fillColor: AppColors.surfaceAlt,
