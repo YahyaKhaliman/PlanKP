@@ -544,7 +544,7 @@ class AppTheme {
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.primary,
           foregroundColor: AppColors.white,
-          minimumSize: const Size.fromHeight(44),
+          minimumSize: const Size(64, 44),
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
           elevation: 0,
           shape: RoundedRectangleBorder(
@@ -560,7 +560,7 @@ class AppTheme {
         style: OutlinedButton.styleFrom(
           foregroundColor: AppColors.primary,
           side: const BorderSide(color: AppColors.border, width: 1),
-          minimumSize: const Size.fromHeight(44),
+          minimumSize: const Size(64, 44),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadius.lg),

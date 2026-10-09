@@ -174,14 +174,27 @@ class JadwalProvider extends ChangeNotifier {
   bool get loadingDetail => _loadingDetail;
   String? get error => _error;
 
-  Set<int> getHolidayDaysForMonth(DateTime month, {String? divisi}) {
+  Set<int> getHolidayDaysForMonth(
+    DateTime month, {
+    String? divisi,
+    bool onlyDb = false,
+    String? menu,
+  }) {
+    final base = _monthKey(month);
+    if (onlyDb || (menu != null && menu.isNotEmpty)) {
+      final specificKey =
+          '${base}_${divisi ?? "ALL"}${onlyDb ? "_ONLY_DB" : ""}${menu != null && menu.isNotEmpty ? "_$menu" : ""}';
+      if (_holidayDaysByMonth.containsKey(specificKey)) {
+        return _holidayDaysByMonth[specificKey]!;
+      }
+    }
     if (divisi != null && divisi.isNotEmpty) {
-      final divKey = '${_monthKey(month)}_$divisi';
+      final divKey = '${base}_$divisi';
       if (_holidayDaysByMonth.containsKey(divKey)) {
         return _holidayDaysByMonth[divKey]!;
       }
     }
-    final allKey = '${_monthKey(month)}_ALL';
+    final allKey = '${base}_ALL';
     return _holidayDaysByMonth[allKey] ?? <int>{};
   }
 
@@ -198,8 +211,14 @@ class JadwalProvider extends ChangeNotifier {
     return const [];
   }
 
-  Future<void> fetchHariLiburForMonth(DateTime month, {String? divisi}) async {
-    final key = '${_monthKey(month)}_${divisi ?? "ALL"}';
+  Future<void> fetchHariLiburForMonth(
+    DateTime month, {
+    String? divisi,
+    bool onlyDb = false,
+    String? menu,
+  }) async {
+    final key =
+        '${_monthKey(month)}_${divisi ?? "ALL"}${onlyDb ? "_ONLY_DB" : ""}${menu != null && menu.isNotEmpty ? "_$menu" : ""}';
     if (_holidayDaysByMonth.containsKey(key)) return;
 
     try {
@@ -207,6 +226,8 @@ class JadwalProvider extends ChangeNotifier {
         'year': month.year,
         'month': month.month,
         if (divisi != null && divisi.isNotEmpty) 'divisi': divisi,
+        if (onlyDb) 'only_db': 'true',
+        if (menu != null && menu.isNotEmpty) 'menu': menu,
       };
       final res = await ApiClient.get(
         ApiConfig.jadwalHariLibur,
@@ -320,15 +341,21 @@ class JadwalProvider extends ChangeNotifier {
     if (jStart == null) return [];
 
     final gapHari = j.jdwGapHari;
-    if (gapHari > 0 && lastRealisasiDate != null) {
-      final nextEligibleDate = lastRealisasiDate.add(Duration(days: gapHari));
+    DateTime? nextEligibleDate;
+    if (gapHari > 0) {
+      final baseDate = lastRealisasiDate ?? jStart;
+      nextEligibleDate = baseDate.add(Duration(days: gapHari));
       final endMonthDate = DateTime(end.year, end.month, end.day, 23, 59, 59);
       if (endMonthDate.isBefore(nextEligibleDate)) {
         return [];
       }
     }
 
-    final rangeStart = jStart.isAfter(start) ? jStart : start;
+    var rangeStart = jStart.isAfter(start) ? jStart : start;
+    if (gapHari > 0 && nextEligibleDate != null && nextEligibleDate.isAfter(rangeStart)) {
+      rangeStart = nextEligibleDate;
+    }
+
     final jEndStr = j.jdwTglSelesai;
     final jEnd = (jEndStr == null || jEndStr.isEmpty)
         ? end

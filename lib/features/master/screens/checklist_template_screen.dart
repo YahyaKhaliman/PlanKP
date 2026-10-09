@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/app_notifier.dart';
+import '../../../core/widgets/app_search_field.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/shimmer_loading.dart';
 import '../models/checklist_template_model.dart';
@@ -783,51 +784,12 @@ class _ChecklistTab extends StatelessWidget {
         return Column(children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
-            child: Container(
-              decoration: BoxDecoration(
-                color: AppColors.cardSurface,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: AppColors.border, width: 1),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Color(0x040F172A),
-                    blurRadius: 8,
-                    offset: Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: TextField(
-                controller: searchCtrl,
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                  color: AppColors.textPrimary,
-                ),
-                decoration: InputDecoration(
-                  hintText: 'Cari item checklist atau jenis...',
-                  hintStyle: GoogleFonts.plusJakartaSans(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w400,
-                    color: AppColors.textMuted,
-                  ),
-                  prefixIcon: const Icon(Icons.search_rounded, size: 20, color: AppColors.primary),
-                  suffixIcon: searchCtrl.text.isNotEmpty
-                      ? IconButton(
-                          icon: const Icon(Icons.clear_rounded, size: 18, color: AppColors.textMuted),
-                          onPressed: () {
-                            searchCtrl.clear();
-                            onSearchChanged('');
-                          },
-                        )
-                      : null,
-                  filled: false,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  border: InputBorder.none,
-                  enabledBorder: InputBorder.none,
-                  focusedBorder: InputBorder.none,
-                ),
-                onChanged: onSearchChanged,
-              ),
+            child: AppSearchField(
+              controller: searchCtrl,
+              hintText: 'Cari item checklist atau jenis...',
+              onSubmitted: onSearchChanged,
+              onSearch: () => onSearchChanged(searchCtrl.text),
+              onClear: () => onSearchChanged(''),
             ),
           ),
           if (p.loading)
@@ -1073,19 +1035,155 @@ class _ChecklistTab extends StatelessWidget {
 class _ChecklistSkeleton extends StatelessWidget {
   const _ChecklistSkeleton();
 
+  Widget _buildFolderCardSkeleton() {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: AppColors.cardSurface.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border.withValues(alpha: 0.35)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x060F172A),
+            blurRadius: 10,
+            offset: Offset(0, 3),
+          ),
+        ],
+      ),
+      child: const Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header Card (Nama Jenis + Badge Jumlah + Action Button + Chevron)
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            child: Row(
+              children: [
+                AppSkeletonSquircle(width: 24, height: 24, borderRadius: 6),
+                SizedBox(width: 10),
+                Expanded(
+                  child: AppSkeletonLine(width: 150, height: 15, borderRadius: 4),
+                ),
+                SizedBox(width: 8),
+                AppSkeletonSquircle(width: 28, height: 22, borderRadius: 8),
+                SizedBox(width: 8),
+                AppSkeletonCircle(size: 20),
+                SizedBox(width: 8),
+                AppSkeletonSquircle(width: 16, height: 16, borderRadius: 4),
+              ],
+            ),
+          ),
+          Divider(height: 1, color: AppColors.border),
+          SizedBox(height: 8),
+          // Sub-item checklist 1
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                AppSkeletonSquircle(width: 20, height: 20, borderRadius: 6),
+                SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      AppSkeletonLine(width: double.infinity, height: 13, borderRadius: 3),
+                      SizedBox(height: 5),
+                      AppSkeletonLine(width: 100, height: 10, borderRadius: 2),
+                    ],
+                  ),
+                ),
+                SizedBox(width: 8),
+                AppSkeletonSquircle(width: 24, height: 24, borderRadius: 6),
+                SizedBox(width: 6),
+                AppSkeletonSquircle(width: 24, height: 24, borderRadius: 6),
+              ],
+            ),
+          ),
+          Divider(height: 1, color: AppColors.border, indent: 46),
+          // Sub-item checklist 2
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                AppSkeletonSquircle(width: 20, height: 20, borderRadius: 6),
+                SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      AppSkeletonLine(width: 160, height: 13, borderRadius: 3),
+                      SizedBox(height: 5),
+                      AppSkeletonLine(width: 80, height: 10, borderRadius: 2),
+                    ],
+                  ),
+                ),
+                SizedBox(width: 8),
+                AppSkeletonSquircle(width: 24, height: 24, borderRadius: 6),
+                SizedBox(width: 6),
+                AppSkeletonSquircle(width: 24, height: 24, borderRadius: 6),
+              ],
+            ),
+          ),
+          SizedBox(height: 10),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return const AppShimmer(
-      child: SingleChildScrollView(
-        physics: NeverScrollableScrollPhysics(),
-        padding: EdgeInsets.fromLTRB(16, 16, 16, 120),
-        child: Column(
-          children: [
-            AppSkeletonFolderCard(),
-            AppSkeletonFolderCard(),
-            AppSkeletonFolderCard(),
-          ],
-        ),
+    final isMobile = AppBreakpoints.isMobile(context);
+    final cols = AppBreakpoints.gridColumns(context, mobile: 1, tablet: 2, desktop: 2);
+    final maxWidth = AppBreakpoints.responsiveValue(
+      context,
+      mobile: MediaQuery.of(context).size.width,
+      tablet: 860.0,
+      desktop: 1180.0,
+    );
+
+    return AppShimmer(
+      child: Column(
+        children: [
+          // Info header placeholder ("Terdapat X Jenis Inventaris")
+          Container(
+            color: const Color(0xFFF8FAFC),
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+            child: const Row(
+              children: [
+                AppSkeletonLine(width: 170, height: 12, borderRadius: 3),
+              ],
+            ),
+          ),
+          Expanded(
+            child: isMobile
+                ? ListView(
+                    physics: const NeverScrollableScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 120),
+                    children: List.generate(4, (_) => _buildFolderCardSkeleton()),
+                  )
+                : Builder(
+                    builder: (context) {
+                      final cardWidth = (maxWidth - (12 * (cols - 1))) / cols;
+                      return SingleChildScrollView(
+                        physics: const NeverScrollableScrollPhysics(),
+                        padding: const EdgeInsets.fromLTRB(0, 12, 0, 120),
+                        child: Wrap(
+                          spacing: 12,
+                          runSpacing: 12,
+                          children: List.generate(
+                            4,
+                            (_) => SizedBox(
+                              width: cardWidth,
+                              child: _buildFolderCardSkeleton(),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+          ),
+        ],
       ),
     );
   }

@@ -300,6 +300,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   bool _isSameCurrentPeriod(RealisasiModel r, JadwalModel jadwal) {
     final now = DateTime.now();
+
+    // Jika jadwal memiliki aturan jeda gap hari khusus
+    if (jadwal.jdwGapHari > 0) {
+      final realDate = DateTime.tryParse(r.realTgl);
+      if (realDate == null) return false;
+      final nextEligible =
+          _dateOnly(realDate).add(Duration(days: jadwal.jdwGapHari));
+      // Realisasi ini masih mengunci periode berjalan HANYA jika hari ini belum mencapai siklus baru (nextEligible)
+      return _dateOnly(now).isBefore(nextEligible);
+    }
+
     final frequency = jadwal.jdwFrekuensi;
 
     if (frequency == 'Harian') {
@@ -562,34 +573,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
               ),
               const SizedBox(height: 1),
-              Text(
-                _userName(user).toUpperCase(),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 17,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 0.3,
-                ),
-              ),
-              const SizedBox(height: 3),
               Row(
                 children: [
-                  const SizedBox(width: 4),
-                  Text(
-                    DateFormatter.toDisplayDateTime(DateTime.now()),
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.85),
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
+                  Flexible(
+                    child: Text(
+                      _userName(user).toUpperCase(),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.3,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 8),
                   Container(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 2,
+                      horizontal: 4,
+                      vertical: 1,
                     ),
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.2),
@@ -605,10 +608,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           : '${user['user_divisi'] ?? 'Teknisi'}'.toUpperCase(),
                       style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 11,
+                        fontSize: 9,
                         fontWeight: FontWeight.w800,
                         letterSpacing: 0.4,
                       ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 3),
+              Row(
+                children: [
+                  const SizedBox(width: 4),
+                  Text(
+                    DateFormatter.toDisplayDateTime(DateTime.now()),
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.85),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ],
@@ -2283,12 +2300,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
         .where((r) => _isSameCurrentPeriod(r, jadwal))
         .map((r) => r.realInvId)
         .toSet();
-    final belumSelesaiList = inventarisList.where((inv) {
-      final invIdRaw = inv['inv_id'];
-      final invId = invIdRaw is int ? invIdRaw : int.tryParse('$invIdRaw');
-      final isDone = inv['inv_is_done_current_period'] == true;
-      return (invId == null || !selesaiInvIds.contains(invId)) && !isDone;
-    }).toList();
 
     if (inventarisList.isEmpty) {
       await AppNotifier.showError(
@@ -2298,32 +2309,65 @@ class _DashboardScreenState extends State<DashboardScreen> {
       return;
     }
 
-    if (inventarisList.length == 1 && belumSelesaiList.isNotEmpty) {
-      await _openRealisasiFromInventaris(jadwal, belumSelesaiList.first);
+    // Jika hanya ada 1 unit inventaris di jadwal ini
+    if (inventarisList.length == 1) {
+      final singleInv = inventarisList.first;
+      final invIdRaw = singleInv['inv_id'];
+      final invId = invIdRaw is int ? invIdRaw : int.tryParse('$invIdRaw');
+      final sisaHari =
+          (singleInv['inv_gap_sisa_hari'] as num?)?.toInt() ?? 0;
+      final bool hasGapRule =
+          jadwal.jdwGapHari > 0 || singleInv['inv_gap_sisa_hari'] != null;
+
+      final bool isSudahSelesai;
+      if (hasGapRule) {
+        if (sisaHari > 0 || singleInv['inv_is_gap_eligible'] == false) {
+          isSudahSelesai = true;
+        } else {
+          isSudahSelesai = invId != null && selesaiInvIds.contains(invId);
+        }
+      } else {
+        isSudahSelesai = (invId != null && selesaiInvIds.contains(invId)) ||
+            singleInv['inv_is_done_current_period'] == true;
+      }
+
+      if (isSudahSelesai) {
+        final lastTgl = singleInv['inv_last_realisasi_tgl']?.toString() ?? '-';
+        final sisaHari =
+            (singleInv['inv_gap_sisa_hari'] as num?)?.toInt() ?? 0;
+        final nextDate =
+            singleInv['inv_next_eligible_date']?.toString() ?? '-';
+        String msg = 'Unit "${singleInv['inv_nama']}" sudah direalisasikan';
+        if (lastTgl != '-') msg += ' pada $lastTgl.';
+        if (sisaHari > 0) {
+          msg +=
+              '\n\nMasih dalam masa jeda gap $sisaHari hari lagi (dapat direalisasikan kembali mulai $nextDate).';
+        } else {
+          msg += ' untuk periode saat ini.';
+        }
+        await AppNotifier.showWarning(context, msg);
+        return;
+      }
+
+      await _openRealisasiFromInventaris(jadwal, singleInv);
       return;
     }
 
-    if (belumSelesaiList.isEmpty) {
-      await AppNotifier.showWarning(
-        context,
-        'Semua unit pada jadwal ini sudah direalisasi dalam rentang saat ini',
-      );
-      return;
-    }
-
-    _showInventarisPicker(jadwal, belumSelesaiList);
+    _showInventarisPicker(jadwal, inventarisList, selesaiInvIds);
   }
 
   void _showInventarisPicker(
     JadwalModel jadwal,
-    List<Map<String, dynamic>> inventarisList,
-  ) {
+    List<Map<String, dynamic>> inventarisList, [
+    Set<int> selesaiInvIds = const {},
+  ]) {
     showResponsiveSheet(
       context,
       maxDesktopWidth: 600,
       builder: (_) => _InventarisPickerSheet(
         jadwal: jadwal,
         inventarisList: inventarisList,
+        selesaiInvIds: selesaiInvIds,
         onSelected: (inv) {
           Navigator.pop(context);
           _openRealisasiFromInventaris(jadwal, inv);
@@ -2868,10 +2912,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               child: SizedBox.shrink());
                         }
 
-                        final sorted = [...pProvider.jadwalList]..sort((a, b) =>
-                            _getRemainingDaysDiff(a)
-                                .compareTo(_getRemainingDaysDiff(b)));
-                        final list = sorted.take(5).toList();
+                        final todayPlans = pProvider.jadwalList
+                            .where((j) => _getRemainingDaysDiff(j) <= 0)
+                            .toList()
+                          ..sort((a, b) => _getRemainingDaysDiff(a)
+                              .compareTo(_getRemainingDaysDiff(b)));
+                        final list = todayPlans;
                         if (pProvider.loading || _isLoadingData) {
                           return SliverToBoxAdapter(
                             child: SizedBox(
@@ -2899,15 +2945,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               padding:
                                   const EdgeInsets.symmetric(horizontal: 16),
                               child: Container(
-                                padding: const EdgeInsets.all(14),
+                                padding: const EdgeInsets.all(16),
                                 decoration: _surfaceCard(),
-                                child: const Text(
-                                  'Belum ada jadwal terdaftar',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    color: AppColors.textSecondary,
-                                    fontSize: 13,
-                                  ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Icon(
+                                      Icons.check_circle_outline_rounded,
+                                      size: 18,
+                                      color: AppColors.success,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      pProvider.jadwalList.isEmpty
+                                          ? 'Belum ada jadwal terdaftar'
+                                          : 'Tidak ada tugas untuk hari ini',
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(
+                                        color: AppColors.textSecondary,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),
@@ -4242,6 +4302,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final String r = (role ?? '').toLowerCase();
     final bool isAdmin = r == 'admin';
     final bool isManager = r == 'manager';
+    final String userDivisi =
+        auth.user?['user_divisi']?.toString().toUpperCase() ?? '';
+    final bool isDriver = userDivisi == 'DRIVER';
 
     List<Map<String, dynamic>> steps;
     String sectionTitle;
@@ -4291,13 +4354,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
           'c': const Color(0xFFEA580C), // Baris 2: Orange
           's': const UserScreen(),
         },
-        {
-          't': '7. Voucher',
-          'd': 'Rekap & approval voucher BBM',
-          'i': Icons.local_gas_station_rounded,
-          'c': const Color(0xFF0D9488), // Baris 3: Teal kalem
-          's': const VoucherScreen(),
-        },
+        if (isDriver)
+          {
+            't': '7. Voucher',
+            'd': 'Rekap & approval voucher BBM',
+            'i': Icons.local_gas_station_rounded,
+            'c': const Color(0xFF0D9488), // Baris 3: Teal kalem
+            's': const VoucherScreen(),
+          },
       ];
     } else if (isManager) {
       sectionTitle = "Alur Monitoring & Evaluasi Manager";
@@ -4341,9 +4405,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
         },
       ];
     } else {
-      final String userDivisi =
-          auth.user?['user_divisi']?.toString().toUpperCase() ?? '';
-      final bool isDriver = userDivisi == 'DRIVER';
       sectionTitle = isDriver ? "Menu Utama Driver" : "Menu Utama Teknisi";
       steps = [
         {
@@ -5626,23 +5687,57 @@ class _DashboardScreenState extends State<DashboardScreen> {
         .where((r) => _isSameCurrentPeriod(r, jadwal))
         .map((r) => r.realInvId)
         .toSet();
-    final belumSelesaiList = inventarisList
-        .where((inv) =>
-            !terpakaiInvIds.contains(inv['inv_id']) &&
-            inv['inv_is_done_current_period'] != true &&
-            inv['inv_is_gap_eligible'] != false)
-        .toList();
 
     if (inventarisList.isEmpty) {
       AppNotifier.showError(context, 'Inventaris untuk jadwal ini belum ada');
       return;
     }
-    if (belumSelesaiList.isEmpty) {
-      AppNotifier.showWarning(
-          context, 'Semua unit sudah direalisasi periode ini');
+
+    // Jika hanya ada 1 unit inventaris di jadwal ini
+    if (inventarisList.length == 1) {
+      final singleInv = inventarisList.first;
+      final invIdRaw = singleInv['inv_id'];
+      final invId = invIdRaw is int ? invIdRaw : int.tryParse('$invIdRaw');
+      final sisaHari =
+          (singleInv['inv_gap_sisa_hari'] as num?)?.toInt() ?? 0;
+      final bool hasGapRule =
+          jadwal.jdwGapHari > 0 || singleInv['inv_gap_sisa_hari'] != null;
+
+      final bool isSudahSelesai;
+      if (hasGapRule) {
+        if (sisaHari > 0 || singleInv['inv_is_gap_eligible'] == false) {
+          isSudahSelesai = true;
+        } else {
+          isSudahSelesai = invId != null && terpakaiInvIds.contains(invId);
+        }
+      } else {
+        isSudahSelesai = (invId != null && terpakaiInvIds.contains(invId)) ||
+            singleInv['inv_is_done_current_period'] == true;
+      }
+
+      if (isSudahSelesai) {
+        final lastTgl = singleInv['inv_last_realisasi_tgl']?.toString() ?? '-';
+        final sisaHari =
+            (singleInv['inv_gap_sisa_hari'] as num?)?.toInt() ?? 0;
+        final nextDate =
+            singleInv['inv_next_eligible_date']?.toString() ?? '-';
+        String msg = 'Unit "${singleInv['inv_nama']}" sudah direalisasikan';
+        if (lastTgl != '-') msg += ' pada $lastTgl.';
+        if (sisaHari > 0) {
+          msg +=
+              '\n\nMasih dalam masa jeda gap $sisaHari hari lagi (dapat direalisasikan kembali mulai $nextDate).';
+        } else {
+          msg += ' untuk periode saat ini.';
+        }
+        AppNotifier.showWarning(context, msg);
+        return;
+      }
+
+      await _openRealisasiFromInventaris(jadwal, singleInv);
       return;
     }
-    _showInventarisPicker(jadwal, belumSelesaiList);
+
+    _showInventarisPicker(jadwal, inventarisList, terpakaiInvIds);
   }
 
   Widget _buildJadwalItem(
@@ -5958,18 +6053,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
       return startDate.difference(today).inDays;
     }
 
-    // 2. Jika jadwal Mingguan/Bulanan dan belum terpenuhi, berarti harus dikerjakan periode ini
+    // 2. Jika jadwal punya gap hari khusus (misal gap 90 hari), patuhi tanggal jatuh tempo efektifnya
+    if (j.jdwGapHari > 0) {
+      final dueDate = _parseDateOnly(j.effectiveNextDueDateStr);
+      if (dueDate != null) {
+        return dueDate.difference(today).inDays;
+      }
+    }
+
+    // 3. Jika jadwal Mingguan/Bulanan tanpa gap khusus dan belum terpenuhi periode ini
     if (!j.jdwPeriodFulfilled &&
         (j.jdwFrekuensi == 'Mingguan' || j.jdwFrekuensi == 'Bulanan')) {
       return 0;
     }
 
-    // 3. Gunakan sisa hari dari backend jika ada
+    // 4. Gunakan sisa hari dari backend jika ada
     if (j.jdwDaysRemaining != null) {
       return j.jdwDaysRemaining!;
     }
 
-    // 4. Fallback jika tidak ada daysRemaining dari backend
+    // 5. Fallback jika tidak ada daysRemaining dari backend
     final fallbackDate =
         _parseDateOnly(j.effectiveNextDueDateStr ?? j.jdwTglMulai);
     if (fallbackDate == null) {
@@ -5990,11 +6093,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
 class _InventarisPickerSheet extends StatefulWidget {
   final JadwalModel jadwal;
   final List<Map<String, dynamic>> inventarisList;
+  final Set<int> selesaiInvIds;
   final Function(Map<String, dynamic>) onSelected;
 
   const _InventarisPickerSheet({
     required this.jadwal,
     required this.inventarisList,
+    this.selesaiInvIds = const {},
     required this.onSelected,
   });
 
@@ -6096,17 +6201,41 @@ class _InventarisPickerSheetState extends State<_InventarisPickerSheet> {
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
-                  const Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      'Pilih Unit untuk Realisasi',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Pilih Unit untuk Realisasi',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
                       ),
-                    ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: AppColors.primarySoft,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: AppColors.primary.withValues(alpha: 0.2),
+                            width: 1,
+                          ),
+                        ),
+                        child: Text(
+                          '${filteredInventaris.length} Unit',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 12),
                   TextField(
                     controller: _searchCtrl,
                     focusNode: _focusNode,
@@ -6118,44 +6247,86 @@ class _InventarisPickerSheetState extends State<_InventarisPickerSheet> {
                       });
                     },
                     decoration: InputDecoration(
-                      hintText: 'Cari serial number, nama, atau PIC',
-                      suffixIcon: IconButton(
-                        icon:
-                            const Icon(Icons.search, color: AppColors.primary),
-                        onPressed: () {
-                          FocusScope.of(context).unfocus();
-                          setState(() {
-                            searchQuery = _searchCtrl.text.trim();
-                          });
-                        },
+                      hintText: 'Cari nama, nomor unit, SN, atau PIC...',
+                      hintStyle: GoogleFonts.plusJakartaSans(
+                        fontSize: 13,
+                        color: AppColors.textMuted,
                       ),
+                      prefixIcon: const Icon(
+                        Icons.search_rounded,
+                        size: 20,
+                        color: AppColors.primary,
+                      ),
+                      suffixIcon: _searchCtrl.text.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(
+                                Icons.close_rounded,
+                                size: 18,
+                                color: AppColors.textMuted,
+                              ),
+                              onPressed: () {
+                                _searchCtrl.clear();
+                                setState(() {
+                                  searchQuery = '';
+                                });
+                              },
+                            )
+                          : null,
                       filled: true,
                       fillColor: Colors.white,
                       contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 12),
+                          horizontal: 14, vertical: 11),
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        borderSide: BorderSide.none,
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(
+                          color: AppColors.border.withValues(alpha: 0.8),
+                        ),
                       ),
                       enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        borderSide: BorderSide.none,
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: AppColors.border),
                       ),
                       focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
+                        borderRadius: BorderRadius.circular(12),
                         borderSide: const BorderSide(
                             color: AppColors.primary, width: 1.5),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 12),
                   Flexible(
                     child: filteredInventaris.isEmpty
-                        ? const Center(
-                            child: Text(
-                              'Data inventaris tidak ditemukan',
-                              style: TextStyle(
-                                color: AppColors.textSecondary,
+                        ? Center(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 36),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.inventory_2_outlined,
+                                    size: 44,
+                                    color: AppColors.textMuted
+                                        .withValues(alpha: 0.5),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Text(
+                                    'Unit tidak ditemukan',
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.textSecondary,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Periksa kembali nomor unit atau kata kunci pencarian',
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 12,
+                                      color: AppColors.textMuted,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ],
                               ),
                             ),
                           )
@@ -6166,124 +6337,470 @@ class _InventarisPickerSheetState extends State<_InventarisPickerSheet> {
                             shrinkWrap: true,
                             itemCount: filteredInventaris.length,
                             separatorBuilder: (_, __) =>
-                                const SizedBox(height: 8),
+                                const SizedBox(height: 10),
                             itemBuilder: (_, i) {
                               final inv = filteredInventaris[i];
+                              final noInv =
+                                  (inv['inv_no'] ?? '-').toString();
+                              final nama =
+                                  (inv['inv_nama'] ?? '-').toString();
                               final merk = (inv['inv_merk'] ?? '-')
                                   .toString()
                                   .toUpperCase();
-                              final pabrik = inv['inv_pabrik_kode'] ?? '-';
-                              final sn = inv['inv_serial_number'] ?? '-';
+                              final sn =
+                                  (inv['inv_serial_number'] ?? '-').toString();
+                              final pabrik =
+                                  (inv['inv_pabrik_kode'] ?? '-').toString();
                               final picName = _resolvePicName(inv);
-                              return Card(
-                                margin: EdgeInsets.zero,
-                                child: ListTile(
-                                  contentPadding: const EdgeInsets.symmetric(
-                                      horizontal: 14, vertical: 10),
-                                  leading: CircleAvatar(
-                                    radius: 20,
-                                    backgroundColor: AppColors.primary
-                                        .withValues(alpha: 0.12),
-                                    child: const Icon(
-                                      Icons.inventory_2_outlined,
-                                      color: AppColors.primary,
-                                      size: 20,
-                                    ),
+
+                              final bool hasMerk =
+                                  merk.isNotEmpty && merk != '-';
+                              final bool hasSn = sn.isNotEmpty && sn != '-';
+                              final bool hasPabrik =
+                                  pabrik.isNotEmpty && pabrik != '-';
+                              final bool hasPic =
+                                  picName.isNotEmpty && picName != '-';
+
+                              final invIdRaw = inv['inv_id'];
+                              final invId = invIdRaw is int
+                                  ? invIdRaw
+                                  : int.tryParse('$invIdRaw');
+                              final sisaHari =
+                                  (inv['inv_gap_sisa_hari'] as num?)?.toInt() ??
+                                      0;
+                              final bool hasGapRule = widget.jadwal.jdwGapHari > 0 ||
+                                  inv['inv_gap_sisa_hari'] != null;
+
+                              final bool isGapBlocked = hasGapRule
+                                  ? (sisaHari > 0 || inv['inv_is_gap_eligible'] == false)
+                                  : false;
+
+                              final bool isSudahSelesai;
+                              if (hasGapRule) {
+                                if (isGapBlocked) {
+                                  isSudahSelesai = true;
+                                } else {
+                                  isSudahSelesai = invId != null &&
+                                      widget.selesaiInvIds.contains(invId);
+                                }
+                              } else {
+                                isSudahSelesai = (invId != null &&
+                                        widget.selesaiInvIds.contains(invId)) ||
+                                    inv['inv_is_done_current_period'] == true;
+                              }
+                              final lastTgl =
+                                  inv['inv_last_realisasi_tgl']?.toString();
+                              final nextDate =
+                                  inv['inv_next_eligible_date']?.toString();
+
+                              return Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(
+                                    color: isSudahSelesai
+                                        ? AppColors.border
+                                        : AppColors.primary
+                                            .withValues(alpha: 0.25),
+                                    width: 1,
                                   ),
-                                  title: Text(
-                                    inv['inv_nama'] ?? '-',
-                                    style: const TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w700,
-                                      color: AppColors.textPrimary,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color:
+                                          Colors.black.withValues(alpha: 0.025),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 2),
                                     ),
-                                  ),
-                                  subtitle: Padding(
-                                    padding: const EdgeInsets.only(top: 6),
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          'No: ${inv['inv_no'] ?? '-'}',
-                                          style: const TextStyle(
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.w600,
-                                            color: AppColors.primary,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text('$merk · $sn',
-                                            style: const TextStyle(
-                                                fontSize: 12,
-                                                color: AppColors.textSecondary,
-                                                fontWeight: FontWeight.w600)),
-                                        const SizedBox(height: 2),
-                                        Row(
-                                          children: [
-                                            const Icon(
-                                              Icons.person_outline,
-                                              size: 14,
-                                              color: AppColors.textSecondary,
-                                            ),
-                                            const SizedBox(width: 4),
-                                            Expanded(
-                                              child: Text(
-                                                'PIC: $picName',
-                                                style: const TextStyle(
-                                                  fontSize: 12,
-                                                  color:
-                                                      AppColors.textSecondary,
+                                  ],
+                                ),
+                                child: Material(
+                                  color: Colors.transparent,
+                                  child: InkWell(
+                                    borderRadius: BorderRadius.circular(14),
+                                    onTap: () {
+                                      if (isSudahSelesai) {
+                                        String msg =
+                                            'Unit "$nama" sudah direalisasikan';
+                                        if (lastTgl != null &&
+                                            lastTgl.isNotEmpty &&
+                                            lastTgl != '-') {
+                                          msg += ' pada $lastTgl.';
+                                        }
+                                        if (sisaHari > 0) {
+                                          msg +=
+                                              '\n\nMasih dalam masa jeda gap $sisaHari hari lagi (dapat direalisasikan kembali mulai $nextDate).';
+                                        } else {
+                                          msg += ' untuk periode saat ini.';
+                                        }
+                                        AppNotifier.showWarning(context, msg);
+                                        return;
+                                      }
+                                      widget.onSelected(inv);
+                                    },
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(12),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          // Baris 1: Tag Nomor Unit & Badge Status Realisasi
+                                          Row(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.center,
+                                            children: [
+                                              Container(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                        horizontal: 7,
+                                                        vertical: 3),
+                                                decoration: BoxDecoration(
+                                                  color: AppColors.primarySoft,
+                                                  borderRadius:
+                                                      BorderRadius.circular(6),
+                                                  border: Border.all(
+                                                    color: AppColors.primary
+                                                        .withValues(
+                                                            alpha: 0.15),
+                                                    width: 1,
+                                                  ),
                                                 ),
-                                                overflow: TextOverflow.ellipsis,
+                                                child: Row(
+                                                  mainAxisSize:
+                                                      MainAxisSize.min,
+                                                  children: [
+                                                    const Icon(
+                                                      Icons.tag_rounded,
+                                                      size: 13,
+                                                      color: AppColors.primary,
+                                                    ),
+                                                    const SizedBox(width: 3),
+                                                    Text(
+                                                      noInv,
+                                                      style: GoogleFonts
+                                                          .plusJakartaSans(
+                                                        fontSize: 11.5,
+                                                        fontWeight:
+                                                            FontWeight.w700,
+                                                        color:
+                                                            AppColors.primary,
+                                                        letterSpacing: 0.2,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                              const Spacer(),
+                                              Container(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                        horizontal: 8,
+                                                        vertical: 3),
+                                                decoration: BoxDecoration(
+                                                  color: isSudahSelesai
+                                                      ? (isGapBlocked
+                                                          ? AppColors.infoSoft
+                                                          : AppColors
+                                                              .successSoft)
+                                                      : AppColors.warningSoft,
+                                                  borderRadius:
+                                                      BorderRadius.circular(6),
+                                                  border: Border.all(
+                                                    color: isSudahSelesai
+                                                        ? (isGapBlocked
+                                                            ? AppColors.info
+                                                                .withValues(
+                                                                    alpha: 0.3)
+                                                            : AppColors.success
+                                                                .withValues(
+                                                                    alpha: 0.3))
+                                                        : AppColors.warning
+                                                            .withValues(
+                                                                alpha: 0.3),
+                                                    width: 1,
+                                                  ),
+                                                ),
+                                                child: Row(
+                                                  mainAxisSize:
+                                                      MainAxisSize.min,
+                                                  children: [
+                                                    Container(
+                                                      width: 6,
+                                                      height: 6,
+                                                      decoration: BoxDecoration(
+                                                        color: isSudahSelesai
+                                                            ? (isGapBlocked
+                                                                ? AppColors.info
+                                                                : AppColors
+                                                                    .success)
+                                                            : AppColors.warning,
+                                                        shape: BoxShape.circle,
+                                                      ),
+                                                    ),
+                                                    const SizedBox(width: 5),
+                                                    Text(
+                                                      isSudahSelesai
+                                                          ? (sisaHari > 0
+                                                              ? 'Masa gap ($sisaHari hari lagi)'
+                                                              : 'Sudah realisasi')
+                                                          : 'Belum realisasi',
+                                                      style: GoogleFonts
+                                                          .plusJakartaSans(
+                                                        fontSize: 11,
+                                                        fontWeight:
+                                                            FontWeight.w700,
+                                                        color: isSudahSelesai
+                                                            ? (isGapBlocked
+                                                                ? AppColors.info
+                                                                : AppColors
+                                                                    .success)
+                                                            : AppColors.warning,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 10),
+
+                                          // Baris 2: Icon Unit + Nama Unit + Tombol Arahkan (Chevron / Status Icon)
+                                          Row(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.center,
+                                            children: [
+                                              Container(
+                                                width: 38,
+                                                height: 38,
+                                                decoration: BoxDecoration(
+                                                  color: AppColors.surfaceAlt,
+                                                  borderRadius:
+                                                      BorderRadius.circular(10),
+                                                  border: Border.all(
+                                                    color: AppColors.border,
+                                                    width: 1,
+                                                  ),
+                                                ),
+                                                child: Icon(
+                                                  Icons.inventory_2_rounded,
+                                                  color: isSudahSelesai
+                                                      ? AppColors.textSecondary
+                                                      : AppColors.primary,
+                                                  size: 20,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 10),
+                                              Expanded(
+                                                child: Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(
+                                                      nama,
+                                                      style: GoogleFonts
+                                                          .plusJakartaSans(
+                                                        fontSize: 14,
+                                                        fontWeight:
+                                                            FontWeight.w700,
+                                                        color: isSudahSelesai
+                                                            ? AppColors
+                                                                .textSecondary
+                                                            : AppColors
+                                                                .textPrimary,
+                                                        height: 1.25,
+                                                      ),
+                                                      maxLines: 2,
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
+                                                    ),
+                                                    if (hasMerk || hasSn) ...[
+                                                      const SizedBox(height: 3),
+                                                      Text(
+                                                        [
+                                                          if (hasMerk) merk,
+                                                          if (hasSn) 'SN: $sn',
+                                                        ].join(' · '),
+                                                        style: GoogleFonts
+                                                            .plusJakartaSans(
+                                                          fontSize: 11.5,
+                                                          color: AppColors
+                                                              .textSecondary,
+                                                          fontWeight:
+                                                              FontWeight.w600,
+                                                        ),
+                                                        maxLines: 1,
+                                                        overflow: TextOverflow
+                                                            .ellipsis,
+                                                      ),
+                                                    ],
+                                                  ],
+                                                ),
+                                              ),
+                                              const SizedBox(width: 6),
+                                              Container(
+                                                width: 28,
+                                                height: 28,
+                                                decoration: BoxDecoration(
+                                                  color: isSudahSelesai
+                                                      ? AppColors.surfaceAlt
+                                                      : AppColors.primarySoft,
+                                                  shape: BoxShape.circle,
+                                                ),
+                                                child: Icon(
+                                                  isSudahSelesai
+                                                      ? (isGapBlocked
+                                                          ? Icons
+                                                              .hourglass_top_rounded
+                                                          : Icons.check_rounded)
+                                                      : Icons
+                                                          .arrow_forward_rounded,
+                                                  size: 15,
+                                                  color: isSudahSelesai
+                                                      ? (isGapBlocked
+                                                          ? AppColors.info
+                                                          : AppColors.success)
+                                                      : AppColors.primary,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+
+                                          // Baris 3: Metadata Pills (PIC & Pabrik/Lokasi)
+                                          if (hasPic || hasPabrik) ...[
+                                            const SizedBox(height: 10),
+                                            Container(
+                                              height: 1,
+                                              color: AppColors.borderLight,
+                                            ),
+                                            const SizedBox(height: 8),
+                                            Wrap(
+                                              spacing: 12,
+                                              runSpacing: 4,
+                                              crossAxisAlignment:
+                                                  WrapCrossAlignment.center,
+                                              children: [
+                                                if (hasPic)
+                                                  Row(
+                                                    mainAxisSize:
+                                                        MainAxisSize.min,
+                                                    children: [
+                                                      const Icon(
+                                                        Icons
+                                                            .person_outline_rounded,
+                                                        size: 13,
+                                                        color:
+                                                            AppColors.textMuted,
+                                                      ),
+                                                      const SizedBox(width: 4),
+                                                      ConstrainedBox(
+                                                        constraints:
+                                                            const BoxConstraints(
+                                                                maxWidth: 160),
+                                                        child: Text(
+                                                          picName,
+                                                          style: GoogleFonts
+                                                              .plusJakartaSans(
+                                                            fontSize: 11.5,
+                                                            color: AppColors
+                                                                .textSecondary,
+                                                            fontWeight:
+                                                                FontWeight.w500,
+                                                          ),
+                                                          overflow: TextOverflow
+                                                              .ellipsis,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                if (hasPabrik)
+                                                  Row(
+                                                    mainAxisSize:
+                                                        MainAxisSize.min,
+                                                    children: [
+                                                      const Icon(
+                                                        Icons.factory_outlined,
+                                                        size: 13,
+                                                        color:
+                                                            AppColors.textMuted,
+                                                      ),
+                                                      const SizedBox(width: 4),
+                                                      Text(
+                                                        pabrik,
+                                                        style: GoogleFonts
+                                                            .plusJakartaSans(
+                                                          fontSize: 11.5,
+                                                          color: AppColors
+                                                              .textSecondary,
+                                                          fontWeight:
+                                                              FontWeight.w500,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                              ],
+                                            ),
+                                          ],
+
+                                          // Baris 4: Informasi Realisasi Terakhir & Sisa Gap
+                                          if (lastTgl != null &&
+                                              lastTgl.isNotEmpty &&
+                                              lastTgl != '-') ...[
+                                            const SizedBox(height: 8),
+                                            Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      horizontal: 8,
+                                                      vertical: 5),
+                                              decoration: BoxDecoration(
+                                                color: isGapBlocked
+                                                    ? AppColors.infoSoft
+                                                    : AppColors.successSoft,
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                              ),
+                                              child: Row(
+                                                children: [
+                                                  Icon(
+                                                    Icons
+                                                        .event_available_rounded,
+                                                    size: 13,
+                                                    color: isGapBlocked
+                                                        ? AppColors.info
+                                                        : AppColors.success,
+                                                  ),
+                                                  const SizedBox(width: 4),
+                                                  Text(
+                                                    'Realisasi terakhir: $lastTgl',
+                                                    style: GoogleFonts
+                                                        .plusJakartaSans(
+                                                      fontSize: 11,
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                      color: AppColors
+                                                          .textPrimary,
+                                                    ),
+                                                  ),
+                                                  if (sisaHari > 0 &&
+                                                      nextDate != null) ...[
+                                                    const Spacer(),
+                                                    Text(
+                                                      'Bisa lagi: $nextDate',
+                                                      style: GoogleFonts
+                                                          .plusJakartaSans(
+                                                        fontSize: 11,
+                                                        fontWeight:
+                                                            FontWeight.w700,
+                                                        color: AppColors.info,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ],
                                               ),
                                             ),
                                           ],
-                                        ),
-                                        const SizedBox(height: 2),
-                                        Row(
-                                          children: [
-                                            const Icon(
-                                              Icons.factory_outlined,
-                                              size: 14,
-                                              color: AppColors.textSecondary,
-                                            ),
-                                            const SizedBox(width: 4),
-                                            Text(
-                                              pabrik,
-                                              style: const TextStyle(
-                                                fontSize: 12,
-                                                color: AppColors.textSecondary,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                              horizontal: 8, vertical: 3),
-                                          decoration: BoxDecoration(
-                                            color: Colors.orange
-                                                .withValues(alpha: 0.12),
-                                            borderRadius:
-                                                BorderRadius.circular(999),
-                                          ),
-                                          child: const Text(
-                                            'Belum realisasi',
-                                            style: TextStyle(
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.w600,
-                                              color: Colors.orange,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
+                                        ],
+                                      ),
                                     ),
                                   ),
-                                  trailing: const Icon(Icons.chevron_right),
-                                  onTap: () {
-                                    widget.onSelected(inv);
-                                  },
                                 ),
                               );
                             },
@@ -6771,12 +7288,12 @@ class _AnimatedNotificationBellState extends State<_AnimatedNotificationBell>
           ),
           if (widget.isLoading)
             Positioned(
-              right: 6,
-              top: 6,
+              right: 4,
+              top: 4,
               child: AppShimmer(
                 child: Container(
-                  width: 14,
-                  height: 14,
+                  width: 10,
+                  height: 10,
                   decoration: const BoxDecoration(
                     color: Colors.white,
                     shape: BoxShape.circle,
@@ -6786,25 +7303,27 @@ class _AnimatedNotificationBellState extends State<_AnimatedNotificationBell>
             )
           else if (widget.count > 0)
             Positioned(
-              right: 6,
-              top: 6,
+              right: 4,
+              top: 4,
               child: Container(
-                padding: const EdgeInsets.all(4),
-                decoration: const BoxDecoration(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 4, vertical: 1.5),
+                decoration: BoxDecoration(
                   color: Colors.redAccent,
-                  shape: BoxShape.circle,
+                  borderRadius: BorderRadius.circular(10),
                 ),
                 constraints: const BoxConstraints(
-                  minWidth: 18,
-                  minHeight: 18,
+                  minWidth: 15,
+                  minHeight: 15,
                 ),
                 child: Center(
                   child: Text(
                     '${widget.count > 99 ? '99+' : widget.count}',
-                    style: const TextStyle(
+                    style: GoogleFonts.plusJakartaSans(
                       color: Colors.white,
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
+                      fontSize: 8.5,
+                      fontWeight: FontWeight.w700,
+                      height: 1.1,
                     ),
                   ),
                 ),
@@ -6916,12 +7435,12 @@ class _AnimatedVoucherNotificationBellState
           ),
           if (widget.isLoading)
             Positioned(
-              right: 6,
-              top: 6,
+              right: 4,
+              top: 4,
               child: AppShimmer(
                 child: Container(
-                  width: 14,
-                  height: 14,
+                  width: 10,
+                  height: 10,
                   decoration: const BoxDecoration(
                     color: Colors.white,
                     shape: BoxShape.circle,
@@ -6931,25 +7450,27 @@ class _AnimatedVoucherNotificationBellState
             )
           else if (widget.count > 0)
             Positioned(
-              right: 6,
-              top: 6,
+              right: 4,
+              top: 4,
               child: Container(
-                padding: const EdgeInsets.all(4),
-                decoration: const BoxDecoration(
-                  color: Color(0xFFDC1E32),
-                  shape: BoxShape.circle,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 4, vertical: 1.5),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFDC1E32),
+                  borderRadius: BorderRadius.circular(10),
                 ),
                 constraints: const BoxConstraints(
-                  minWidth: 18,
-                  minHeight: 18,
+                  minWidth: 15,
+                  minHeight: 15,
                 ),
                 child: Center(
                   child: Text(
                     '${widget.count > 99 ? '99+' : widget.count}',
-                    style: const TextStyle(
+                    style: GoogleFonts.plusJakartaSans(
                       color: Colors.white,
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
+                      fontSize: 8.5,
+                      fontWeight: FontWeight.w700,
+                      height: 1.1,
                     ),
                   ),
                 ),

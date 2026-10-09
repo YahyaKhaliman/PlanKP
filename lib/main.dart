@@ -61,8 +61,15 @@ class PlanKPApp extends StatelessWidget {
               ),
           AppRoutes.jadwalDetail: (ctx) {
             final rawArgs = ModalRoute.of(ctx)!.settings.arguments;
-            final args =
+            var args =
                 rawArgs is int ? rawArgs : int.tryParse('$rawArgs') ?? 0;
+            if (args <= 0) {
+              final queryId = Uri.base.queryParameters['id'] ??
+                  Uri.base.queryParameters['jdw_id'];
+              if (queryId != null) {
+                args = int.tryParse(queryId) ?? 0;
+              }
+            }
             return _ProtectedRoute(
               child: JadwalDetailScreen(jadwalId: args),
             );

@@ -7,9 +7,9 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../../core/utils/responsive_sheet.dart';
 import '../../../core/widgets/app_notifier.dart';
+import '../../../core/widgets/app_search_field.dart';
 import '../../../core/widgets/shimmer_loading.dart';
 import '../../jadwal/providers/jadwal_provider.dart';
-
 
 class MonitoringDivisiScreen extends StatefulWidget {
   const MonitoringDivisiScreen({super.key});
@@ -85,14 +85,11 @@ class _MonitoringDivisiScreenState extends State<MonitoringDivisiScreen>
     return AppDivisiColors.getColor(divisi);
   }
 
-
-
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<JadwalProvider>();
     final isDesktop = MediaQuery.of(context).size.width > 900;
     final data = provider.monitoringDivisiList;
-
 
     return Scaffold(
       backgroundColor: AppColors.surface,
@@ -186,7 +183,6 @@ class _MonitoringDivisiScreenState extends State<MonitoringDivisiScreen>
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
         children: [
-
           const Padding(
             padding: EdgeInsets.only(left: 4, bottom: 10),
             child: Text(
@@ -229,8 +225,6 @@ class _MonitoringDivisiScreenState extends State<MonitoringDivisiScreen>
           '${DateFormatter.monthNames[provider.monitoringBulan! - 1]} ${provider.monitoringTahun}';
     }
 
-
-
     // Filter pencarian
     int totalMatched = 0;
     final Map<String, List<dynamic>> filteredDataMap = {};
@@ -271,8 +265,6 @@ class _MonitoringDivisiScreenState extends State<MonitoringDivisiScreen>
           _buildSearchField(),
           const SizedBox(height: 14),
 
-
-
           // Indikator/Penjelasan Pencarian Aktif
           if (_searchQuery.isNotEmpty) ...[
             Padding(
@@ -311,8 +303,7 @@ class _MonitoringDivisiScreenState extends State<MonitoringDivisiScreen>
                               ),
                             ),
                           if (totalMatched > 0)
-                            const TextSpan(
-                                text: 'progres untuk kata kunci '),
+                            const TextSpan(text: 'progres untuk kata kunci '),
                           TextSpan(
                             text: '"$_searchQuery"',
                             style: TextStyle(
@@ -451,8 +442,6 @@ class _MonitoringDivisiScreenState extends State<MonitoringDivisiScreen>
     );
   }
 
-
-
   Widget _buildEmptyState() {
     return RefreshIndicator(
       onRefresh: _loadData,
@@ -481,100 +470,12 @@ class _MonitoringDivisiScreenState extends State<MonitoringDivisiScreen>
   }
 
   Widget _buildSearchField() {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.cardSurface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x040F172A),
-            blurRadius: 8,
-            offset: Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: TextField(
-              controller: _searchController,
-              onSubmitted: (_) => _executeSearch(),
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-                color: AppColors.textPrimary,
-              ),
-              decoration: InputDecoration(
-                hintText: 'Cari divisi / nama jadwal...',
-                hintStyle: GoogleFonts.plusJakartaSans(
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w400,
-                  color: AppColors.textMuted,
-                ),
-                border: InputBorder.none,
-                enabledBorder: InputBorder.none,
-                focusedBorder: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(
-                  vertical: 10,
-                  horizontal: 12,
-                ),
-                isDense: true,
-              ),
-            ),
-          ),
-          AnimatedSwitcher(
-            duration: const Duration(milliseconds: 200),
-            child: _showClear
-                ? InkWell(
-                    key: const ValueKey('clear'),
-                    borderRadius: BorderRadius.circular(20),
-                    onTap: _clearSearch,
-                    child: Padding(
-                      padding: const EdgeInsets.all(6),
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(
-                          color: AppColors.textSecondary.withValues(alpha: 0.1),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.close_rounded,
-                          size: 14,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                    ),
-                  )
-                : const SizedBox.shrink(key: ValueKey('empty')),
-          ),
-          const SizedBox(width: 4),
-          Padding(
-            padding: const EdgeInsets.only(right: 6),
-            child: SizedBox(
-              height: 34,
-              child: ElevatedButton.icon(
-                onPressed: _executeSearch,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  minimumSize: Size.zero,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                icon: const Icon(Icons.search_rounded, size: 15),
-                label: Text(
-                  'Cari',
-                  style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w600),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
+    return AppSearchField(
+      controller: _searchController,
+      hintText: 'Cari divisi / nama jadwal...',
+      onSubmitted: (_) => _executeSearch(),
+      onSearch: _executeSearch,
+      onClear: _clearSearch,
     );
   }
 
@@ -708,7 +609,8 @@ class _MonitoringDivisiScreenState extends State<MonitoringDivisiScreen>
                       itemBuilder: (context, index) {
                         final bulanNum = index + 1;
                         final isSelected = tempBulan == bulanNum;
-                        final name = DateFormatter.monthNames[index].substring(0, 3);
+                        final name =
+                            DateFormatter.monthNames[index].substring(0, 3);
 
                         return InkWell(
                           onTap: () {
@@ -774,8 +676,6 @@ class _MonitoringDivisiScreenState extends State<MonitoringDivisiScreen>
   }
 }
 
-
-
 // =============================================
 // DIVISI CARD WIDGET FOR TAB 1: PENJADWALAN
 // =============================================
@@ -807,14 +707,14 @@ class _PenjadwalanDivisiCardState extends State<_PenjadwalanDivisiCard> {
     final String divisi = widget.item['divisi'] ?? '-';
     final bool sudahDibuatSemua = widget.item['sudah_dibuat_semua'] ?? false;
     final int totalJenis = DateFormatter.toInt(widget.item['total_jenis']);
-    final int jenisDijadwalkan = DateFormatter.toInt(widget.item['jenis_dijadwalkan']);
-    final int progressPersen =
-        DateFormatter.toInt(widget.item['progress_percent'] ?? widget.item['progress_persen']);
+    final int jenisDijadwalkan =
+        DateFormatter.toInt(widget.item['jenis_dijadwalkan']);
+    final int progressPersen = DateFormatter.toInt(
+        widget.item['progress_percent'] ?? widget.item['progress_persen']);
     final List<dynamic> jenisList = widget.item['jenis_list'] ?? [];
 
-    final double progressValue = totalJenis > 0
-        ? (jenisDijadwalkan / totalJenis).clamp(0.0, 1.0)
-        : 0.0;
+    final double progressValue =
+        totalJenis > 0 ? (jenisDijadwalkan / totalJenis).clamp(0.0, 1.0) : 0.0;
 
     final scheduled =
         jenisList.where((j) => j['sudah_dijadwalkan'] == true).toList();
@@ -1193,7 +1093,6 @@ class _PenjadwalanDivisiCardState extends State<_PenjadwalanDivisiCard> {
       context,
       maxDesktopWidth: 520,
       builder: (context) {
-
         return SafeArea(
           child: Padding(
             padding: const EdgeInsets.all(16),
@@ -1345,8 +1244,8 @@ class _ProgressDivisiCardState extends State<_ProgressDivisiCard> {
     }
 
     final int realisasiPersen = totalTarget > 0
-    ? ((totalRealisasi / totalTarget) * 100).round().clamp(0, 100)
-    : (totalRealisasi > 0 ? 100 : 0);
+        ? ((totalRealisasi / totalTarget) * 100).round().clamp(0, 100)
+        : (totalRealisasi > 0 ? 100 : 0);
 
     return Container(
       decoration: BoxDecoration(
@@ -1523,8 +1422,9 @@ class _ProgressDivisiCardState extends State<_ProgressDivisiCard> {
           final int target = DateFormatter.toInt(j['jdw_target']);
           final int real = DateFormatter.toInt(j['jdw_realisasi']);
           final int pct = DateFormatter.toInt(j['jdw_persen']);
-          final double barVal =
-              target > 0 ? (real / target).clamp(0.0, 1.0) : (real > 0 ? 1.0 : 0.0);
+          final double barVal = target > 0
+              ? (real / target).clamp(0.0, 1.0)
+              : (real > 0 ? 1.0 : 0.0);
           final today = DateTime.now();
           final provider = context.read<JadwalProvider>();
           final bool isCurrentMonth = provider.monitoringBulan == today.month &&

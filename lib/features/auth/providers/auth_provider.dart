@@ -41,12 +41,22 @@ class AuthProvider extends ChangeNotifier {
         appVersion = '${packageInfo.version}+${packageInfo.buildNumber}';
       } catch (_) {}
 
+      final String platform = kIsWeb
+          ? 'Web'
+          : (defaultTargetPlatform == TargetPlatform.android
+              ? 'Android'
+              : (defaultTargetPlatform == TargetPlatform.iOS
+                  ? 'iOS'
+                  : 'Mobile'));
+      final String versionWithPlatform = '$appVersion ($platform)';
+
       final res = await ApiClient.post(
         ApiConfig.login,
         {
           'user_nama': user_nama,
           'user_password': user_password,
-          'app_version': appVersion,
+          'app_version': versionWithPlatform,
+          'platform': platform,
         },
         auth: false,
       );

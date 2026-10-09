@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/app_notifier.dart';
+import '../../../core/widgets/app_search_field.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/shimmer_loading.dart';
 import '../../auth/providers/auth_provider.dart';
@@ -32,8 +33,6 @@ class _UserScreenState extends State<UserScreen> {
       p.fetchUsers();
       p.fetchMetadata(showLoading: false);
     });
-    _searchCtrl
-        .addListener(() => setState(() => _searchQuery = _searchCtrl.text));
   }
 
   @override
@@ -120,53 +119,18 @@ class _UserScreenState extends State<UserScreen> {
                       AppBreakpoints.isDesktop(context) ? 0 : 12,
                       8,
                     ),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: AppColors.cardSurface,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppColors.border, width: 1),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Color(0x040F172A),
-                            blurRadius: 8,
-                            offset: Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: TextField(
-                        controller: _searchCtrl,
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w500,
-                          color: AppColors.textPrimary,
-                        ),
-                        decoration: InputDecoration(
-                          hintText: 'Cari nama atau NIK...',
-                          hintStyle: GoogleFonts.plusJakartaSans(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w400,
-                            color: AppColors.textMuted,
-                          ),
-                          prefixIcon: const Icon(Icons.search_rounded,
-                              size: 18, color: AppColors.primary),
-                          suffixIcon: _searchQuery.isNotEmpty
-                              ? IconButton(
-                                  icon: const Icon(Icons.clear_rounded,
-                                      size: 18, color: AppColors.textMuted),
-                                  onPressed: () {
-                                    _searchCtrl.clear();
-                                    setState(() => _searchQuery = '');
-                                  },
-                                )
-                              : null,
-                          filled: false,
-                          contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 10),
-                          border: InputBorder.none,
-                          enabledBorder: InputBorder.none,
-                          focusedBorder: InputBorder.none,
-                        ),
-                      ),
+                    child: AppSearchField(
+                      controller: _searchCtrl,
+                      hintText: 'Cari nama atau NIK...',
+                      onSubmitted: (_) {
+                        setState(() => _searchQuery = _searchCtrl.text);
+                      },
+                      onSearch: () {
+                        setState(() => _searchQuery = _searchCtrl.text);
+                      },
+                      onClear: () {
+                        setState(() => _searchQuery = '');
+                      },
                     ),
                   ),
                 Expanded(
@@ -174,20 +138,7 @@ class _UserScreenState extends State<UserScreen> {
                     builder: (_, p, __) {
                       final authUserId = _currentAuthUserId();
                       if (p.loading) {
-                        return const AppShimmer(
-                          child: SingleChildScrollView(
-                            physics: NeverScrollableScrollPhysics(),
-                            padding: EdgeInsets.symmetric(horizontal: 12),
-                            child: Column(
-                              children: [
-                                AppSkeletonListCard(),
-                                AppSkeletonListCard(),
-                                AppSkeletonListCard(),
-                                AppSkeletonListCard(),
-                              ],
-                            ),
-                          ),
-                        );
+                        return _buildSkeleton(context);
                       }
                       final filteredUsers = p.userList.where((user) {
                         if (isSelfOnly && authUserId != null) {
@@ -235,16 +186,6 @@ class _UserScreenState extends State<UserScreen> {
                             ],
                           ),
                           child: ListTile(
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => JadwalScreen(
-                                    initialSearchQuery: user.userNama,
-                                  ),
-                                ),
-                              );
-                            },
                             contentPadding: const EdgeInsets.symmetric(
                                 horizontal: 14, vertical: 6),
                             leading: Container(
@@ -368,11 +309,61 @@ class _UserScreenState extends State<UserScreen> {
                                       ),
                                     ),
                                   ),
-                                  const SizedBox(width: 4),
-                                  const Icon(
-                                    Icons.arrow_forward_ios_rounded,
-                                    size: 13,
-                                    color: AppColors.textSecondary,
+                                  const SizedBox(width: 6),
+                                  Tooltip(
+                                    message: 'Lihat jadwal user ini',
+                                    child: Material(
+                                      color: Colors.transparent,
+                                      child: InkWell(
+                                        onTap: () {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (_) => JadwalScreen(
+                                                initialSearchQuery:
+                                                    user.userNama,
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                        borderRadius:
+                                            BorderRadius.circular(10),
+                                        child: Ink(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 9, vertical: 6),
+                                          decoration: BoxDecoration(
+                                            color: AppColors.primarySoft,
+                                            borderRadius:
+                                                BorderRadius.circular(10),
+                                            border: Border.all(
+                                              color: AppColors.primary
+                                                  .withValues(alpha: 0.18),
+                                              width: 1,
+                                            ),
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              const Icon(
+                                                Icons.calendar_month_rounded,
+                                                size: 14,
+                                                color: AppColors.primary,
+                                              ),
+                                              const SizedBox(width: 4),
+                                              Text(
+                                                'Lihat Jadwal',
+                                                style:
+                                                    GoogleFonts.plusJakartaSans(
+                                                  fontSize: 11.5,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: AppColors.primary,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ),
                                   ),
                                 ]),
                           ),
@@ -412,6 +403,93 @@ class _UserScreenState extends State<UserScreen> {
             ),
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildSkeleton(BuildContext context) {
+    final isMobile = AppBreakpoints.isMobile(context);
+    final columns = AppBreakpoints.gridColumns(
+      context,
+      mobile: 1,
+      tablet: 2,
+      desktop: 3,
+    );
+
+    return AppShimmer(
+      child: isMobile
+          ? ListView.separated(
+              physics: const NeverScrollableScrollPhysics(),
+              padding: EdgeInsets.fromLTRB(
+                AppBreakpoints.isDesktop(context) ? 0 : 12,
+                6,
+                AppBreakpoints.isDesktop(context) ? 0 : 12,
+                80,
+              ),
+              itemCount: 6,
+              separatorBuilder: (_, __) => const SizedBox(height: 6),
+              itemBuilder: (_, __) => _buildSkeletonUserCard(),
+            )
+          : GridView.builder(
+              physics: const NeverScrollableScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(0, 8, 0, 80),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: columns,
+                mainAxisSpacing: 10,
+                crossAxisSpacing: 10,
+                mainAxisExtent: 118,
+              ),
+              itemCount: columns * 3,
+              itemBuilder: (_, __) => _buildSkeletonUserCard(),
+            ),
+    );
+  }
+
+  Widget _buildSkeletonUserCard() {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.cardSurface.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border.withValues(alpha: 0.4)),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      child: const Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          // Avatar placeholder
+          AppSkeletonSquircle(width: 38, height: 38, borderRadius: 12),
+          SizedBox(width: 12),
+          // Info placeholder
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                AppSkeletonLine(width: 140, height: 14, borderRadius: 4),
+                SizedBox(height: 6),
+                AppSkeletonLine(width: 80, height: 11, borderRadius: 3),
+                SizedBox(height: 8),
+                Row(
+                  children: [
+                    AppSkeletonSquircle(width: 60, height: 20, borderRadius: 6),
+                    SizedBox(width: 6),
+                    AppSkeletonSquircle(width: 50, height: 20, borderRadius: 6),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          SizedBox(width: 10),
+          // Trailing action placeholder
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AppSkeletonSquircle(width: 28, height: 28, borderRadius: 8),
+              SizedBox(width: 6),
+              AppSkeletonSquircle(width: 14, height: 14, borderRadius: 4),
+            ],
+          ),
+        ],
       ),
     );
   }

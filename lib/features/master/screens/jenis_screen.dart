@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/app_notifier.dart';
+import '../../../core/widgets/app_search_field.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/shimmer_loading.dart';
 import '../models/jenis_model.dart';
@@ -20,6 +20,7 @@ class JenisScreen extends StatefulWidget {
 class _JenisScreenState extends State<JenisScreen> {
   static const _kPageBg = AppColors.surface;
   final _searchCtrl = TextEditingController();
+  String _searchQuery = '';
 
   @override
   void initState() {
@@ -57,7 +58,7 @@ class _JenisScreenState extends State<JenisScreen> {
       ),
       body: Consumer<MasterProvider>(
         builder: (_, p, __) {
-          final query = _searchCtrl.text.trim().toLowerCase();
+          final query = _searchQuery.trim().toLowerCase();
           final filtered = query.isEmpty
               ? p.jenisMaster
               : p.jenisMaster.where((j) {
@@ -82,51 +83,24 @@ class _JenisScreenState extends State<JenisScreen> {
                     children: [
                       Padding(
                         padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: AppColors.cardSurface,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: AppColors.border, width: 1),
-                            boxShadow: const [
-                              BoxShadow(
-                                color: Color(0x040F172A),
-                                blurRadius: 8,
-                                offset: Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: TextField(
-                            controller: _searchCtrl,
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 12.5,
-                              fontWeight: FontWeight.w500,
-                              color: AppColors.textPrimary,
-                            ),
-                            decoration: InputDecoration(
-                              hintText: 'Cari Nama Jenis...',
-                              hintStyle: GoogleFonts.plusJakartaSans(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w400,
-                                color: AppColors.textMuted,
-                              ),
-                              prefixIcon: const Icon(Icons.search_rounded, size: 18, color: AppColors.primary),
-                              suffixIcon: _searchCtrl.text.isNotEmpty
-                                  ? IconButton(
-                                      icon: const Icon(Icons.clear_rounded, size: 18, color: AppColors.textMuted),
-                                      onPressed: () {
-                                        _searchCtrl.clear();
-                                        setState(() {});
-                                      },
-                                    )
-                                  : null,
-                              filled: false,
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                              border: InputBorder.none,
-                              enabledBorder: InputBorder.none,
-                              focusedBorder: InputBorder.none,
-                            ),
-                            onChanged: (_) => setState(() {}),
-                          ),
+                        child: AppSearchField(
+                          controller: _searchCtrl,
+                          hintText: 'Cari Nama Jenis...',
+                          onSubmitted: (_) {
+                            setState(() {
+                              _searchQuery = _searchCtrl.text;
+                            });
+                          },
+                          onSearch: () {
+                            setState(() {
+                              _searchQuery = _searchCtrl.text;
+                            });
+                          },
+                          onClear: () {
+                            setState(() {
+                              _searchQuery = '';
+                            });
+                          },
                         ),
                       ),
                       if (!p.loading && filtered.isNotEmpty)
@@ -142,7 +116,7 @@ class _JenisScreenState extends State<JenisScreen> {
                                   color: AppColors.textSecondary,
                                 ),
                               ),
-                              if (_searchCtrl.text.isNotEmpty)
+                              if (_searchQuery.trim().isNotEmpty)
                                 const Text(
                                   ' · hasil pencarian',
                                   style: TextStyle(

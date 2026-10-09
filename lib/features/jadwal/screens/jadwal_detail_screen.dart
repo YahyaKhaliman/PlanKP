@@ -30,6 +30,7 @@ class JadwalDetailScreen extends StatefulWidget {
 
 class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
   String _realisasiFilter = 'Semua'; // 'Semua', 'Sudah', 'Belum'
+  bool _isInitialLoading = true;
 
   DateTime _dateOnly(DateTime date) =>
       DateTime(date.year, date.month, date.day);
@@ -46,13 +47,23 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
     final provider = context.read<JadwalProvider>();
     final master = context.read<MasterProvider>();
 
-    await Future.wait([
-      provider.fetchJadwalDetail(widget.jadwalId),
-      provider.fetchRealisasi(jadwalId: widget.jadwalId, status: 'Selesai'),
-      if (master.inventarisList.isEmpty) master.fetchInventaris(showLoading: false),
-      if (master.jenisMaster.isEmpty) master.fetchJenis(showLoading: false),
-      if (master.userList.isEmpty) master.fetchUsers(showLoading: false),
-    ]);
+    try {
+      await Future.wait([
+        provider.fetchJadwalDetail(widget.jadwalId),
+        provider.fetchRealisasi(jadwalId: widget.jadwalId, status: 'Selesai'),
+        if (master.inventarisList.isEmpty) master.fetchInventaris(showLoading: false),
+        if (master.jenisMaster.isEmpty) master.fetchJenis(showLoading: false),
+        if (master.userList.isEmpty) master.fetchUsers(showLoading: false),
+      ]);
+    } catch (_) {
+      // Error tercatat di provider
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isInitialLoading = false;
+        });
+      }
+    }
   }
 
   Future<void> _openRealisasiDetail(RealisasiModel item) async {
@@ -156,7 +167,7 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
       appBar: AppBar(title: const Text('Detail Jadwal')),
       body: Consumer<JadwalProvider>(
         builder: (_, provider, __) {
-          if (provider.loading) {
+          if (_isInitialLoading || provider.loading) {
             return _buildSkeleton(isDesktop, horizontalPadding);
           }
 
@@ -199,7 +210,9 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
                     const SizedBox(height: 6),
                     Text(
                       provider.error ??
-                          'Jadwal #${widget.jadwalId} belum tersedia atau terjadi kendala saat memuat data.',
+                          (widget.jadwalId <= 0
+                              ? 'ID Jadwal tidak valid atau halaman telah di-refresh. Silakan kembali ke menu Jadwal.'
+                              : 'Jadwal #${widget.jadwalId} belum tersedia atau terjadi kendala saat memuat data.'),
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 12.5,
                         color: AppColors.textSecondary,
@@ -209,12 +222,14 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
                     const SizedBox(height: 18),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         OutlinedButton(
                           onPressed: () => Navigator.pop(context),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: AppColors.textSecondary,
                             side: const BorderSide(color: AppColors.border),
+                            minimumSize: const Size(100, 38),
                           ),
                           child: Text(
                             'Kembali',
@@ -224,7 +239,10 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
                         ),
                         const SizedBox(width: 10),
                         ElevatedButton.icon(
-                          onPressed: _loadDetailData,
+                          onPressed: () {
+                            setState(() => _isInitialLoading = true);
+                            _loadDetailData();
+                          },
                           icon: const Icon(Icons.refresh_rounded, size: 16),
                           label: Text(
                             'Coba Lagi',
@@ -234,6 +252,7 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.primary,
                             foregroundColor: Colors.white,
+                            minimumSize: const Size(110, 38),
                           ),
                         ),
                       ],
@@ -1069,23 +1088,36 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
                 .toList();
 
     final totalCount = effectiveInventarisList.length;
-    int sudahCount = 0;
-    for (final inv in effectiveInventarisList) {
+    final bool hasGapRule = jadwal.jdwGapHari > 0;
+
+    bool isUnitDone(Map<String, dynamic> inv) {
       final invIdRaw = inv['inv_id'];
       final invId = invIdRaw is int ? invIdRaw : int.tryParse('$invIdRaw');
-      final isDoneBackend = inv['inv_is_done_current_period'] == true;
-      if (isDoneBackend || (invId != null && selesaiInvIds.contains(invId))) {
+      final sisaHari = (inv['inv_gap_sisa_hari'] as num?)?.toInt() ?? 0;
+      final bool unitHasGap = hasGapRule || inv['inv_gap_sisa_hari'] != null;
+
+      if (unitHasGap) {
+        if (sisaHari > 0 || inv['inv_is_gap_eligible'] == false) {
+          return true; // Masih dalam masa jeda gap siklus ini
+        }
+        // Siklus gap sudah berakhir: hanya sudah selesai jika ada realisasi baru di siklus ini
+        return invId != null && selesaiInvIds.contains(invId);
+      } else {
+        return (invId != null && selesaiInvIds.contains(invId)) ||
+            inv['inv_is_done_current_period'] == true;
+      }
+    }
+
+    int sudahCount = 0;
+    for (final inv in effectiveInventarisList) {
+      if (isUnitDone(inv)) {
         sudahCount++;
       }
     }
     final belumCount = totalCount - sudahCount;
 
     final filteredList = effectiveInventarisList.where((inv) {
-      final invIdRaw = inv['inv_id'];
-      final invId = invIdRaw is int ? invIdRaw : int.tryParse('$invIdRaw');
-      final isDoneBackend = inv['inv_is_done_current_period'] == true;
-      final sudahTerealisasi =
-          isDoneBackend || (invId != null && selesaiInvIds.contains(invId));
+      final sudahTerealisasi = isUnitDone(inv);
 
       if (_realisasiFilter == 'Sudah') {
         return sudahTerealisasi;
@@ -1133,8 +1165,7 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
                           inv['inv_is_gap_eligible'] != false;
                       final nextEligibleDate =
                           inv['inv_next_eligible_date']?.toString();
-                      final sudahTerealisasi =
-                          invId != null && selesaiInvIds.contains(invId);
+                      final sudahTerealisasi = isUnitDone(inv);
                       final merk = (inv['inv_merk'] ?? '-').toString();
                       final pic = (inv['inv_pic'] ?? '-').toString();
                       RealisasiModel? realisasiItem;
@@ -1210,6 +1241,7 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
             : Icons.schedule_rounded);
 
     return Container(
+      width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: AppColors.cardSurface,
@@ -1318,44 +1350,55 @@ class _JadwalDetailScreenState extends State<JadwalDetailScreen> {
           if (sudahTerealisasi && realisasiItem != null) ...[
             const SizedBox(height: 10),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               decoration: BoxDecoration(
                 color: const Color(0xFFF0FDF4),
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(color: const Color(0xFFDCFCE7)),
               ),
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
                           'Maintenance: ${_displayDate(realisasiItem.realTgl)}',
                           style: GoogleFonts.plusJakartaSans(
-                            fontSize: 11.5,
+                            fontSize: 12,
                             fontWeight: FontWeight.w600,
                             color: const Color(0xFF15803D),
                           ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
+                        const SizedBox(height: 2),
                         Text(
                           'Pelaksana: ${_displayTeknisi(master, realisasiItem)}',
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 11,
                             color: AppColors.textSecondary,
                           ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ],
                     ),
                   ),
+                  const SizedBox(width: 10),
                   SizedBox(
                     height: 32,
                     child: OutlinedButton.icon(
                       onPressed: onTapDetail,
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(horizontal: 10),
+                        visualDensity: VisualDensity.compact,
                         side: const BorderSide(color: Color(0xFF86EFAC)),
                         backgroundColor: Colors.white,
+                        minimumSize: const Size(0, 32),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),

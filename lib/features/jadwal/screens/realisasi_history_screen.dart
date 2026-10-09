@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/app_search_field.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/shimmer_loading.dart';
 import '../../auth/providers/auth_provider.dart';
@@ -34,6 +35,7 @@ class _RealisasiHistoryScreenState extends State<RealisasiHistoryScreen> {
   String _activeTab = 'Selesai'; // 'Selesai' atau 'Draft' (Menunggu TTD)
   List<RealisasiModel> _draftRealisasiList = [];
   bool _loadingDraft = false;
+  bool _isInitialLoading = true;
   final TextEditingController _draftSearchCtrl = TextEditingController();
   String _draftSearchQuery = '';
 
@@ -58,9 +60,10 @@ class _RealisasiHistoryScreenState extends State<RealisasiHistoryScreen> {
       final auth = context.read<AuthProvider>();
       final role = auth.user?['user_jabatan'];
       final isManager = role == 'manager';
+      final isAdmin = role == 'admin';
       final provider = context.read<JadwalProvider>();
       final drafts = await provider.fetchDraftRealisasi(
-        byDivisi: isManager ? false : true,
+        byDivisi: isManager ? false : isAdmin,
       );
       setState(() {
         _draftRealisasiList = drafts;
@@ -79,25 +82,48 @@ class _RealisasiHistoryScreenState extends State<RealisasiHistoryScreen> {
     final isManager = role == 'manager';
     final provider = context.read<JadwalProvider>();
 
-    if (_activeTab == 'Selesai') {
-      if (isManager) {
-        await provider.fetchJadwal();
-        await provider.fetchRealisasi(status: 'Selesai');
-      } else if (isAdmin) {
-        await provider.fetchJadwalByDivisi();
-        await provider.fetchRealisasi(status: 'Selesai', byDivisi: true);
+    try {
+      if (_activeTab == 'Selesai') {
+        int? effectiveUserId = _selectedUserId;
+        if (!isAdmin && !isManager) {
+          final rawId = auth.user?['user_id'];
+          if (rawId is int) {
+            effectiveUserId = rawId;
+          } else if (rawId != null) {
+            effectiveUserId = int.tryParse(rawId.toString());
+          }
+          _selectedUserId = effectiveUserId;
+        }
+
+        if (isManager) {
+          await provider.fetchJadwal();
+          await provider.fetchRealisasi(status: 'Selesai');
+        } else if (isAdmin) {
+          await provider.fetchJadwalByDivisi();
+          await provider.fetchRealisasi(status: 'Selesai', byDivisi: true);
+        } else {
+          await provider.fetchJadwalByUser();
+          await provider.fetchRealisasi(status: 'Selesai');
+        }
+        await provider.fetchHariLiburForMonth(
+          _selectedMonth,
+          onlyDb: isManager,
+          menu: 'realisasi',
+        );
+        await provider.fetchRealisasiHistorySummary(
+          bulan: _selectedMonth.month,
+          tahun: _selectedMonth.year,
+          userId: effectiveUserId,
+        );
       } else {
-        await provider.fetchJadwalByUser();
-        await provider.fetchRealisasi(status: 'Selesai');
+        await _loadDraftData();
       }
-      await provider.fetchHariLiburForMonth(_selectedMonth);
-      await provider.fetchRealisasiHistorySummary(
-        bulan: _selectedMonth.month,
-        tahun: _selectedMonth.year,
-        userId: _selectedUserId,
-      );
-    } else {
-      await _loadDraftData();
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isInitialLoading = false;
+        });
+      }
     }
   }
 
@@ -106,12 +132,33 @@ class _RealisasiHistoryScreenState extends State<RealisasiHistoryScreen> {
       _selectedMonth = DateTime(_selectedMonth.year, _selectedMonth.month - 1);
       _selectedDay = null;
     });
+    final auth = context.read<AuthProvider>();
+    final role =
+        auth.user?['user_jabatan']?.toString().toLowerCase();
+    final isManager = role == 'manager';
+    final isAdmin = role == 'admin';
+    int? effectiveUserId;
+    if (!isAdmin && !isManager) {
+      final rawId = auth.user?['user_id'];
+      if (rawId is int) {
+        effectiveUserId = rawId;
+      } else if (rawId != null) {
+        effectiveUserId = int.tryParse(rawId.toString());
+      }
+    } else {
+      effectiveUserId = _selectedUserId;
+    }
+
     final p = context.read<JadwalProvider>();
-    p.fetchHariLiburForMonth(_selectedMonth);
+    p.fetchHariLiburForMonth(
+      _selectedMonth,
+      onlyDb: isManager,
+      menu: 'realisasi',
+    );
     p.fetchRealisasiHistorySummary(
       bulan: _selectedMonth.month,
       tahun: _selectedMonth.year,
-      userId: _selectedUserId,
+      userId: effectiveUserId,
     );
   }
 
@@ -120,12 +167,33 @@ class _RealisasiHistoryScreenState extends State<RealisasiHistoryScreen> {
       _selectedMonth = DateTime(_selectedMonth.year, _selectedMonth.month + 1);
       _selectedDay = null;
     });
+    final auth = context.read<AuthProvider>();
+    final role =
+        auth.user?['user_jabatan']?.toString().toLowerCase();
+    final isManager = role == 'manager';
+    final isAdmin = role == 'admin';
+    int? effectiveUserId;
+    if (!isAdmin && !isManager) {
+      final rawId = auth.user?['user_id'];
+      if (rawId is int) {
+        effectiveUserId = rawId;
+      } else if (rawId != null) {
+        effectiveUserId = int.tryParse(rawId.toString());
+      }
+    } else {
+      effectiveUserId = _selectedUserId;
+    }
+
     final p = context.read<JadwalProvider>();
-    p.fetchHariLiburForMonth(_selectedMonth);
+    p.fetchHariLiburForMonth(
+      _selectedMonth,
+      onlyDb: isManager,
+      menu: 'realisasi',
+    );
     p.fetchRealisasiHistorySummary(
       bulan: _selectedMonth.month,
       tahun: _selectedMonth.year,
-      userId: _selectedUserId,
+      userId: effectiveUserId,
     );
   }
 
@@ -329,8 +397,9 @@ class _RealisasiHistoryScreenState extends State<RealisasiHistoryScreen> {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
-    final role = auth.user?['user_jabatan'];
-    final isAdmin = role == 'admin' || role == 'manager';
+    final role = auth.user?['user_jabatan']?.toString().toLowerCase();
+    final isManager = role == 'manager';
+    final isAdmin = role == 'admin' || isManager;
     final isDesktop = AppBreakpoints.isDesktop(context);
     final isTablet = AppBreakpoints.isTablet(context);
     final horizontalPadding = isDesktop
@@ -392,22 +461,13 @@ class _RealisasiHistoryScreenState extends State<RealisasiHistoryScreen> {
         onRefresh: _loadData,
         child: Consumer<JadwalProvider>(
           builder: (_, p, __) {
-            final isLoading =
-                _activeTab == 'Selesai' ? p.loading : _loadingDraft;
+            final isLoading = _isInitialLoading ||
+                (_activeTab == 'Selesai' ? p.loading : _loadingDraft);
             if (isLoading) {
-              return const AppShimmer(
-                child: SingleChildScrollView(
-                  physics: NeverScrollableScrollPhysics(),
-                  padding: EdgeInsets.fromLTRB(16, 16, 16, 120),
-                  child: Column(
-                    children: [
-                      AppSkeletonListCard(),
-                      AppSkeletonListCard(),
-                      AppSkeletonListCard(),
-                      AppSkeletonListCard(),
-                    ],
-                  ),
-                ),
+              return _buildSkeleton(
+                isDesktop: isDesktop,
+                horizontalPadding: horizontalPadding,
+                maxContentWidth: maxContentWidth,
               );
             }
 
@@ -422,15 +482,32 @@ class _RealisasiHistoryScreenState extends State<RealisasiHistoryScreen> {
             List<int> sortedCrossMonthWeeks = [];
 
             if (_activeTab == 'Selesai') {
+              final isStaffOnly = !isAdmin && !isManager;
+              int? currentUserId;
+              final rawId = auth.user?['user_id'];
+              if (rawId is int) {
+                currentUserId = rawId;
+              } else if (rawId != null) {
+                currentUserId = int.tryParse(rawId.toString());
+              }
+              final int? effectiveUserId =
+                  isStaffOnly ? currentUserId : _selectedUserId;
+
               monthRealisasi =
                   _filterRealisasiByMonth(p.realisasiList, _selectedMonth);
               filteredJadwal =
-                  _filterJadwalBySelectedUser(p.jadwalList, _selectedUserId);
+                  _filterJadwalBySelectedUser(p.jadwalList, effectiveUserId);
               filteredMonthRealisasi = _filterRealisasiBySelectedUser(
-                  monthRealisasi, _selectedUserId);
-              holidayDays = p.getHolidayDaysForMonth(_selectedMonth);
+                  monthRealisasi, effectiveUserId);
+              holidayDays = p.getHolidayDaysForMonth(
+                _selectedMonth,
+                onlyDb: isManager,
+                menu: 'realisasi',
+              );
 
-              userItems = _buildUserFilterItems(p.jadwalList, p.realisasiList);
+              userItems = isStaffOnly
+                  ? []
+                  : _buildUserFilterItems(p.jadwalList, p.realisasiList);
 
               if (p.historySummaryData != null) {
                 final data = p.historySummaryData!;
@@ -685,10 +762,12 @@ class _RealisasiHistoryScreenState extends State<RealisasiHistoryScreen> {
                               horizontalPadding, 16, horizontalPadding, 10),
                           child: LayoutBuilder(
                             builder: (_, constraints) {
+                              final canFilterUser =
+                                  (isAdmin || isManager) && userItems.isNotEmpty;
                               final canUseSingleRow =
-                                  isAdmin && constraints.maxWidth >= 840;
+                                  canFilterUser && constraints.maxWidth >= 840;
 
-                              if (!isAdmin) {
+                              if (!canFilterUser) {
                                 return _MonthSwitcher(
                                   monthLabel: _monthLabel(_selectedMonth),
                                   onPrevious: _previousMonth,
@@ -824,7 +903,7 @@ class _RealisasiHistoryScreenState extends State<RealisasiHistoryScreen> {
                               SizedBox(
                                 width: double.infinity,
                                 child: Text(
-                                    'Penilaian ${_selectedUserId == null ? 'Semua User' : userItems.firstWhere((u) => u.userId == _selectedUserId, orElse: () => _UserFilterItem(userId: _selectedUserId ?? 0, userName: 'User')).userName} Bulan ${_monthLabel(_selectedMonth)}',
+                                    'Penilaian ${_selectedUserId == null ? (isAdmin || isManager ? 'Semua User' : (auth.user?['user_nama'] ?? 'User')) : userItems.firstWhere((u) => u.userId == _selectedUserId, orElse: () => _UserFilterItem(userId: _selectedUserId ?? 0, userName: auth.user?['user_nama'] ?? 'User')).userName} Bulan ${_monthLabel(_selectedMonth)}',
                                     textAlign: TextAlign.center,
                                     style: const TextStyle(
                                         fontWeight: FontWeight.w700,
@@ -856,59 +935,25 @@ class _RealisasiHistoryScreenState extends State<RealisasiHistoryScreen> {
                             children: [
                               if (_draftRealisasiList.isNotEmpty) ...[
                                 const SizedBox(height: 10),
-                                // Search bar
-                                Container(
-                                  decoration: BoxDecoration(
-                                    color: AppColors.cardSurface,
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(
-                                      color: AppColors.border,
-                                    ),
-                                  ),
-                                  child: TextField(
-                                    controller: _draftSearchCtrl,
-                                    style: GoogleFonts.plusJakartaSans(
-                                      fontSize: 13,
-                                      color: AppColors.textPrimary,
-                                    ),
-                                    decoration: InputDecoration(
-                                      hintText:
-                                          'Cari aset, jadwal, teknisi, lokasi...',
-                                      hintStyle: GoogleFonts.plusJakartaSans(
-                                        fontSize: 12.5,
-                                        color: AppColors.textMuted,
-                                      ),
-                                      prefixIcon: const Icon(
-                                        Icons.search_rounded,
-                                        color: AppColors.primary,
-                                        size: 20,
-                                      ),
-                                      suffixIcon: _draftSearchQuery.isNotEmpty
-                                          ? IconButton(
-                                              icon: const Icon(
-                                                  Icons.clear_rounded,
-                                                  size: 18),
-                                              onPressed: () {
-                                                _draftSearchCtrl.clear();
-                                                setState(() {
-                                                  _draftSearchQuery = '';
-                                                });
-                                              },
-                                            )
-                                          : null,
-                                      border: InputBorder.none,
-                                      contentPadding:
-                                          const EdgeInsets.symmetric(
-                                        horizontal: 12,
-                                        vertical: 12,
-                                      ),
-                                    ),
-                                    onChanged: (val) {
-                                      setState(() {
-                                        _draftSearchQuery = val;
-                                      });
-                                    },
-                                  ),
+                                AppSearchField(
+                                  controller: _draftSearchCtrl,
+                                  hintText:
+                                      'Cari aset, jadwal, teknisi, lokasi...',
+                                  onSubmitted: (val) {
+                                    setState(() {
+                                      _draftSearchQuery = _draftSearchCtrl.text;
+                                    });
+                                  },
+                                  onSearch: () {
+                                    setState(() {
+                                      _draftSearchQuery = _draftSearchCtrl.text;
+                                    });
+                                  },
+                                  onClear: () {
+                                    setState(() {
+                                      _draftSearchQuery = '';
+                                    });
+                                  },
                                 ),
                               ],
                             ],
@@ -1125,6 +1170,270 @@ class _RealisasiHistoryScreenState extends State<RealisasiHistoryScreen> {
               ),
             );
           },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSkeleton({
+    required bool isDesktop,
+    required double horizontalPadding,
+    required double maxContentWidth,
+  }) {
+    return Center(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: maxContentWidth),
+        child: AppShimmer(
+          child: ListView(
+            physics: const NeverScrollableScrollPhysics(),
+            padding: EdgeInsets.fromLTRB(
+                horizontalPadding, 16, horizontalPadding, 40),
+            children: [
+              // 1. Tab Selector Placeholder
+              Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.4),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                      color: AppColors.border.withValues(alpha: 0.3)),
+                ),
+                child: const Row(
+                  children: [
+                    Expanded(
+                      child: AppSkeletonSquircle(
+                        width: double.infinity,
+                        height: 38,
+                        borderRadius: 10,
+                      ),
+                    ),
+                    SizedBox(width: 6),
+                    Expanded(
+                      child: AppSkeletonSquircle(
+                        width: double.infinity,
+                        height: 38,
+                        borderRadius: 10,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 14),
+
+              if (_activeTab == 'Selesai') ...[
+                // 2. Month Switcher & Filter Placeholder
+                Row(
+                  children: [
+                    Expanded(
+                      flex: 6,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.4),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                              color: AppColors.border.withValues(alpha: 0.3)),
+                        ),
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            AppSkeletonCircle(size: 28),
+                            AppSkeletonLine(width: 120, height: 16),
+                            AppSkeletonCircle(size: 28),
+                          ],
+                        ),
+                      ),
+                    ),
+                    if (isDesktop) ...[
+                      const SizedBox(width: 12),
+                      Expanded(
+                        flex: 5,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.4),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                                color: AppColors.border.withValues(alpha: 0.3)),
+                          ),
+                          child: const Row(
+                            children: [
+                              AppSkeletonCircle(size: 26),
+                              SizedBox(width: 10),
+                              AppSkeletonLine(width: 110, height: 14),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 14),
+
+                // 3. Summary / Target Metric Card Placeholder
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.4),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                        color: AppColors.border.withValues(alpha: 0.3)),
+                  ),
+                  child: const Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              AppSkeletonSquircle(
+                                  width: 36, height: 36, borderRadius: 10),
+                              SizedBox(width: 10),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  AppSkeletonLine(width: 130, height: 15),
+                                  SizedBox(height: 6),
+                                  AppSkeletonLine(width: 90, height: 11),
+                                ],
+                              ),
+                            ],
+                          ),
+                          AppSkeletonSquircle(
+                              width: 50, height: 26, borderRadius: 8),
+                        ],
+                      ),
+                      SizedBox(height: 16),
+                      AppSkeletonSquircle(
+                        width: double.infinity,
+                        height: 8,
+                        borderRadius: 999,
+                      ),
+                      SizedBox(height: 14),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              children: [
+                                AppSkeletonLine(width: 50, height: 16),
+                                SizedBox(height: 4),
+                                AppSkeletonLine(width: 70, height: 11),
+                              ],
+                            ),
+                          ),
+                          Expanded(
+                            child: Column(
+                              children: [
+                                AppSkeletonLine(width: 50, height: 16),
+                                SizedBox(height: 4),
+                                AppSkeletonLine(width: 70, height: 11),
+                              ],
+                            ),
+                          ),
+                          Expanded(
+                            child: Column(
+                              children: [
+                                AppSkeletonLine(width: 50, height: 16),
+                                SizedBox(height: 4),
+                                AppSkeletonLine(width: 70, height: 11),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 14),
+
+                // 4. Monthly Calendar Grid Placeholder
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.4),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                        color: AppColors.border.withValues(alpha: 0.3)),
+                  ),
+                  child: Column(
+                    children: [
+                      // Days of week header (Sen - Min)
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: List.generate(
+                          7,
+                          (i) => const AppSkeletonLine(
+                            width: 28,
+                            height: 12,
+                            borderRadius: 3,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      // Calendar date rows (4 rows x 7 days)
+                      ...List.generate(
+                        4,
+                        (row) => Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: List.generate(
+                              7,
+                              (col) => const AppSkeletonSquircle(
+                                width: 34,
+                                height: 34,
+                                borderRadius: 8,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 14),
+
+                // 5. List Items Cards
+                ...List.generate(
+                  2,
+                  (index) => const Padding(
+                    padding: EdgeInsets.only(bottom: 10),
+                    child: AppSkeletonListCard(),
+                  ),
+                ),
+              ] else ...[
+                // Draft Tab Skeleton: Search Bar + List Cards
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 14, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.4),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                        color: AppColors.border.withValues(alpha: 0.3)),
+                  ),
+                  child: const Row(
+                    children: [
+                      AppSkeletonCircle(size: 20),
+                      SizedBox(width: 12),
+                      AppSkeletonLine(width: 180, height: 14),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 14),
+                ...List.generate(
+                  4,
+                  (index) => const Padding(
+                    padding: EdgeInsets.only(bottom: 10),
+                    child: AppSkeletonListCard(),
+                  ),
+                ),
+              ],
+            ],
+          ),
         ),
       ),
     );

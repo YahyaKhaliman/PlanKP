@@ -60,9 +60,21 @@ class JadwalModel {
         jdwInvJenis: j['jdw_inv_jenis'],
         jdwDivisi: j['jdw_divisi'] ?? '',
         jdwFrekuensi: j['jdw_frekuensi'] ?? '',
-        jdwGapHari: j['jdw_gap_hari'] is int
-            ? j['jdw_gap_hari']
-            : int.tryParse('${j['jdw_gap_hari'] ?? ''}') ?? 0,
+        jdwGapHari: (j['jdw_gap_hari'] is num
+                ? (j['jdw_gap_hari'] as num).toInt()
+                : null) ??
+            (j['gap_hari'] is num
+                ? (j['gap_hari'] as num).toInt()
+                : null) ??
+            (j['jenis_gap_hari'] is num
+                ? (j['jenis_gap_hari'] as num).toInt()
+                : null) ??
+            (j['jenis'] is Map && j['jenis']['jenis_gap_hari'] is num
+                ? (j['jenis']['jenis_gap_hari'] as num).toInt()
+                : null) ??
+            int.tryParse(
+                '${j['jdw_gap_hari'] ?? j['gap_hari'] ?? j['jenis_gap_hari'] ?? (j['jenis'] is Map ? j['jenis']['jenis_gap_hari'] : '') ?? ''}') ??
+            0,
         jdwTglMulai: j['jdw_tgl_mulai'] ?? '',
         jdwTglSelesai: j['jdw_tgl_selesai'],
         jdwWeekNumber: j['jdw_week_number'],
@@ -119,6 +131,14 @@ class JadwalModel {
       final intervalDays = jdwGapHari > 0 ? jdwGapHari : 7;
       if (startDateOnly.isAfter(today)) return startDateOnly;
 
+      if (jdwGapHari > 0) {
+        var nextDue = startDateOnly.add(Duration(days: intervalDays));
+        while (nextDue.isBefore(today) && jdwPeriodFulfilled) {
+          nextDue = nextDue.add(Duration(days: intervalDays));
+        }
+        return nextDue;
+      }
+
       var currentPeriodStart = startDateOnly;
       while (currentPeriodStart.add(Duration(days: intervalDays)).isBefore(today) ||
           currentPeriodStart.add(Duration(days: intervalDays)).isAtSameMomentAs(today)) {
@@ -134,15 +154,11 @@ class JadwalModel {
       if (startDateOnly.isAfter(today)) return startDateOnly;
 
       if (jdwGapHari > 0) {
-        var currentPeriodStart = startDateOnly;
-        while (currentPeriodStart.add(Duration(days: intervalDays)).isBefore(today) ||
-            currentPeriodStart.add(Duration(days: intervalDays)).isAtSameMomentAs(today)) {
-          currentPeriodStart = currentPeriodStart.add(Duration(days: intervalDays));
+        var nextDue = startDateOnly.add(Duration(days: intervalDays));
+        while (nextDue.isBefore(today) && jdwPeriodFulfilled) {
+          nextDue = nextDue.add(Duration(days: intervalDays));
         }
-        if (jdwPeriodFulfilled) {
-          return currentPeriodStart.add(Duration(days: intervalDays));
-        }
-        return currentPeriodStart.isBefore(today) ? today : currentPeriodStart;
+        return nextDue;
       } else {
         var currentPeriodStart = startDateOnly;
         while (true) {
@@ -163,11 +179,21 @@ class JadwalModel {
   String? get effectiveNextDueDateStr {
     final calc = calculatedNextDueDate;
     if (calc != null) {
-      final calcStr = '${calc.year}-${calc.month.toString().padLeft(2, '0')}-${calc.day.toString().padLeft(2, '0')}';
+      final calcStr =
+          '${calc.year}-${calc.month.toString().padLeft(2, '0')}-${calc.day.toString().padLeft(2, '0')}';
+
+      // Jika jadwal memiliki gap hari khusus (misal gap 90 hari), selalu prioritaskan
+      // hasil kalkulasi gap hari client, karena jdw_next_due_date dari backend hanya
+      // menghitung kalender bulanan standar (misal 1 Oktober) dan mengabaikan jeda gap.
+      if (jdwGapHari > 0) {
+        return calcStr;
+      }
+
       if (jdwNextDueDate != null && jdwNextDueDate!.trim().isNotEmpty) {
         final backendParsed = DateTime.tryParse(jdwNextDueDate!);
         if (backendParsed != null) {
-          final backendDateOnly = DateTime(backendParsed.year, backendParsed.month, backendParsed.day);
+          final backendDateOnly = DateTime(
+              backendParsed.year, backendParsed.month, backendParsed.day);
           final now = DateTime.now();
           final today = DateTime(now.year, now.month, now.day);
           if (!jdwPeriodFulfilled || backendDateOnly.isAfter(today)) {

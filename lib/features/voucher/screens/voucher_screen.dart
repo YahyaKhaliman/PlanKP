@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/app_notifier.dart';
+import '../../../core/widgets/app_search_field.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../models/voucher_model.dart';
@@ -38,9 +39,6 @@ class _VoucherScreenState extends State<VoucherScreen> {
       p.fetchVouchers();
       p.fetchSpbuList();
       p.fetchBbmTypes();
-    });
-    _searchCtrl.addListener(() {
-      setState(() => _searchQuery = _searchCtrl.text.trim().toLowerCase());
     });
   }
 
@@ -144,64 +142,20 @@ class _VoucherScreenState extends State<VoucherScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         // Search Box
-                        Container(
-                          decoration: BoxDecoration(
-                            color: AppColors.cardSurface,
-                            borderRadius: BorderRadius.circular(12),
-                            border:
-                                Border.all(color: AppColors.border, width: 1),
-                            boxShadow: const [
-                              BoxShadow(
-                                color: Color(0x040F172A),
-                                blurRadius: 8,
-                                offset: Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: TextField(
-                            controller: _searchCtrl,
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w500,
-                              color: AppColors.textPrimary,
-                            ),
-                            decoration: InputDecoration(
-                              hintText: isAdmin
-                                  ? 'Cari no. bon, driver, kendaraan, SPBU...'
-                                  : 'Cari kendaraan, no. bon, SPBU, jenis BBM...',
-                              hintStyle: GoogleFonts.plusJakartaSans(
-                                fontSize: 12.5,
-                                fontWeight: FontWeight.w400,
-                                color: AppColors.textMuted,
-                              ),
-                              prefixIcon: const Icon(
-                                Icons.search_rounded,
-                                size: 18,
-                                color: AppColors.primary,
-                              ),
-                              suffixIcon: _searchCtrl.text.isNotEmpty
-                                  ? IconButton(
-                                      icon: const Icon(
-                                        Icons.clear_rounded,
-                                        size: 18,
-                                        color: AppColors.textMuted,
-                                      ),
-                                      onPressed: () {
-                                        _searchCtrl.clear();
-                                        setState(() {});
-                                      },
-                                    )
-                                  : null,
-                              filled: false,
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 10,
-                              ),
-                              border: InputBorder.none,
-                              enabledBorder: InputBorder.none,
-                              focusedBorder: InputBorder.none,
-                            ),
-                          ),
+                        AppSearchField(
+                          controller: _searchCtrl,
+                          hintText: isAdmin
+                              ? 'Cari no. bon, driver, kendaraan, SPBU...'
+                              : 'Cari kendaraan, no. bon, SPBU, jenis BBM...',
+                          onSubmitted: (val) {
+                            setState(() => _searchQuery = val.trim().toLowerCase());
+                          },
+                          onSearch: () {
+                            setState(() => _searchQuery = _searchCtrl.text.trim().toLowerCase());
+                          },
+                          onClear: () {
+                            setState(() => _searchQuery = '');
+                          },
                         ),
                         const SizedBox(height: 10),
 

@@ -7,6 +7,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/app_notifier.dart';
+import '../../../core/widgets/app_search_field.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/shimmer_loading.dart';
 import '../models/inventaris_model.dart';
@@ -26,7 +27,6 @@ class _InventarisScreenState extends State<InventarisScreen> {
   static const _kPageBg = AppColors.surface;
   final _search = TextEditingController();
   final Set<int> _expandedJenisIds = <int>{};
-  Timer? _searchDebounce;
 
   String? _getUserTargetKategori() {
     final auth = context.read<AuthProvider>();
@@ -242,17 +242,8 @@ class _InventarisScreenState extends State<InventarisScreen> {
 
   @override
   void dispose() {
-    _searchDebounce?.cancel();
     _search.dispose();
     super.dispose();
-  }
-
-  void _onSearchChanged(String value) {
-    _searchDebounce?.cancel();
-    _searchDebounce = Timer(const Duration(milliseconds: 280), () {
-      if (!mounted) return;
-      _onPabrikFilterChanged();
-    });
   }
 
   Future<void> _openForm([InventarisModel? item, int? initialJenisId]) async {
@@ -336,59 +327,15 @@ class _InventarisScreenState extends State<InventarisScreen> {
                         child: Row(
                           children: [
                             Expanded(
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  color: AppColors.cardSurface,
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: AppColors.border, width: 1),
-                                  boxShadow: const [
-                                    BoxShadow(
-                                      color: Color(0x040F172A),
-                                      blurRadius: 8,
-                                      offset: Offset(0, 2),
-                                    ),
-                                  ],
-                                ),
-                                child: TextField(
-                                  controller: _search,
-                                  style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 12.5,
-                                    fontWeight: FontWeight.w500,
-                                    color: AppColors.textPrimary,
-                                  ),
-                                  decoration: InputDecoration(
-                                    hintText: 'Cari By Nama, No, Merk, PIC...',
-                                    hintStyle: GoogleFonts.plusJakartaSans(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w400,
-                                      color: AppColors.textMuted,
-                                    ),
-                                    prefixIcon: const Icon(Icons.search_rounded,
-                                        size: 18, color: AppColors.primary),
-                                    suffixIcon: _search.text.isNotEmpty
-                                        ? IconButton(
-                                            icon: const Icon(Icons.clear_rounded,
-                                                size: 18,
-                                                color: AppColors.textMuted),
-                                            onPressed: () {
-                                              _search.clear();
-                                              _onSearchChanged('');
-                                              setState(() {});
-                                            },
-                                          )
-                                        : null,
-                                    filled: false,
-                                    contentPadding: const EdgeInsets.symmetric(
-                                        horizontal: 12, vertical: 10),
-                                    border: InputBorder.none,
-                                    enabledBorder: InputBorder.none,
-                                    focusedBorder: InputBorder.none,
-                                  ),
-                                  onChanged: (val) {
-                                    _onSearchChanged(val);
-                                    setState(() {});
-                                  },
-                                ),
+                              child: AppSearchField(
+                                controller: _search,
+                                hintText: 'Cari By Nama, No, Merk, PIC...',
+                                onSubmitted: (_) => _onPabrikFilterChanged(),
+                                onSearch: () => _onPabrikFilterChanged(),
+                                onClear: () {
+                                  _search.clear();
+                                  _onPabrikFilterChanged();
+                                },
                               ),
                             ),
                             const SizedBox(width: 8),
