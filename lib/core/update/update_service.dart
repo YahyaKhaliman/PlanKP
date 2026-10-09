@@ -21,9 +21,9 @@ class UpdateService {
   DateTime? _lastWebCheckTime;
   bool _isWebPromptShowing = false;
 
-  /// Interval minimum antar pengecekan: 1 jam
+  /// Interval minimum antar pengecekan: 1 jam (APK) dan 2 menit (Web)
   static const _throttleDuration = Duration(hours: 1);
-  static const _webThrottleDuration = Duration(minutes: 15);
+  static const _webThrottleDuration = Duration(minutes: 2);
 
   static const _skippedBuildKey = 'update_skipped_build_number';
 

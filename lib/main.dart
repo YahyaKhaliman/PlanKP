@@ -193,9 +193,9 @@ class _MainAppWrapperState extends State<MainAppWrapper> with WidgetsBindingObse
       });
     });
 
-    // Pemicu khusus Web: Cek berkala setiap 10 menit saat aplikasi sedang dibuka
+    // Pemicu khusus Web: Cek berkala setiap 2 menit saat aplikasi sedang dibuka
     if (kIsWeb) {
-      _webUpdateTimer = Timer.periodic(const Duration(minutes: 10), (_) {
+      _webUpdateTimer = Timer.periodic(const Duration(minutes: 2), (_) {
         if (mounted) _triggerUpdateCheck();
       });
     }
@@ -210,13 +210,13 @@ class _MainAppWrapperState extends State<MainAppWrapper> with WidgetsBindingObse
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // Pemicu 2: Cek saat kembali dari background atau tab browser kembali aktif
+    // Pemicu 2: Cek saat kembali dari background atau tab browser kembali aktif (force check)
     if (state == AppLifecycleState.resumed) {
-      _triggerUpdateCheck();
+      _triggerUpdateCheck(force: kIsWeb);
     }
   }
 
-  Future<void> _triggerUpdateCheck() async {
+  Future<void> _triggerUpdateCheck({bool force = false}) async {
     if (_isChecking || _dialogOpen) return;
     _isChecking = true;
 
@@ -225,7 +225,7 @@ class _MainAppWrapperState extends State<MainAppWrapper> with WidgetsBindingObse
       if (kIsWeb) {
         final navContext = navigatorKey.currentContext;
         if (navContext != null && mounted) {
-          await _updateService.checkAndPromptWebUpdate(navContext);
+          await _updateService.checkAndPromptWebUpdate(navContext, force: force);
         }
         return;
       }
