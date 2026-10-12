@@ -141,7 +141,7 @@ class PdfReportService {
 
     // ── String meta ──────────────────────────────────────────────────────────
     final periodeStr   = '${_bulan(month)} $year';
-    final printStr     = DateFormat('dd/MM/yyyy HH:mm').format(DateTime.now());
+    final printStr     = DateFormat('dd-MM-yyyy HH:mm').format(DateTime.now());
     final pctColor     = percentage >= 80 ? _C.good : (percentage >= 50 ? _C.warn : _C.bad);
     final pctBg        = percentage >= 80 ? _C.goodBg : (percentage >= 50 ? _C.warnBg : _C.badBg);
 
@@ -464,7 +464,7 @@ class PdfReportService {
           final i = entry.key;
           final r = entry.value;
           final tgl = r.realTgl.isNotEmpty
-              ? DateFormat('dd/MM/yyyy').format(DateTime.tryParse(r.realTgl) ?? DateTime.now())
+              ? DateFormat('dd-MM-yyyy').format(DateTime.tryParse(r.realTgl) ?? DateTime.now())
               : '-';
 
           final rawNamaInv = (r.inventaris?['inv_nama'] ?? 'Inv #${r.realInvId}').toString().trim();

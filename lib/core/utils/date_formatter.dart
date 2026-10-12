@@ -1,5 +1,5 @@
 class DateFormatter {
-  static final RegExp _yyyyMmDd = RegExp(r'^\d{4}-\d{2}-\d{2}$');
+  static final RegExp _yyyyMmDd = RegExp(r'^\d{4}[-/]\d{2}[-/]\d{2}$');
   static final RegExp _ddMmYyyyDash = RegExp(r'^\d{2}-\d{2}-\d{4}$');
   static final RegExp _ddMmYyyySlash = RegExp(r'^\d{2}/\d{2}/\d{4}$');
 
@@ -12,9 +12,10 @@ class DateFormatter {
       return raw.replaceAll('/', '-');
     }
 
-    final datePart = raw.contains('T') ? raw.split('T').first : raw;
+    final datePart = raw.split('T').first.split(' ').first.trim();
     if (_yyyyMmDd.hasMatch(datePart)) {
-      final parts = datePart.split('-');
+      final separator = datePart.contains('/') ? '/' : '-';
+      final parts = datePart.split(separator);
       return '${parts[2]}-${parts[1]}-${parts[0]}';
     }
 

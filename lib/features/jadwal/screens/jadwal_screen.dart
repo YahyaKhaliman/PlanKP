@@ -40,8 +40,63 @@ class _JadwalScreenState extends State<JadwalScreen> {
   String? _selectedFrekuensi;
   String _selectedStatus = 'Aktif';
   bool _isGapGuideExpanded = false;
+  bool _isFutureJadwalExpanded = false;
   final TextEditingController _searchCtrl = TextEditingController();
   String _searchQuery = '';
+
+  static int calculateRemainingDaysDiff(JadwalModel j) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    final startDate = DateTime.tryParse(j.jdwTglMulai);
+    if (startDate != null && startDate.isAfter(today)) {
+      return startDate.difference(today).inDays;
+    }
+
+    if (j.jdwGapHari > 0) {
+      final dueDate = DateTime.tryParse(j.effectiveNextDueDateStr ?? '');
+      if (dueDate != null) {
+        final dueDateOnly = DateTime(dueDate.year, dueDate.month, dueDate.day);
+        return dueDateOnly.difference(today).inDays;
+      }
+    }
+
+    if (!j.jdwPeriodFulfilled &&
+        (j.jdwFrekuensi == 'Mingguan' || j.jdwFrekuensi == 'Bulanan')) {
+      return 0;
+    }
+
+    if (j.jdwDaysRemaining != null) return j.jdwDaysRemaining!;
+
+    final fallbackDate =
+        DateTime.tryParse(j.effectiveNextDueDateStr ?? j.jdwTglMulai);
+    if (fallbackDate == null) return 0;
+
+    return fallbackDate.difference(today).inDays;
+  }
+
+  static int _getFrequencyPriority(String? frekuensi) {
+    switch (frekuensi) {
+      case 'Harian':
+        return 1;
+      case 'Mingguan':
+        return 2;
+      case 'Bulanan':
+        return 3;
+      default:
+        return 4;
+    }
+  }
+
+  static int compareJadwal(JadwalModel a, JadwalModel b) {
+    final freqA = _getFrequencyPriority(a.jdwFrekuensi);
+    final freqB = _getFrequencyPriority(b.jdwFrekuensi);
+    if (freqA != freqB) {
+      return freqA.compareTo(freqB);
+    }
+    return calculateRemainingDaysDiff(a)
+        .compareTo(calculateRemainingDaysDiff(b));
+  }
 
   // Logika pembantu periode (dipertahankan)
   int _isoWeekNumber(DateTime date) {
@@ -354,8 +409,7 @@ class _JadwalScreenState extends State<JadwalScreen> {
       final singleInv = inventarisList.first;
       final invIdRaw = singleInv['inv_id'];
       final invId = invIdRaw is int ? invIdRaw : int.tryParse('$invIdRaw');
-      final sisaHari =
-          (singleInv['inv_gap_sisa_hari'] as num?)?.toInt() ?? 0;
+      final sisaHari = (singleInv['inv_gap_sisa_hari'] as num?)?.toInt() ?? 0;
       final bool hasGapRule =
           jadwal.jdwGapHari > 0 || singleInv['inv_gap_sisa_hari'] != null;
 
@@ -378,7 +432,8 @@ class _JadwalScreenState extends State<JadwalScreen> {
         String msg = 'Unit "${singleInv['inv_nama']}" sudah direalisasikan';
         if (lastTgl != '-') msg += ' pada $lastTgl.';
         if (sisaHari > 0) {
-          msg += '\nMasih dalam masa jeda gap $sisaHari hari lagi (dapat direalisasikan kembali mulai $nextDate).';
+          msg +=
+              '\nMasih dalam masa jeda gap $sisaHari hari lagi (dapat direalisasikan kembali mulai $nextDate).';
         } else {
           msg += ' untuk periode saat ini.';
         }
@@ -1041,8 +1096,7 @@ class _JadwalScreenState extends State<JadwalScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: AppSearchField(
                 controller: _searchCtrl,
-                hintText:
-                    'Cari By Judul, Nama User, Inventaris, atau Jenis...',
+                hintText: 'Cari By Judul, Nama User, Inventaris, atau Jenis...',
                 onSubmitted: (val) {
                   setState(() {
                     _searchQuery = val.trim();
@@ -1155,116 +1209,218 @@ class _JadwalScreenState extends State<JadwalScreen> {
                                   : 'Belum ada jadwal berstatus $_selectedStatus')),
                     )
                   else
-                    () {
-                      final isMobile = AppBreakpoints.isMobile(context);
-                      if (isMobile) {
-                        return SliverPadding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          sliver: SliverList(
-                            delegate: SliverChildBuilderDelegate(
-                              (context, i) {
-                                final item = filtered[i];
-                                final master = context.read<MasterProvider>();
-                                final jenisNama =
-                                    (item.jdwInvJenis ?? '').trim().isNotEmpty
-                                        ? item.jdwInvJenis!.trim()
-                                        : master
-                                                .jenisById(item.jdwJenisId)
-                                                ?.jenisNama ??
-                                            'Jenis tidak diketahui';
-                                final pabrikLabel = item.jdwPabrikList.isEmpty
-                                    ? null
-                                    : item.jdwPabrikList
-                                        .map((c) => master.displayPabrik(c))
-                                        .join(', ');
-                                return Padding(
-                                  padding: const EdgeInsets.only(bottom: 8),
-                                  child: _JadwalCard(
-                                    jadwal: item,
-                                    jenisNama: jenisNama,
-                                    pabrikLabel: pabrikLabel,
-                                    isAdmin: isAdmin,
-                                    isUser: isUser,
-                                    onTap: () => _openJadwalDetail(item),
-                                    onRealisasi: () =>
-                                        _handleRealisasiTap(item),
-                                    onEdit: () => _openForm(item),
-                                    onRenew: () => _openRenewJadwal(item),
-                                    onAktifkan: () =>
-                                        _confirmAktifkanJadwal(item),
-                                    onBatalkan: () =>
-                                        _confirmBatalkanJadwal(item),
-                                    onSelesaikan: () =>
-                                        _confirmSelesaikanJadwal(item),
-                                    onDelete: () =>
-                                        _confirmSelesaikanJadwal(item),
-                                    onStatusChange: (st) => context
-                                        .read<JadwalProvider>()
-                                        .updateStatusJadwal(item.jdwId, st),
-                                  ),
-                                );
-                              },
-                              childCount: filtered.length,
+                    ...() {
+                      final regularPlans = filtered
+                          .where((j) => calculateRemainingDaysDiff(j) <= 7)
+                          .toList()
+                        ..sort(compareJadwal);
+                      final futurePlans = filtered
+                          .where((j) => calculateRemainingDaysDiff(j) > 7)
+                          .toList()
+                        ..sort(compareJadwal);
+                      final master = context.read<MasterProvider>();
+                      final bool isFutureOpen =
+                          _isFutureJadwalExpanded || _searchQuery.isNotEmpty;
+
+                      return <Widget>[
+                        if (regularPlans.isNotEmpty)
+                          _buildCardCollection(
+                              regularPlans, master, isAdmin, isUser)
+                        else if (futurePlans.isNotEmpty)
+                          SliverToBoxAdapter(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 8),
+                              child: Container(
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                      color: AppColors.border
+                                          .withValues(alpha: 0.8)),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color:
+                                          Colors.black.withValues(alpha: 0.02),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      width: 36,
+                                      height: 36,
+                                      decoration: BoxDecoration(
+                                        color: AppColors.infoSoft,
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: const Icon(
+                                        Icons.info_outline_rounded,
+                                        color: AppColors.info,
+                                        size: 20,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Text(
+                                        'Semua jadwal saat ini memiliki jeda jatuh tempo di atas 7 hari dan tersimpan pada daftar jadwal mendatang di bawah.',
+                                        style: GoogleFonts.plusJakartaSans(
+                                          fontSize: 12.5,
+                                          fontWeight: FontWeight.w600,
+                                          color: AppColors.textSecondary,
+                                          height: 1.35,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
                             ),
                           ),
-                        );
-                      }
-                      final columns = AppBreakpoints.gridColumns(
-                        context,
-                        mobile: 1,
-                        tablet: 2,
-                        desktop: 2,
-                      );
-                      return SliverPadding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        sliver: SliverGrid(
-                          gridDelegate:
-                              SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: columns,
-                            mainAxisSpacing: 10,
-                            crossAxisSpacing: 10,
-                            mainAxisExtent: 225,
+
+                        // Dropdown Section untuk Jadwal Mendatang (> 7 Hari)
+                        if (futurePlans.isNotEmpty) ...[
+                          SliverToBoxAdapter(
+                            child: Padding(
+                              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                              child: Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  borderRadius: BorderRadius.circular(16),
+                                  onTap: () {
+                                    setState(() {
+                                      _isFutureJadwalExpanded =
+                                          !_isFutureJadwalExpanded;
+                                    });
+                                  },
+                                  child: AnimatedContainer(
+                                    duration: const Duration(milliseconds: 200),
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 16, vertical: 14),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(16),
+                                      border: Border.all(
+                                        color: isFutureOpen
+                                            ? AppColors.primary
+                                                .withValues(alpha: 0.35)
+                                            : AppColors.border,
+                                        width: isFutureOpen ? 1.5 : 1,
+                                      ),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black
+                                              .withValues(alpha: 0.025),
+                                          blurRadius: 10,
+                                          offset: const Offset(0, 3),
+                                        ),
+                                      ],
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Container(
+                                          width: 38,
+                                          height: 38,
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFFEFF6FF),
+                                            borderRadius:
+                                                BorderRadius.circular(10),
+                                          ),
+                                          child: const Icon(
+                                            Icons.upcoming_rounded,
+                                            color: Color(0xFF2563EB),
+                                            size: 20,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Row(
+                                                children: [
+                                                  Text(
+                                                    'Jadwal Mendatang (>7 hari)',
+                                                    style: GoogleFonts
+                                                        .plusJakartaSans(
+                                                      fontSize: 13.5,
+                                                      fontWeight:
+                                                          FontWeight.w800,
+                                                      color:
+                                                          AppColors.textPrimary,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 8),
+                                                  Container(
+                                                    padding: const EdgeInsets
+                                                        .symmetric(
+                                                        horizontal: 8,
+                                                        vertical: 2),
+                                                    decoration: BoxDecoration(
+                                                      color: const Color(
+                                                          0xFFEFF6FF),
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                              20),
+                                                      border: Border.all(
+                                                        color: const Color(
+                                                            0xFFBFDBFE),
+                                                      ),
+                                                    ),
+                                                    child: Text(
+                                                      '${futurePlans.length}',
+                                                      style: GoogleFonts
+                                                          .plusJakartaSans(
+                                                        fontSize: 11,
+                                                        fontWeight:
+                                                            FontWeight.w800,
+                                                        color: const Color(
+                                                            0xFF1D4ED8),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                              const SizedBox(height: 2),
+                                              Text(
+                                                isFutureOpen
+                                                    ? 'Menampilkan jadwal dengan jeda jatuh tempo panjang'
+                                                    : 'Klik untuk membuka daftar jadwal berjarak >7 hari',
+                                                style:
+                                                    GoogleFonts.plusJakartaSans(
+                                                  fontSize: 11.5,
+                                                  color:
+                                                      AppColors.textSecondary,
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        Icon(
+                                          isFutureOpen
+                                              ? Icons.keyboard_arrow_up_rounded
+                                              : Icons
+                                                  .keyboard_arrow_down_rounded,
+                                          color: AppColors.textSecondary,
+                                          size: 22,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
                           ),
-                          delegate: SliverChildBuilderDelegate(
-                            (context, i) {
-                              final item = filtered[i];
-                              final master = context.read<MasterProvider>();
-                              final jenisNama =
-                                  (item.jdwInvJenis ?? '').trim().isNotEmpty
-                                      ? item.jdwInvJenis!.trim()
-                                      : master
-                                              .jenisById(item.jdwJenisId)
-                                              ?.jenisNama ??
-                                          'Jenis tidak diketahui';
-                              final pabrikLabel = item.jdwPabrikList.isEmpty
-                                  ? null
-                                  : item.jdwPabrikList
-                                      .map((c) => master.displayPabrik(c))
-                                      .join(', ');
-                              return _JadwalCard(
-                                jadwal: item,
-                                jenisNama: jenisNama,
-                                pabrikLabel: pabrikLabel,
-                                isAdmin: isAdmin,
-                                isUser: isUser,
-                                onTap: () => _openJadwalDetail(item),
-                                onRealisasi: () => _handleRealisasiTap(item),
-                                onEdit: () => _openForm(item),
-                                onRenew: () => _openRenewJadwal(item),
-                                onAktifkan: () => _confirmAktifkanJadwal(item),
-                                onBatalkan: () => _confirmBatalkanJadwal(item),
-                                onSelesaikan: () =>
-                                    _confirmSelesaikanJadwal(item),
-                                onDelete: () => _confirmSelesaikanJadwal(item),
-                                onStatusChange: (st) => context
-                                    .read<JadwalProvider>()
-                                    .updateStatusJadwal(item.jdwId, st),
-                              );
-                            },
-                            childCount: filtered.length,
-                          ),
-                        ),
-                      );
+                          if (isFutureOpen)
+                            _buildCardCollection(
+                                futurePlans, master, isAdmin, isUser),
+                        ],
+                      ];
                     }(),
                   const SliverToBoxAdapter(child: SizedBox(height: 100)),
                 ],
@@ -1272,6 +1428,86 @@ class _JadwalScreenState extends State<JadwalScreen> {
             ),
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildCardItem(
+    JadwalModel item,
+    MasterProvider master,
+    bool isAdmin,
+    bool isUser,
+  ) {
+    final jenisNama = (item.jdwInvJenis ?? '').trim().isNotEmpty
+        ? item.jdwInvJenis!.trim()
+        : master.jenisById(item.jdwJenisId)?.jenisNama ??
+            'Jenis tidak diketahui';
+    final pabrikLabel = item.jdwPabrikList.isEmpty
+        ? null
+        : item.jdwPabrikList.map((c) => master.displayPabrik(c)).join(', ');
+    return _JadwalCard(
+      jadwal: item,
+      jenisNama: jenisNama,
+      pabrikLabel: pabrikLabel,
+      isAdmin: isAdmin,
+      isUser: isUser,
+      onTap: () => _openJadwalDetail(item),
+      onRealisasi: () => _handleRealisasiTap(item),
+      onEdit: () => _openForm(item),
+      onRenew: () => _openRenewJadwal(item),
+      onAktifkan: () => _confirmAktifkanJadwal(item),
+      onBatalkan: () => _confirmBatalkanJadwal(item),
+      onSelesaikan: () => _confirmSelesaikanJadwal(item),
+      onDelete: () => _confirmSelesaikanJadwal(item),
+      onStatusChange: (st) =>
+          context.read<JadwalProvider>().updateStatusJadwal(item.jdwId, st),
+    );
+  }
+
+  Widget _buildCardCollection(
+    List<JadwalModel> items,
+    MasterProvider master,
+    bool isAdmin,
+    bool isUser,
+  ) {
+    final isMobile = AppBreakpoints.isMobile(context);
+    if (isMobile) {
+      return SliverPadding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        sliver: SliverList(
+          delegate: SliverChildBuilderDelegate(
+            (context, i) {
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: _buildCardItem(items[i], master, isAdmin, isUser),
+              );
+            },
+            childCount: items.length,
+          ),
+        ),
+      );
+    }
+    final columns = AppBreakpoints.gridColumns(
+      context,
+      mobile: 1,
+      tablet: 2,
+      desktop: 2,
+    );
+    return SliverPadding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      sliver: SliverGrid(
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: columns,
+          mainAxisSpacing: 10,
+          crossAxisSpacing: 10,
+          mainAxisExtent: 225,
+        ),
+        delegate: SliverChildBuilderDelegate(
+          (context, i) {
+            return _buildCardItem(items[i], master, isAdmin, isUser);
+          },
+          childCount: items.length,
+        ),
       ),
     );
   }
@@ -1423,8 +1659,7 @@ class _JadwalScreenState extends State<JadwalScreen> {
                           width: double.infinity, height: 14, borderRadius: 4),
                     ),
                     SizedBox(width: 12),
-                    AppSkeletonSquircle(
-                        width: 68, height: 34, borderRadius: 8),
+                    AppSkeletonSquircle(width: 68, height: 34, borderRadius: 8),
                   ],
                 ),
               ),
@@ -1529,6 +1764,30 @@ class _InventarisPickerSheetState extends State<InventarisPickerSheet> {
   late final FocusNode _focusNode;
   late final DraggableScrollableController _sheetController;
   String searchQuery = '';
+  String _selectedFilter = 'all'; // 'all' | 'belum' | 'sudah'
+
+  bool _isItemSudahSelesai(Map<String, dynamic> inv) {
+    final invIdRaw = inv['inv_id'];
+    final invId = invIdRaw is int ? invIdRaw : int.tryParse('$invIdRaw');
+    final sisaHari = (inv['inv_gap_sisa_hari'] as num?)?.toInt() ?? 0;
+    final bool hasGapRule = (widget.jadwal?.jdwGapHari ?? 0) > 0 ||
+        inv['inv_gap_sisa_hari'] != null;
+
+    final bool isGapBlocked = hasGapRule
+        ? (sisaHari > 0 || inv['inv_is_gap_eligible'] == false)
+        : false;
+
+    if (hasGapRule) {
+      if (isGapBlocked) {
+        return true;
+      } else {
+        return invId != null && widget.selesaiInvIds.contains(invId);
+      }
+    } else {
+      return (invId != null && widget.selesaiInvIds.contains(invId)) ||
+          inv['inv_is_done_current_period'] == true;
+    }
+  }
 
   @override
   void initState() {
@@ -1581,9 +1840,23 @@ class _InventarisPickerSheetState extends State<InventarisPickerSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final filtered = widget.inventarisList
-        .where((inv) => _matchesSearch(inv, searchQuery))
-        .toList();
+    int belumCount = 0;
+    int sudahCount = 0;
+    for (final inv in widget.inventarisList) {
+      if (_isItemSudahSelesai(inv)) {
+        sudahCount++;
+      } else {
+        belumCount++;
+      }
+    }
+
+    final filtered = widget.inventarisList.where((inv) {
+      if (!_matchesSearch(inv, searchQuery)) return false;
+      final isDone = _isItemSudahSelesai(inv);
+      if (_selectedFilter == 'belum' && isDone) return false;
+      if (_selectedFilter == 'sudah' && !isDone) return false;
+      return true;
+    }).toList();
 
     return DraggableScrollableSheet(
       controller: _sheetController,
@@ -1709,7 +1982,36 @@ class _InventarisPickerSheetState extends State<InventarisPickerSheet> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 8),
+                  // Filter Status Realisasi (Semua / Belum / Sudah)
+                  Row(
+                    children: [
+                      _buildFilterChip(
+                        label: 'Semua',
+                        count: widget.inventarisList.length,
+                        isSelected: _selectedFilter == 'all',
+                        color: AppColors.primary,
+                        onTap: () => setState(() => _selectedFilter = 'all'),
+                      ),
+                      const SizedBox(width: 6),
+                      _buildFilterChip(
+                        label: 'Belum',
+                        count: belumCount,
+                        isSelected: _selectedFilter == 'belum',
+                        color: AppColors.warning,
+                        onTap: () => setState(() => _selectedFilter = 'belum'),
+                      ),
+                      const SizedBox(width: 6),
+                      _buildFilterChip(
+                        label: 'Sudah',
+                        count: sudahCount,
+                        isSelected: _selectedFilter == 'sudah',
+                        color: AppColors.success,
+                        onTap: () => setState(() => _selectedFilter = 'sudah'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
                   Flexible(
                     child: filtered.isEmpty
                         ? Center(
@@ -1756,10 +2058,8 @@ class _InventarisPickerSheetState extends State<InventarisPickerSheet> {
                                 const SizedBox(height: 10),
                             itemBuilder: (_, i) {
                               final inv = filtered[i];
-                              final noInv =
-                                  (inv['inv_no'] ?? '-').toString();
-                              final nama =
-                                  (inv['inv_nama'] ?? '-').toString();
+                              final noInv = (inv['inv_no'] ?? '-').toString();
+                              final nama = (inv['inv_nama'] ?? '-').toString();
                               final merk = (inv['inv_merk'] ?? '-')
                                   .toString()
                                   .toUpperCase();
@@ -1777,10 +2077,6 @@ class _InventarisPickerSheetState extends State<InventarisPickerSheet> {
                               final bool hasPic =
                                   picName.isNotEmpty && picName != '-';
 
-                              final invIdRaw = inv['inv_id'];
-                              final invId = invIdRaw is int
-                                  ? invIdRaw
-                                  : int.tryParse('$invIdRaw');
                               final sisaHari =
                                   (inv['inv_gap_sisa_hari'] as num?)?.toInt() ??
                                       0;
@@ -1793,23 +2089,18 @@ class _InventarisPickerSheetState extends State<InventarisPickerSheet> {
                                       inv['inv_is_gap_eligible'] == false)
                                   : false;
 
-                              final bool isSudahSelesai;
-                              if (hasGapRule) {
-                                if (isGapBlocked) {
-                                  isSudahSelesai = true;
-                                } else {
-                                  isSudahSelesai = invId != null &&
-                                      widget.selesaiInvIds.contains(invId);
-                                }
-                              } else {
-                                isSudahSelesai = (invId != null &&
-                                        widget.selesaiInvIds.contains(invId)) ||
-                                    inv['inv_is_done_current_period'] == true;
-                              }
-                              final lastTgl =
+                              final bool isSudahSelesai =
+                                  _isItemSudahSelesai(inv);
+                              final rawLastTgl =
                                   inv['inv_last_realisasi_tgl']?.toString();
-                              final nextDate =
+                              final lastTgl = DateFormatter.toDisplay(
+                                  rawLastTgl,
+                                  fallback: '');
+                              final rawNextDate =
                                   inv['inv_next_eligible_date']?.toString();
+                              final nextDate = DateFormatter.toDisplay(
+                                  rawNextDate,
+                                  fallback: '');
 
                               return Container(
                                 decoration: BoxDecoration(
@@ -1839,8 +2130,7 @@ class _InventarisPickerSheetState extends State<InventarisPickerSheet> {
                                       if (isSudahSelesai) {
                                         String msg =
                                             'Unit "$nama" sudah direalisasikan';
-                                        if (lastTgl != null &&
-                                            lastTgl.isNotEmpty &&
+                                        if (lastTgl.isNotEmpty &&
                                             lastTgl != '-') {
                                           msg += ' pada $lastTgl.';
                                         }
@@ -1959,7 +2249,7 @@ class _InventarisPickerSheetState extends State<InventarisPickerSheet> {
                                                     Text(
                                                       isSudahSelesai
                                                           ? (sisaHari > 0
-                                                              ? 'Masa gap ($sisaHari hari lagi)'
+                                                              ? '($sisaHari hari lagi)'
                                                               : 'Sudah realisasi')
                                                           : 'Belum realisasi',
                                                       style: GoogleFonts
@@ -2160,8 +2450,7 @@ class _InventarisPickerSheetState extends State<InventarisPickerSheet> {
                                           ],
 
                                           // Baris 4: Informasi Realisasi Terakhir & Sisa Gap
-                                          if (lastTgl != null &&
-                                              lastTgl.isNotEmpty &&
+                                          if (lastTgl.isNotEmpty &&
                                               lastTgl != '-') ...[
                                             const SizedBox(height: 8),
                                             Container(
@@ -2194,12 +2483,12 @@ class _InventarisPickerSheetState extends State<InventarisPickerSheet> {
                                                       fontSize: 11,
                                                       fontWeight:
                                                           FontWeight.w600,
-                                                      color: AppColors
-                                                          .textPrimary,
+                                                      color:
+                                                          AppColors.textPrimary,
                                                     ),
                                                   ),
                                                   if (sisaHari > 0 &&
-                                                      nextDate != null) ...[
+                                                      nextDate.isNotEmpty) ...[
                                                     const Spacer(),
                                                     Text(
                                                       'Bisa lagi: $nextDate',
@@ -2231,6 +2520,74 @@ class _InventarisPickerSheetState extends State<InventarisPickerSheet> {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildFilterChip({
+    required String label,
+    required int count,
+    required bool isSelected,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return Expanded(
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(8),
+          onTap: onTap,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 4),
+            decoration: BoxDecoration(
+              color: isSelected ? color.withValues(alpha: 0.12) : Colors.white,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: isSelected ? color : AppColors.border,
+                width: isSelected ? 1.2 : 0.8,
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Flexible(
+                  child: Text(
+                    label,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 10.5,
+                      fontWeight:
+                          isSelected ? FontWeight.w800 : FontWeight.w600,
+                      color: isSelected ? color : AppColors.textSecondary,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 4.5, vertical: 0.5),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? color.withValues(alpha: 0.2)
+                        : const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(99),
+                  ),
+                  child: Text(
+                    '$count',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 9.5,
+                      fontWeight: FontWeight.w800,
+                      color: isSelected ? color : AppColors.textMuted,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -2279,45 +2636,13 @@ class _JadwalCard extends StatelessWidget {
   String _getRemainingDays(JadwalModel j) {
     final diff = _getRemainingDaysDiff(j);
     if (diff < 0) return 'Terlambat ${-diff}h';
-    if (diff == 0) return 'Hari ini!';
+    if (diff == 0) return 'Hari ini';
     if (diff == 1) return 'Besok';
     return '$diff hari lagi';
   }
 
-  int _getRemainingDaysDiff(JadwalModel j) {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-
-    final startDate = DateTime.tryParse(j.jdwTglMulai);
-    if (startDate != null && startDate.isAfter(today)) {
-      return startDate.difference(today).inDays;
-    }
-
-    // 2. Jika jadwal punya gap hari khusus (misal gap 90 hari), patuhi tanggal jatuh tempo efektifnya
-    if (j.jdwGapHari > 0) {
-      final dueDate = DateTime.tryParse(j.effectiveNextDueDateStr ?? '');
-      if (dueDate != null) {
-        final dueDateOnly = DateTime(dueDate.year, dueDate.month, dueDate.day);
-        return dueDateOnly.difference(today).inDays;
-      }
-    }
-
-    // 3. Jika jadwal Mingguan/Bulanan tanpa gap khusus dan belum terpenuhi periode ini
-    if (!j.jdwPeriodFulfilled &&
-        (j.jdwFrekuensi == 'Mingguan' || j.jdwFrekuensi == 'Bulanan')) {
-      return 0;
-    }
-
-    // 4. Gunakan sisa hari dari backend jika ada
-    if (j.jdwDaysRemaining != null) return j.jdwDaysRemaining!;
-
-    // 5. Fallback jika tidak ada daysRemaining dari backend
-    final fallbackDate =
-        DateTime.tryParse(j.effectiveNextDueDateStr ?? j.jdwTglMulai);
-    if (fallbackDate == null) return 0;
-
-    return fallbackDate.difference(today).inDays;
-  }
+  int _getRemainingDaysDiff(JadwalModel j) =>
+      _JadwalScreenState.calculateRemainingDaysDiff(j);
 
   @override
   Widget build(BuildContext context) {

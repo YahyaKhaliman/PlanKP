@@ -51,6 +51,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   int? _activeSchedulingPopupIndex;
   Timer? _schedulingDismissTimer;
   bool _isManagerJadwalExpanded = false;
+  bool _isFutureJadwalExpanded = false;
 
   @override
   void dispose() {
@@ -482,13 +483,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    width: 75,
-                    height: 11,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.3),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
+                  Row(
+                    children: [
+                      Container(
+                        width: 70,
+                        height: 10,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.3),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Container(
+                        width: 50,
+                        height: 14,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.25),
+                          borderRadius: BorderRadius.circular(99),
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 5),
                   Container(
@@ -506,15 +520,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.3),
                       borderRadius: BorderRadius.circular(3),
-                    ),
-                  ),
-                  const SizedBox(height: 5),
-                  Container(
-                    width: 60,
-                    height: 16,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.35),
-                      borderRadius: BorderRadius.circular(99),
                     ),
                   ),
                 ],
@@ -564,34 +569,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                _greeting(),
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.9),
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 1),
               Row(
                 children: [
-                  Flexible(
-                    child: Text(
-                      _userName(user).toUpperCase(),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 17,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 0.3,
-                      ),
+                  Text(
+                    _greeting(),
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.9),
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 6),
                   Container(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 4,
+                      horizontal: 5,
                       vertical: 1,
                     ),
                     decoration: BoxDecoration(
@@ -615,6 +606,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                   ),
                 ],
+              ),
+              const SizedBox(height: 2),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  _userName(user).toUpperCase(),
+                  maxLines: 1,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.3,
+                  ),
+                ),
               ),
               const SizedBox(height: 3),
               Row(
@@ -2314,8 +2320,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final singleInv = inventarisList.first;
       final invIdRaw = singleInv['inv_id'];
       final invId = invIdRaw is int ? invIdRaw : int.tryParse('$invIdRaw');
-      final sisaHari =
-          (singleInv['inv_gap_sisa_hari'] as num?)?.toInt() ?? 0;
+      final sisaHari = (singleInv['inv_gap_sisa_hari'] as num?)?.toInt() ?? 0;
       final bool hasGapRule =
           jadwal.jdwGapHari > 0 || singleInv['inv_gap_sisa_hari'] != null;
 
@@ -2333,10 +2338,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
       if (isSudahSelesai) {
         final lastTgl = singleInv['inv_last_realisasi_tgl']?.toString() ?? '-';
-        final sisaHari =
-            (singleInv['inv_gap_sisa_hari'] as num?)?.toInt() ?? 0;
-        final nextDate =
-            singleInv['inv_next_eligible_date']?.toString() ?? '-';
+        final sisaHari = (singleInv['inv_gap_sisa_hari'] as num?)?.toInt() ?? 0;
+        final nextDate = singleInv['inv_next_eligible_date']?.toString() ?? '-';
         String msg = 'Unit "${singleInv['inv_nama']}" sudah direalisasikan';
         if (lastTgl != '-') msg += ' pada $lastTgl.';
         if (sisaHari > 0) {
@@ -2880,10 +2883,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                           MaterialTapTargetSize.shrinkWrap,
                                     ),
                                     onPressed: () {
-                                      final sorted = [
-                                        ...p.jadwalList
-                                      ]..sort((a, b) => _getRemainingDaysDiff(a)
-                                          .compareTo(_getRemainingDaysDiff(b)));
+                                      final sorted = [...p.jadwalList]
+                                        ..sort(_compareJadwal);
                                       _showAllPlansBottomSheet(
                                           context, sorted, p);
                                     },
@@ -2912,12 +2913,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               child: SizedBox.shrink());
                         }
 
-                        final todayPlans = pProvider.jadwalList
-                            .where((j) => _getRemainingDaysDiff(j) <= 0)
-                            .toList()
-                          ..sort((a, b) => _getRemainingDaysDiff(a)
-                              .compareTo(_getRemainingDaysDiff(b)));
-                        final list = todayPlans;
+                        final allSorted = [...pProvider.jadwalList]
+                          ..sort(_compareJadwal);
+                        final regularPlans = allSorted
+                            .where((j) => _getRemainingDaysDiff(j) <= 7)
+                            .toList();
+                        final futurePlans = allSorted
+                            .where((j) => _getRemainingDaysDiff(j) > 7)
+                            .toList();
+
                         if (pProvider.loading || _isLoadingData) {
                           return SliverToBoxAdapter(
                             child: SizedBox(
@@ -2939,7 +2943,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           );
                         }
 
-                        if (list.isEmpty) {
+                        if (allSorted.isEmpty) {
                           return SliverToBoxAdapter(
                             child: Padding(
                               padding:
@@ -2947,21 +2951,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               child: Container(
                                 padding: const EdgeInsets.all(16),
                                 decoration: _surfaceCard(),
-                                child: Row(
+                                child: const Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    const Icon(
+                                    Icon(
                                       Icons.check_circle_outline_rounded,
                                       size: 18,
                                       color: AppColors.success,
                                     ),
-                                    const SizedBox(width: 8),
+                                    SizedBox(width: 8),
                                     Text(
-                                      pProvider.jadwalList.isEmpty
-                                          ? 'Belum ada jadwal terdaftar'
-                                          : 'Tidak ada tugas untuk hari ini',
+                                      'Belum ada jadwal terdaftar',
                                       textAlign: TextAlign.center,
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         color: AppColors.textSecondary,
                                         fontSize: 13,
                                         fontWeight: FontWeight.w600,
@@ -2973,19 +2975,57 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             ),
                           );
                         }
+
                         return SliverToBoxAdapter(
                           child: Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 16),
                             child: Column(
                               children: [
-                                for (int i = 0; i < list.length; i++) ...[
+                                if (regularPlans.isEmpty &&
+                                    futurePlans.isNotEmpty)
+                                  Container(
+                                    padding: const EdgeInsets.all(16),
+                                    decoration: _surfaceCard(),
+                                    child: const Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          Icons.check_circle_outline_rounded,
+                                          size: 18,
+                                          color: AppColors.success,
+                                        ),
+                                        SizedBox(width: 8),
+                                        Text(
+                                          'Tidak ada tugas dalam 7 hari ke depan',
+                                          textAlign: TextAlign.center,
+                                          style: TextStyle(
+                                            color: AppColors.textSecondary,
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                for (int i = 0;
+                                    i < regularPlans.length;
+                                    i++) ...[
                                   _buildJadwalItem(
-                                    list[i],
+                                    regularPlans[i],
                                     pProvider,
                                     compact: true,
                                   ),
-                                  if (i < list.length - 1)
+                                  if (i < regularPlans.length - 1)
                                     const SizedBox(height: 8),
+                                ],
+                                if (futurePlans.isNotEmpty) ...[
+                                  if (regularPlans.isNotEmpty)
+                                    const SizedBox(height: 10),
+                                  _buildFutureJadwalDashboardDropdown(
+                                    futurePlans,
+                                    pProvider,
+                                  ),
                                 ],
                               ],
                             ),
@@ -4792,72 +4832,386 @@ class _DashboardScreenState extends State<DashboardScreen> {
     List<JadwalModel> plans,
     JadwalProvider p,
   ) {
+    bool isSheetFutureExpanded = false;
+    final regularPlans = plans
+        .where((j) => _getRemainingDaysDiff(j) <= 7)
+        .toList()
+      ..sort(_compareJadwal);
+    final futurePlans = plans
+        .where((j) => _getRemainingDaysDiff(j) > 7)
+        .toList()
+      ..sort(_compareJadwal);
+
     showResponsiveSheet(
       context,
       maxDesktopWidth: 680,
-      builder: (_) => Container(
-        height: MediaQuery.of(context).size.height * 0.82,
-        decoration: const BoxDecoration(
-          color: _pageBg,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        child: Column(
-          children: [
-            const SizedBox(height: 10),
-            Container(
-              width: 42,
-              height: 4,
-              decoration: BoxDecoration(
-                color: AppColors.border,
-                borderRadius: BorderRadius.circular(999),
+      builder: (_) => StatefulBuilder(
+        builder: (ctx, setSheetState) => Container(
+          height: MediaQuery.of(context).size.height * 0.82,
+          decoration: const BoxDecoration(
+            color: _pageBg,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            children: [
+              const SizedBox(height: 10),
+              Container(
+                width: 42,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.border,
+                  borderRadius: BorderRadius.circular(999),
+                ),
               ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 14, 20, 12),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Semua Jadwal',
+                      style:
+                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    Text(
+                      '${plans.length} jadwal',
+                      style: const TextStyle(color: AppColors.textSecondary),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: (p.loading || _isLoadingData)
+                    ? AppShimmer(
+                        child: ListView.builder(
+                          padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
+                          itemCount: 4,
+                          itemBuilder: (_, i) => const Padding(
+                            padding: EdgeInsets.only(bottom: 12),
+                            child: AppSkeletonListCard(),
+                          ),
+                        ),
+                      )
+                    : plans.isEmpty
+                        ? const Center(
+                            child: Text(
+                              'Belum ada jadwal terdaftar',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(color: AppColors.textSecondary),
+                            ),
+                          )
+                        : ListView(
+                            padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
+                            children: [
+                              for (int i = 0; i < regularPlans.length; i++) ...[
+                                _buildJadwalItem(regularPlans[i], p,
+                                    compact: false,
+                                    showDivisi: true,
+                                    closeSheetOnTap: true),
+                                if (i < regularPlans.length - 1 ||
+                                    futurePlans.isNotEmpty)
+                                  const SizedBox(height: 10),
+                              ],
+                              if (futurePlans.isNotEmpty) ...[
+                                Material(
+                                  color: Colors.transparent,
+                                  child: InkWell(
+                                    borderRadius: BorderRadius.circular(14),
+                                    onTap: () {
+                                      setSheetState(() {
+                                        isSheetFutureExpanded =
+                                            !isSheetFutureExpanded;
+                                      });
+                                    },
+                                    child: AnimatedContainer(
+                                      duration:
+                                          const Duration(milliseconds: 200),
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 14, vertical: 12),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius: BorderRadius.circular(14),
+                                        border: Border.all(
+                                          color: isSheetFutureExpanded
+                                              ? AppColors.primary
+                                                  .withValues(alpha: 0.35)
+                                              : const Color(0xFFE2E8F0),
+                                          width:
+                                              isSheetFutureExpanded ? 1.5 : 1,
+                                        ),
+                                        boxShadow: const [
+                                          BoxShadow(
+                                            color: Color(0x04000000),
+                                            blurRadius: 6,
+                                            offset: Offset(0, 2),
+                                          ),
+                                        ],
+                                      ),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.stretch,
+                                        children: [
+                                          Row(
+                                            children: [
+                                              Container(
+                                                width: 32,
+                                                height: 32,
+                                                decoration: BoxDecoration(
+                                                  color:
+                                                      const Color(0xFFEFF6FF),
+                                                  borderRadius:
+                                                      BorderRadius.circular(8),
+                                                ),
+                                                child: const Icon(
+                                                  Icons.upcoming_rounded,
+                                                  color: Color(0xFF2563EB),
+                                                  size: 18,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 10),
+                                              Expanded(
+                                                child: Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    Row(
+                                                      children: [
+                                                        const Text(
+                                                          'Jadwal Mendatang (>7 hari)',
+                                                          style: TextStyle(
+                                                            fontSize: 13,
+                                                            fontWeight:
+                                                                FontWeight.w800,
+                                                            color: AppColors
+                                                                .textPrimary,
+                                                          ),
+                                                        ),
+                                                        const SizedBox(
+                                                            width: 6),
+                                                        Container(
+                                                          padding:
+                                                              const EdgeInsets
+                                                                  .symmetric(
+                                                                  horizontal: 7,
+                                                                  vertical:
+                                                                      1.5),
+                                                          decoration:
+                                                              BoxDecoration(
+                                                            color: const Color(
+                                                                0xFFEFF6FF),
+                                                            borderRadius:
+                                                                BorderRadius
+                                                                    .circular(
+                                                                        20),
+                                                            border: Border.all(
+                                                              color: const Color(
+                                                                  0xFFBFDBFE),
+                                                            ),
+                                                          ),
+                                                          child: Text(
+                                                            '${futurePlans.length}',
+                                                            style:
+                                                                const TextStyle(
+                                                              fontSize: 10.5,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w800,
+                                                              color: Color(
+                                                                  0xFF1D4ED8),
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                    const SizedBox(height: 1),
+                                                    Text(
+                                                      isSheetFutureExpanded
+                                                          ? 'Jadwal Mendatang (${futurePlans.length})'
+                                                          : 'Ketuk untuk menampilkan',
+                                                      style: const TextStyle(
+                                                        fontSize: 11,
+                                                        color: AppColors
+                                                            .textSecondary,
+                                                        fontWeight:
+                                                            FontWeight.w500,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                              Icon(
+                                                isSheetFutureExpanded
+                                                    ? Icons
+                                                        .keyboard_arrow_up_rounded
+                                                    : Icons
+                                                        .keyboard_arrow_down_rounded,
+                                                color: AppColors.textSecondary,
+                                                size: 20,
+                                              ),
+                                            ],
+                                          ),
+                                          if (isSheetFutureExpanded) ...[
+                                            const SizedBox(height: 12),
+                                            const Divider(
+                                                height: 1,
+                                                color: Color(0xFFF1F5F9)),
+                                            const SizedBox(height: 10),
+                                            for (int i = 0;
+                                                i < futurePlans.length;
+                                                i++) ...[
+                                              _buildJadwalItem(
+                                                futurePlans[i],
+                                                p,
+                                                compact: false,
+                                                showDivisi: true,
+                                                closeSheetOnTap: true,
+                                              ),
+                                              if (i < futurePlans.length - 1)
+                                                const SizedBox(height: 10),
+                                            ],
+                                          ],
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFutureJadwalDashboardDropdown(
+    List<JadwalModel> futurePlans,
+    JadwalProvider pProvider,
+  ) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: () {
+          setState(() {
+            _isFutureJadwalExpanded = !_isFutureJadwalExpanded;
+          });
+        },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: _isFutureJadwalExpanded
+                  ? AppColors.primary.withValues(alpha: 0.35)
+                  : const Color(0xFFE2E8F0),
+              width: _isFutureJadwalExpanded ? 1.5 : 1,
             ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 14, 20, 12),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x04000000),
+                blurRadius: 6,
+                offset: Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
                 children: [
-                  const Text(
-                    'Semua Jadwal',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEFF6FF),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.upcoming_rounded,
+                      color: Color(0xFF2563EB),
+                      size: 18,
+                    ),
                   ),
-                  Text(
-                    '${plans.length} jadwal',
-                    style: const TextStyle(color: AppColors.textSecondary),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Text(
+                              'Jadwal Mendatang (>7 hari)',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 7, vertical: 1.5),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFEFF6FF),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: const Color(0xFFBFDBFE),
+                                ),
+                              ),
+                              child: Text(
+                                '${futurePlans.length}',
+                                style: const TextStyle(
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.w800,
+                                  color: Color(0xFF1D4ED8),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 1),
+                        Text(
+                          _isFutureJadwalExpanded
+                              ? 'Jadwal Mendatang (${futurePlans.length})'
+                              : 'Ketuk untuk menampilkan',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: AppColors.textSecondary,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(
+                    _isFutureJadwalExpanded
+                        ? Icons.keyboard_arrow_up_rounded
+                        : Icons.keyboard_arrow_down_rounded,
+                    color: AppColors.textSecondary,
+                    size: 20,
                   ),
                 ],
               ),
-            ),
-            Expanded(
-              child: (p.loading || _isLoadingData)
-                  ? AppShimmer(
-                      child: ListView.builder(
-                        padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
-                        itemCount: 4,
-                        itemBuilder: (_, i) => const Padding(
-                          padding: EdgeInsets.only(bottom: 12),
-                          child: AppSkeletonListCard(),
-                        ),
-                      ),
-                    )
-                  : plans.isEmpty
-                      ? const Center(
-                          child: Text(
-                            'Belum ada jadwal terdaftar',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(color: AppColors.textSecondary),
-                          ),
-                        )
-                      : ListView.builder(
-                          padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
-                          itemCount: plans.length,
-                          itemBuilder: (_, i) => _buildJadwalItem(plans[i], p,
-                              compact: false,
-                              showDivisi: true,
-                              closeSheetOnTap: true),
-                        ),
-            ),
-          ],
+              if (_isFutureJadwalExpanded) ...[
+                const SizedBox(height: 12),
+                const Divider(height: 1, color: Color(0xFFF1F5F9)),
+                const SizedBox(height: 10),
+                for (int i = 0; i < futurePlans.length; i++) ...[
+                  _buildJadwalItem(
+                    futurePlans[i],
+                    pProvider,
+                    compact: true,
+                  ),
+                  if (i < futurePlans.length - 1) const SizedBox(height: 8),
+                ],
+              ],
+            ],
+          ),
         ),
       ),
     );
@@ -5698,8 +6052,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final singleInv = inventarisList.first;
       final invIdRaw = singleInv['inv_id'];
       final invId = invIdRaw is int ? invIdRaw : int.tryParse('$invIdRaw');
-      final sisaHari =
-          (singleInv['inv_gap_sisa_hari'] as num?)?.toInt() ?? 0;
+      final sisaHari = (singleInv['inv_gap_sisa_hari'] as num?)?.toInt() ?? 0;
       final bool hasGapRule =
           jadwal.jdwGapHari > 0 || singleInv['inv_gap_sisa_hari'] != null;
 
@@ -5717,10 +6070,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
       if (isSudahSelesai) {
         final lastTgl = singleInv['inv_last_realisasi_tgl']?.toString() ?? '-';
-        final sisaHari =
-            (singleInv['inv_gap_sisa_hari'] as num?)?.toInt() ?? 0;
-        final nextDate =
-            singleInv['inv_next_eligible_date']?.toString() ?? '-';
+        final sisaHari = (singleInv['inv_gap_sisa_hari'] as num?)?.toInt() ?? 0;
+        final nextDate = singleInv['inv_next_eligible_date']?.toString() ?? '-';
         String msg = 'Unit "${singleInv['inv_nama']}" sudah direalisasikan';
         if (lastTgl != '-') msg += ' pada $lastTgl.';
         if (sisaHari > 0) {
@@ -5756,7 +6107,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (rem.contains('Terlewat')) {
       badgeBg = const Color(0xFFFEE2E2);
       badgeText = const Color(0xFFDC2626);
-    } else if (rem == 'Hari ini!') {
+    } else if (rem == 'Hari Ini') {
       badgeBg = const Color(0xFFFEF3C7);
       badgeText = const Color(0xFFD97706);
     } else {
@@ -5848,7 +6199,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
-                          rem == 'Hari ini!'
+                          rem == 'Hari Ini'
                               ? 'Hari Ini'
                               : (rem.contains('Terlewat') ? 'Terlewat' : rem),
                           style: TextStyle(
@@ -6038,7 +6389,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final diff = _getRemainingDaysDiff(j);
 
     if (diff < 0) return 'Terlambat ${-diff}h';
-    if (diff == 0) return 'Hari ini!';
+    if (diff == 0) return 'Hari Ini';
     if (diff == 1) return 'Besok';
     return '$diff hari lagi';
   }
@@ -6082,6 +6433,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return fallbackDate.difference(today).inDays;
   }
 
+  int _getFrequencyPriority(String? frekuensi) {
+    switch (frekuensi) {
+      case 'Harian':
+        return 1;
+      case 'Mingguan':
+        return 2;
+      case 'Bulanan':
+        return 3;
+      default:
+        return 4;
+    }
+  }
+
+  int _compareJadwal(JadwalModel a, JadwalModel b) {
+    final freqA = _getFrequencyPriority(a.jdwFrekuensi);
+    final freqB = _getFrequencyPriority(b.jdwFrekuensi);
+    if (freqA != freqB) {
+      return freqA.compareTo(freqB);
+    }
+    return _getRemainingDaysDiff(a).compareTo(_getRemainingDaysDiff(b));
+  }
+
   DateTime? _parseDateOnly(String? value) {
     if (value == null || value.trim().isEmpty) return null;
     final dt = DateTime.tryParse(value);
@@ -6112,6 +6485,30 @@ class _InventarisPickerSheetState extends State<_InventarisPickerSheet> {
   late final FocusNode _focusNode;
   late final DraggableScrollableController _sheetController;
   String searchQuery = '';
+  String _selectedFilter = 'all'; // 'all' | 'belum' | 'sudah'
+
+  bool _isItemSudahSelesai(Map<String, dynamic> inv) {
+    final invIdRaw = inv['inv_id'];
+    final invId = invIdRaw is int ? invIdRaw : int.tryParse('$invIdRaw');
+    final sisaHari = (inv['inv_gap_sisa_hari'] as num?)?.toInt() ?? 0;
+    final bool hasGapRule =
+        widget.jadwal.jdwGapHari > 0 || inv['inv_gap_sisa_hari'] != null;
+
+    final bool isGapBlocked = hasGapRule
+        ? (sisaHari > 0 || inv['inv_is_gap_eligible'] == false)
+        : false;
+
+    if (hasGapRule) {
+      if (isGapBlocked) {
+        return true;
+      } else {
+        return invId != null && widget.selesaiInvIds.contains(invId);
+      }
+    } else {
+      return (invId != null && widget.selesaiInvIds.contains(invId)) ||
+          inv['inv_is_done_current_period'] == true;
+    }
+  }
 
   @override
   void initState() {
@@ -6164,9 +6561,23 @@ class _InventarisPickerSheetState extends State<_InventarisPickerSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final filteredInventaris = widget.inventarisList
-        .where((inv) => _matchesSearch(inv, searchQuery))
-        .toList();
+    int belumCount = 0;
+    int sudahCount = 0;
+    for (final inv in widget.inventarisList) {
+      if (_isItemSudahSelesai(inv)) {
+        sudahCount++;
+      } else {
+        belumCount++;
+      }
+    }
+
+    final filteredInventaris = widget.inventarisList.where((inv) {
+      if (!_matchesSearch(inv, searchQuery)) return false;
+      final isDone = _isItemSudahSelesai(inv);
+      if (_selectedFilter == 'belum' && isDone) return false;
+      if (_selectedFilter == 'sudah' && !isDone) return false;
+      return true;
+    }).toList();
 
     return DraggableScrollableSheet(
       controller: _sheetController,
@@ -6293,7 +6704,36 @@ class _InventarisPickerSheetState extends State<_InventarisPickerSheet> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 8),
+                  // Filter Status Realisasi (Semua / Belum / Sudah)
+                  Row(
+                    children: [
+                      _buildFilterChip(
+                        label: 'Semua',
+                        count: widget.inventarisList.length,
+                        isSelected: _selectedFilter == 'all',
+                        color: AppColors.primary,
+                        onTap: () => setState(() => _selectedFilter = 'all'),
+                      ),
+                      const SizedBox(width: 6),
+                      _buildFilterChip(
+                        label: 'Belum',
+                        count: belumCount,
+                        isSelected: _selectedFilter == 'belum',
+                        color: AppColors.warning,
+                        onTap: () => setState(() => _selectedFilter = 'belum'),
+                      ),
+                      const SizedBox(width: 6),
+                      _buildFilterChip(
+                        label: 'Sudah',
+                        count: sudahCount,
+                        isSelected: _selectedFilter == 'sudah',
+                        color: AppColors.success,
+                        onTap: () => setState(() => _selectedFilter = 'sudah'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
                   Flexible(
                     child: filteredInventaris.isEmpty
                         ? Center(
@@ -6340,10 +6780,8 @@ class _InventarisPickerSheetState extends State<_InventarisPickerSheet> {
                                 const SizedBox(height: 10),
                             itemBuilder: (_, i) {
                               final inv = filteredInventaris[i];
-                              final noInv =
-                                  (inv['inv_no'] ?? '-').toString();
-                              final nama =
-                                  (inv['inv_nama'] ?? '-').toString();
+                              final noInv = (inv['inv_no'] ?? '-').toString();
+                              final nama = (inv['inv_nama'] ?? '-').toString();
                               final merk = (inv['inv_merk'] ?? '-')
                                   .toString()
                                   .toUpperCase();
@@ -6361,37 +6799,30 @@ class _InventarisPickerSheetState extends State<_InventarisPickerSheet> {
                               final bool hasPic =
                                   picName.isNotEmpty && picName != '-';
 
-                              final invIdRaw = inv['inv_id'];
-                              final invId = invIdRaw is int
-                                  ? invIdRaw
-                                  : int.tryParse('$invIdRaw');
                               final sisaHari =
                                   (inv['inv_gap_sisa_hari'] as num?)?.toInt() ??
                                       0;
-                              final bool hasGapRule = widget.jadwal.jdwGapHari > 0 ||
-                                  inv['inv_gap_sisa_hari'] != null;
+                              final bool hasGapRule =
+                                  widget.jadwal.jdwGapHari > 0 ||
+                                      inv['inv_gap_sisa_hari'] != null;
 
                               final bool isGapBlocked = hasGapRule
-                                  ? (sisaHari > 0 || inv['inv_is_gap_eligible'] == false)
+                                  ? (sisaHari > 0 ||
+                                      inv['inv_is_gap_eligible'] == false)
                                   : false;
 
-                              final bool isSudahSelesai;
-                              if (hasGapRule) {
-                                if (isGapBlocked) {
-                                  isSudahSelesai = true;
-                                } else {
-                                  isSudahSelesai = invId != null &&
-                                      widget.selesaiInvIds.contains(invId);
-                                }
-                              } else {
-                                isSudahSelesai = (invId != null &&
-                                        widget.selesaiInvIds.contains(invId)) ||
-                                    inv['inv_is_done_current_period'] == true;
-                              }
-                              final lastTgl =
+                              final bool isSudahSelesai =
+                                  _isItemSudahSelesai(inv);
+                              final rawLastTgl =
                                   inv['inv_last_realisasi_tgl']?.toString();
-                              final nextDate =
+                              final lastTgl = DateFormatter.toDisplay(
+                                  rawLastTgl,
+                                  fallback: '');
+                              final rawNextDate =
                                   inv['inv_next_eligible_date']?.toString();
+                              final nextDate = DateFormatter.toDisplay(
+                                  rawNextDate,
+                                  fallback: '');
 
                               return Container(
                                 decoration: BoxDecoration(
@@ -6421,8 +6852,7 @@ class _InventarisPickerSheetState extends State<_InventarisPickerSheet> {
                                       if (isSudahSelesai) {
                                         String msg =
                                             'Unit "$nama" sudah direalisasikan';
-                                        if (lastTgl != null &&
-                                            lastTgl.isNotEmpty &&
+                                        if (lastTgl.isNotEmpty &&
                                             lastTgl != '-') {
                                           msg += ' pada $lastTgl.';
                                         }
@@ -6540,7 +6970,7 @@ class _InventarisPickerSheetState extends State<_InventarisPickerSheet> {
                                                     Text(
                                                       isSudahSelesai
                                                           ? (sisaHari > 0
-                                                              ? 'Masa gap ($sisaHari hari lagi)'
+                                                              ? '($sisaHari hari lagi)'
                                                               : 'Sudah realisasi')
                                                           : 'Belum realisasi',
                                                       style: GoogleFonts
@@ -6741,8 +7171,7 @@ class _InventarisPickerSheetState extends State<_InventarisPickerSheet> {
                                           ],
 
                                           // Baris 4: Informasi Realisasi Terakhir & Sisa Gap
-                                          if (lastTgl != null &&
-                                              lastTgl.isNotEmpty &&
+                                          if (lastTgl.isNotEmpty &&
                                               lastTgl != '-') ...[
                                             const SizedBox(height: 8),
                                             Container(
@@ -6775,12 +7204,12 @@ class _InventarisPickerSheetState extends State<_InventarisPickerSheet> {
                                                       fontSize: 11,
                                                       fontWeight:
                                                           FontWeight.w600,
-                                                      color: AppColors
-                                                          .textPrimary,
+                                                      color:
+                                                          AppColors.textPrimary,
                                                     ),
                                                   ),
                                                   if (sisaHari > 0 &&
-                                                      nextDate != null) ...[
+                                                      nextDate.isNotEmpty) ...[
                                                     const Spacer(),
                                                     Text(
                                                       'Bisa lagi: $nextDate',
@@ -6812,6 +7241,74 @@ class _InventarisPickerSheetState extends State<_InventarisPickerSheet> {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildFilterChip({
+    required String label,
+    required int count,
+    required bool isSelected,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return Expanded(
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(8),
+          onTap: onTap,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 4),
+            decoration: BoxDecoration(
+              color: isSelected ? color.withValues(alpha: 0.12) : Colors.white,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: isSelected ? color : AppColors.border,
+                width: isSelected ? 1.2 : 0.8,
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Flexible(
+                  child: Text(
+                    label,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 10.5,
+                      fontWeight:
+                          isSelected ? FontWeight.w800 : FontWeight.w600,
+                      color: isSelected ? color : AppColors.textSecondary,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 4.5, vertical: 0.5),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? color.withValues(alpha: 0.2)
+                        : const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(99),
+                  ),
+                  child: Text(
+                    '$count',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 9.5,
+                      fontWeight: FontWeight.w800,
+                      color: isSelected ? color : AppColors.textMuted,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

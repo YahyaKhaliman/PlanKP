@@ -36,6 +36,33 @@ class UpdateDownloader {
     } catch (_) {}
   }
 
+  /// Cek apakah sebuah file adalah file APK yang valid (berukuran > 5MB dan memiliki header ZIP/APK)
+  static Future<bool> isLikelyValidApk(File file) async {
+    try {
+      if (!await file.exists()) return false;
+      final len = await file.length();
+      if (len < 5 * 1024 * 1024) return false;
+
+      // Periksa magic bytes ZIP/APK (0x50, 0x4B, 0x03, 0x04)
+      final raf = await file.open(mode: FileMode.read);
+      try {
+        final header = await raf.read(4);
+        if (header.length == 4 &&
+            header[0] == 0x50 &&
+            header[1] == 0x4B &&
+            header[2] == 0x03 &&
+            header[3] == 0x04) {
+          return true;
+        }
+      } finally {
+        await raf.close();
+      }
+    } catch (e) {
+      debugPrint('[UpdateDownloader] Error isLikelyValidApk: $e');
+    }
+    return false;
+  }
+
   // ─── Cek apakah APK versi tertentu sudah ada di storage lokal & valid ───
   Future<String?> checkLocalApk({
     required String downloadUrl,
@@ -44,35 +71,49 @@ class UpdateDownloader {
     if (kIsWeb) return null;
     try {
       final fileName = _resolveFileName(downloadUrl, versionName);
+      final cleanVersion = versionName.replaceAll(RegExp(r'[^0-9.]'), '');
       final dirs = await _getCandidateDirectories();
 
+      final candidateNames = <String>{
+        fileName,
+        'PlanKP-v$versionName.apk',
+        'PlanKP_v$versionName.apk',
+        'PlanKP-$versionName.apk',
+        'PlanKP-v$cleanVersion.apk',
+        'PlanKP.apk',
+      };
+
       for (final dir in dirs) {
-        final file = File('${dir.path}/$fileName');
-        if (await file.exists()) {
-          final localLength = await file.length();
-          if (localLength == 0) {
-            try {
-              await file.delete();
-            } catch (_) {}
-            continue;
-          }
+        if (!await dir.exists()) continue;
 
-          // Cek kelengkapan file via HTTP HEAD Content-Length jika memungkinkan
-          final isComplete = await _verifyFileCompleteness(
-            downloadUrl: downloadUrl,
-            fileLength: localLength,
-          );
-
-          if (isComplete) {
-            debugPrint('[UpdateDownloader] APK lokal valid & lengkap: ${file.path} ($localLength bytes)');
+        // 1. Cek langsung nama-nama kandidat
+        for (final name in candidateNames) {
+          final file = File('${dir.path}/$name');
+          if (await isLikelyValidApk(file)) {
+            debugPrint('[UpdateDownloader] APK lokal valid ditemukan: ${file.path}');
             return file.path;
-          } else {
-            debugPrint('[UpdateDownloader] APK lokal tidak komplit/corrupt ($localLength bytes). Mengapus file tidak komplit...');
-            try {
-              await file.delete();
-            } catch (_) {}
           }
         }
+
+        // 2. Scan file di direktori untuk mencakup unduhan browser dengan penomoran (contoh: PlanKP-v1.0.8 (1).apk)
+        try {
+          final entities = dir.listSync(followLinks: false);
+          for (final entity in entities) {
+            if (entity is File && entity.path.toLowerCase().endsWith('.apk')) {
+              final base = entity.uri.pathSegments.last.toLowerCase();
+              final matchesVersion = base.contains(versionName.toLowerCase()) ||
+                  (cleanVersion.isNotEmpty && base.contains(cleanVersion));
+              final matchesApp = base.contains('plankp') ||
+                  (fileName.isNotEmpty &&
+                      base.contains(fileName.toLowerCase().replaceAll('.apk', '')));
+
+              if (matchesVersion && matchesApp && await isLikelyValidApk(entity)) {
+                debugPrint('[UpdateDownloader] APK lokal scan ditemukan: ${entity.path}');
+                return entity.path;
+              }
+            }
+          }
+        } catch (_) {}
       }
     } catch (e) {
       debugPrint('[UpdateDownloader] Error cek file lokal: $e');
@@ -80,38 +121,6 @@ class UpdateDownloader {
     return null;
   }
 
-  /// Verifikasi kelengkapan ukuran file lokal dengan header Content-Length dari server
-  Future<bool> _verifyFileCompleteness({
-    required String downloadUrl,
-    required int fileLength,
-  }) async {
-    try {
-      final response = await _dio.head(
-        downloadUrl,
-        options: Options(
-          sendTimeout: const Duration(seconds: 4),
-          receiveTimeout: const Duration(seconds: 4),
-          followRedirects: true,
-        ),
-      );
-
-      final contentLengthHeader = response.headers.value('content-length');
-      if (contentLengthHeader != null) {
-        final expectedLength = int.tryParse(contentLengthHeader);
-        if (expectedLength != null && expectedLength > 0) {
-          final isMatch = fileLength == expectedLength;
-          debugPrint(
-              '[UpdateDownloader] Cek Content-Length: lokal=$fileLength, expected=$expectedLength -> match=$isMatch');
-          return isMatch;
-        }
-      }
-    } catch (e) {
-      debugPrint('[UpdateDownloader] HEAD request verification warning: $e');
-    }
-    // Jika tidak bisa mendapatkan Content-Length (offline / header tersembunyi),
-    // pastikan ukuran berkas setidaknya memadai (> 1MB)
-    return fileLength > 1024 * 1024;
-  }
 
   // ─── Download + Install dengan 3 lapis fallback ───
   Future<AppUpdateDownloadResult> downloadAndInstall({
@@ -133,11 +142,14 @@ class UpdateDownloader {
       final installResult = await _tryInstallApk(existingPath);
       if (installResult != null) return installResult;
 
-      // Jika install gagal meskipun file ada → hapus file lama, download ulang
-      debugPrint('[UpdateDownloader] Install file lama gagal, download ulang...');
-      try {
-        await File(existingPath).delete();
-      } catch (_) {}
+      // Jika install gagal meskipun file ada → cek apakah file corrupt sebelum dihapus
+      debugPrint('[UpdateDownloader] Install file lokal belum berhasil...');
+      if (!await isLikelyValidApk(File(existingPath))) {
+        debugPrint('[UpdateDownloader] File lokal terdeteksi corrupt, hapus dan download ulang...');
+        try {
+          await File(existingPath).delete();
+        } catch (_) {}
+      }
     }
 
     // Langkah 2: Download file baru ke file temporary (.tmp)
@@ -302,13 +314,38 @@ class UpdateDownloader {
 
   Future<List<Directory>> _getCandidateDirectories() async {
     final dirs = <Directory>[];
+    final seenPaths = <String>{};
+
+    void addDir(Directory? dir) {
+      if (dir != null && seenPaths.add(dir.path)) {
+        dirs.add(dir);
+      }
+    }
+
     try {
       if (Platform.isAndroid) {
-        final ext = await getExternalStorageDirectory();
-        if (ext != null) dirs.add(ext);
+        addDir(await getExternalStorageDirectory());
+        try {
+          final downloads = await getDownloadsDirectory();
+          addDir(downloads);
+        } catch (_) {}
+
+        final publicDownloadPaths = [
+          '/storage/emulated/0/Download',
+          '/storage/emulated/0/Downloads',
+          '/sdcard/Download',
+          '/sdcard/Downloads',
+        ];
+        for (final p in publicDownloadPaths) {
+          try {
+            final d = Directory(p);
+            if (await d.exists()) {
+              addDir(d);
+            }
+          } catch (_) {}
+        }
       }
-      final tmp = await getTemporaryDirectory();
-      dirs.add(tmp);
+      addDir(await getTemporaryDirectory());
     } catch (_) {}
     return dirs;
   }

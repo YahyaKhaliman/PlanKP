@@ -264,9 +264,18 @@ class _MainAppWrapperState extends State<MainAppWrapper>
     final context = navigatorKey.currentContext;
     if (context == null) return;
 
+    // Cek terlebih dahulu apakah file APK sudah ada di penyimpanan lokal HP
+    final localApkPath = await _updateService.checkLocalApk(
+      downloadUrl: manifest.url,
+      versionName: manifest.version,
+    );
+    final bool isApkReadyLocally = localApkPath != null;
+
+    if (!context.mounted) return;
+
     await AwesomeDialog(
       context: context,
-      dialogType: DialogType.info,
+      dialogType: isApkReadyLocally ? DialogType.success : DialogType.info,
       animType: AnimType.scale,
       dismissOnTouchOutside: !manifest.mandatory,
       dismissOnBackKeyPress: !manifest.mandatory,
@@ -276,7 +285,9 @@ class _MainAppWrapperState extends State<MainAppWrapper>
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              'Versi Baru Tersedia!',
+              isApkReadyLocally
+                  ? 'Pembaruan Siap Dipasang!'
+                  : 'Versi Baru Tersedia!',
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 20,
                 fontWeight: FontWeight.w800,
@@ -286,13 +297,43 @@ class _MainAppWrapperState extends State<MainAppWrapper>
             ),
             const SizedBox(height: 8),
             Text(
-              'Perbarui ke v${manifest.version} untuk mendapatkan versi terbaru.',
+              isApkReadyLocally
+                  ? 'File APK v${manifest.version} sudah terunduh di HP Anda dan siap dipasang.'
+                  : 'Perbarui ke v${manifest.version} untuk mendapatkan versi terbaru.',
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 14,
                 color: AppColors.textSecondary,
               ),
               textAlign: TextAlign.center,
             ),
+            if (isApkReadyLocally) ...[
+              const SizedBox(height: 10),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFDCFCE7),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: const Color(0xFF86EFAC)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.check_circle_rounded,
+                        color: Color(0xFF16A34A), size: 16),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Tersimpan di Internal HP',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFF15803D),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
             if ((manifest.notes ?? '').trim().isNotEmpty) ...[
               const SizedBox(height: 16),
               Container(
@@ -335,8 +376,12 @@ class _MainAppWrapperState extends State<MainAppWrapper>
                 ],
                 Expanded(
                   child: AnimatedButton(
-                    text: 'Update Sekarang',
-                    color: AppColors.primary,
+                    text: isApkReadyLocally
+                        ? 'Pasang Sekarang'
+                        : 'Update Sekarang',
+                    color: isApkReadyLocally
+                        ? AppColors.success
+                        : AppColors.primary,
                     buttonTextStyle: GoogleFonts.plusJakartaSans(
                         fontWeight: FontWeight.w700, color: Colors.white),
                     pressEvent: () {
@@ -348,6 +393,24 @@ class _MainAppWrapperState extends State<MainAppWrapper>
                 ),
               ],
             ),
+            if (isApkReadyLocally) ...[
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  _showDownloadProgressDialog(manifest);
+                },
+                child: Text(
+                  'Unduh ulang file pembaruan',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textSecondary,
+                    decoration: TextDecoration.underline,
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
       ),
@@ -618,83 +681,48 @@ class _MainAppWrapperState extends State<MainAppWrapper>
       barrierDismissible: false,
       builder: (ctx) => Dialog(
         backgroundColor: AppColors.cardSurface,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: AppColors.primarySoft,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(Icons.download_for_offline,
-                        color: AppColors.primary, size: 22),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      'Panduan Pemasangan',
-                      style: GoogleFonts.plusJakartaSans(
-                          fontSize: 18, fontWeight: FontWeight.w800),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'File APK sedang diunduh oleh browser. Ikuti langkah berikut untuk memasang pembaruan:',
-                style: GoogleFonts.plusJakartaSans(
-                    fontSize: 13, color: AppColors.textPrimary),
-              ),
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: AppColors.primarySoft,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                      color: AppColors.primary.withValues(alpha: 0.2)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 480),
+          child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(24, 26, 24, 22),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
                   children: [
-                    _buildStepRow('1',
-                        'Tunggu unduhan selesai di bar notifikasi browser Anda.'),
-                    const SizedBox(height: 6),
-                    _buildStepRow('2',
-                        'Buka aplikasi File Manager / File Saya di HP Anda.'),
-                    const SizedBox(height: 6),
-                    _buildStepRow('3', 'Masuk ke folder Downloads / Unduhan.'),
-                    const SizedBox(height: 6),
-                    _buildStepRow('4',
-                        'Cari dan klik file APK PlanKP untuk memasangnya.'),
-                    const SizedBox(height: 10),
                     Container(
-                      padding: const EdgeInsets.all(8),
+                      padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: AppColors.cardSurface,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: AppColors.border),
+                        color: AppColors.primarySoft,
+                        borderRadius: BorderRadius.circular(14),
                       ),
-                      child: Row(
+                      child: const Icon(Icons.install_mobile_rounded,
+                          color: AppColors.primary, size: 24),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Icon(Icons.support_agent_rounded,
-                              size: 18, color: AppColors.primary),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              'Mengalami kendala install? Silakan hubungi IT Support.',
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.textPrimary,
-                              ),
+                          Text(
+                            'Panduan Pemasangan',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 18.5,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Pembaruan PlanKP v$versionName',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textSecondary,
                             ),
                           ),
                         ],
@@ -702,56 +730,120 @@ class _MainAppWrapperState extends State<MainAppWrapper>
                     ),
                   ],
                 ),
-              ),
-              const SizedBox(height: 24),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () async {
-                        await Clipboard.setData(
-                            ClipboardData(text: downloadUrl));
-                        if (ctx.mounted) {
-                          AppNotifier.showSuccess(
-                              ctx, 'Link unduhan disalin ke clipboard');
-                        }
-                      },
-                      icon: const Icon(Icons.copy, size: 16),
-                      label: Text(
-                        'Salin Link',
-                        style: GoogleFonts.plusJakartaSans(
-                            fontWeight: FontWeight.w600),
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.textSecondary,
-                        side: const BorderSide(color: AppColors.border),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                      ),
+                const SizedBox(height: 18),
+                Text(
+                  'File APK sedang diunduh atau sudah berada di penyimpanan HP Anda. Ikuti langkah sederhana berikut untuk memasangnya:',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 13,
+                    color: AppColors.textPrimary,
+                    height: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Container(
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    color: AppColors.primarySoft.withValues(alpha: 0.6),
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(
+                      color: AppColors.primary.withValues(alpha: 0.2),
                     ),
                   ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () => Navigator.of(ctx).pop(),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildStepRow('1',
+                          'Tunggu unduhan selesai di bilah notifikasi HP / browser Anda.'),
+                      const SizedBox(height: 12),
+                      _buildStepRow('2',
+                          'Buka aplikasi File Manager / Pengelola File di HP Anda.'),
+                      const SizedBox(height: 12),
+                      _buildStepRow('3',
+                          'Masuk ke folder Downloads (Unduhan) di penyimpanan internal.'),
+                      const SizedBox(height: 12),
+                      _buildStepRow('4',
+                          'Cari dan ketuk file APK PlanKP untuk memasang pembaruan.'),
+                      const SizedBox(height: 16),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: AppColors.cardSurface,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.support_agent_rounded,
+                                size: 20, color: AppColors.primary),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                'Jika mengalami kendala pemasangan, silakan hubungi tim IT Support.',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.textPrimary,
+                                  height: 1.35,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                      child: Text(
-                        'Tutup',
-                        style: GoogleFonts.plusJakartaSans(
-                            fontWeight: FontWeight.w700),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () async {
+                          await Clipboard.setData(
+                              ClipboardData(text: downloadUrl));
+                          if (ctx.mounted) {
+                            AppNotifier.showSuccess(
+                                ctx, 'Link unduhan disalin ke clipboard');
+                          }
+                        },
+                        icon: const Icon(Icons.copy_rounded, size: 16),
+                        label: Text(
+                          'Salin Link',
+                          style: GoogleFonts.plusJakartaSans(
+                              fontWeight: FontWeight.w600, fontSize: 13),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.textSecondary,
+                          side: const BorderSide(color: AppColors.border),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14)),
+                          padding: const EdgeInsets.symmetric(vertical: 13),
+                        ),
                       ),
                     ),
-                  ),
-                ],
-              ),
-            ],
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.of(ctx).pop(),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14)),
+                          padding: const EdgeInsets.symmetric(vertical: 13),
+                        ),
+                        child: Text(
+                          'Mengerti / Tutup',
+                          style: GoogleFonts.plusJakartaSans(
+                              fontWeight: FontWeight.w700, fontSize: 13),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -763,9 +855,9 @@ class _MainAppWrapperState extends State<MainAppWrapper>
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
-          width: 18,
-          height: 18,
-          margin: const EdgeInsets.only(top: 2, right: 8),
+          width: 22,
+          height: 22,
+          margin: const EdgeInsets.only(top: 1, right: 10),
           decoration: const BoxDecoration(
             color: AppColors.primary,
             shape: BoxShape.circle,
@@ -774,14 +866,14 @@ class _MainAppWrapperState extends State<MainAppWrapper>
           child: Text(
             num,
             style: GoogleFonts.plusJakartaSans(
-                color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800),
+                color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.w800),
           ),
         ),
         Expanded(
           child: Text(
             text,
             style: GoogleFonts.plusJakartaSans(
-                fontSize: 12, color: AppColors.textSecondary),
+                fontSize: 13, color: AppColors.textPrimary, height: 1.45),
           ),
         ),
       ],

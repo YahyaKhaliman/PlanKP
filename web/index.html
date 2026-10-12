@@ -58,6 +58,42 @@
     * https://docs.flutter.dev/platform-integration/web/initialization
   -->
     <script>
+      // Force hard reload: unregister service workers & clear caches agar kode/tampilan release baru langsung termuat
+      window.forceHardReload = async function () {
+        try {
+          if ('serviceWorker' in navigator) {
+            const registrations = await navigator.serviceWorker.getRegistrations();
+            await Promise.all(
+              registrations.map(function (r) {
+                return r.unregister();
+              }),
+            );
+          }
+          if ('caches' in window) {
+            const keys = await caches.keys();
+            await Promise.all(
+              keys.map(function (k) {
+                return caches.delete(k);
+              }),
+            );
+          }
+        } catch (e) {
+          console.warn('Gagal membersihkan cache/service worker:', e);
+        }
+
+        // Navigasi ulang dengan cache-buster timestamp query agar browser mengambil bundle baru
+        try {
+          const url = new URL(window.location.href);
+          url.searchParams.set('_v', Date.now().toString());
+          window.location.href = url.toString();
+          setTimeout(function () {
+            window.location.reload();
+          }, 100);
+        } catch (_) {
+          window.location.reload();
+        }
+      };
+
       // Otomatis unregister Service Worker & hapus cache lama langsung dari kode program
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.getRegistrations().then(function (registrations) {
