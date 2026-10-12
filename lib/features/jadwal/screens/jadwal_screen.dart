@@ -1143,9 +1143,23 @@ class _JadwalScreenState extends State<JadwalScreen> {
                   : master.jenisById(j.jdwJenisId)?.jenisNama.toLowerCase() ??
                       '';
 
-              // Pencarian ke daftar unit inventaris spesifik di bawah jenis ini
+              // Pencarian ke daftar unit inventaris spesifik di bawah jenis dan pabrik jadwal ini
               final matchingInv = master.inventarisList.where((inv) {
                 if (inv.invJenisId != j.jdwJenisId) return false;
+
+                // Pastikan unit inventaris berada di pabrik yang dicakup oleh jadwal ini
+                if (j.jdwPabrikList.isNotEmpty) {
+                  final pKode = inv.invPabrikKode?.trim().toUpperCase();
+                  if (pKode != null && pKode.isNotEmpty) {
+                    final normalizedJadwalPabrik = j.jdwPabrikList
+                        .map((p) => p.trim().toUpperCase())
+                        .toSet();
+                    if (!normalizedJadwalPabrik.contains(pKode)) {
+                      return false;
+                    }
+                  }
+                }
+
                 final invNama = inv.invNama.toLowerCase();
                 final invNo = inv.invNo.toLowerCase();
                 final invSn = (inv.invSerialNumber ?? '').toLowerCase();

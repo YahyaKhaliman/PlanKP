@@ -16,6 +16,7 @@ import '../providers/master_provider.dart';
 import '../widgets/jenis_lookup_sheet.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../../core/utils/responsive_sheet.dart';
+import '../../jadwal/screens/jadwal_screen.dart';
 
 class InventarisScreen extends StatefulWidget {
   const InventarisScreen({super.key});
@@ -244,6 +245,17 @@ class _InventarisScreenState extends State<InventarisScreen> {
   void dispose() {
     _search.dispose();
     super.dispose();
+  }
+
+  void _navigateToJadwal(InventarisModel item) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => JadwalScreen(
+          initialSearchQuery: item.invNama,
+        ),
+      ),
+    );
   }
 
   Future<void> _openForm([InventarisModel? item, int? initialJenisId]) async {
@@ -602,6 +614,7 @@ class _InventarisScreenState extends State<InventarisScreen> {
                                       pabrikLabelBuilder: p.displayPabrik,
                                       onEditItem: _openForm,
                                       onAddItem: (jId) => _openForm(null, jId),
+                                      onTapItem: _navigateToJadwal,
                                     );
                                   },
                                 );
@@ -653,6 +666,7 @@ class _InventarisScreenState extends State<InventarisScreen> {
                                           pabrikLabelBuilder: p.displayPabrik,
                                           onEditItem: _openForm,
                                           onAddItem: (jId) => _openForm(null, jId),
+                                          onTapItem: _navigateToJadwal,
                                         ),
                                       );
                                     }).toList(),
@@ -685,6 +699,7 @@ class _InventarisGroupCard extends StatefulWidget {
   final String Function(String?) pabrikLabelBuilder;
   final ValueChanged<InventarisModel> onEditItem;
   final ValueChanged<int> onAddItem;
+  final ValueChanged<InventarisModel>? onTapItem;
 
   const _InventarisGroupCard({
     required this.jenisId,
@@ -696,6 +711,7 @@ class _InventarisGroupCard extends StatefulWidget {
     required this.pabrikLabelBuilder,
     required this.onEditItem,
     required this.onAddItem,
+    this.onTapItem,
   });
 
   @override
@@ -857,6 +873,7 @@ class _InventarisGroupCardState extends State<_InventarisGroupCard>
                             pabrikLabel:
                                 widget.pabrikLabelBuilder(item.invPabrikKode),
                             onEdit: () => widget.onEditItem(item),
+                            onTap: () => widget.onTapItem?.call(item),
                           ),
                         ),
                         const SizedBox(height: 8),
@@ -875,10 +892,13 @@ class _InventarisCard extends StatelessWidget {
   final InventarisModel item;
   final String pabrikLabel;
   final VoidCallback onEdit;
+  final VoidCallback? onTap;
+
   const _InventarisCard({
     required this.item,
     required this.pabrikLabel,
     required this.onEdit,
+    this.onTap,
   });
 
   @override
@@ -890,121 +910,181 @@ class _InventarisCard extends StatelessWidget {
 
     final isInactive = !item.invIsActive;
 
-    Widget row = Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          // Nama inventaris — menonjol
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+    Widget cardContent = Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // Nama inventaris — menonjol
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Flexible(
-                      child: Text(
-                        item.invNama,
-                        style: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 13.5,
-                          color: isInactive
-                              ? AppColors.textSecondary
-                              : AppColors.textPrimary,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    if (item.invKategori.isNotEmpty) ...[
-                      const SizedBox(width: 6),
-                      Builder(builder: (context) {
-                        final divColor = AppDivisiColors.getColor(item.invKategori);
-                        final divIcon = AppDivisiColors.getIcon(item.invKategori);
-                        return Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: divColor.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(4),
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            item.invNama,
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13.5,
+                              color: isInactive
+                                  ? AppColors.textSecondary
+                                  : AppColors.textPrimary,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(divIcon, size: 10, color: divColor),
-                              const SizedBox(width: 3),
-                              Text(
-                                item.invKategori.toUpperCase(),
-                                style: TextStyle(
-                                  fontSize: 9.5,
-                                  fontWeight: FontWeight.w700,
-                                  color: divColor,
-                                ),
+                        ),
+                        if (item.invKategori.isNotEmpty) ...[
+                          const SizedBox(width: 6),
+                          Builder(builder: (context) {
+                            final divColor =
+                                AppDivisiColors.getColor(item.invKategori);
+                            final divIcon =
+                                AppDivisiColors.getIcon(item.invKategori);
+                            return Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: divColor.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(4),
                               ),
-                            ],
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(divIcon, size: 10, color: divColor),
+                                  const SizedBox(width: 3),
+                                  Text(
+                                    item.invKategori.toUpperCase(),
+                                    style: TextStyle(
+                                      fontSize: 9.5,
+                                      fontWeight: FontWeight.w700,
+                                      color: divColor,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }),
+                        ],
+                        if (isInactive) ...[
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: AppColors.danger.withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: const Text(
+                              'nonaktif',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.danger,
+                              ),
+                            ),
                           ),
-                        );
-                      }),
-                    ],
-                    if (isInactive) ...[
-                      const SizedBox(width: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: AppColors.danger.withValues(alpha: 0.08),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: const Text(
-                          'nonaktif',
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.danger,
-                          ),
-                        ),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'No: ${item.invNo}${item.invPabrikKode != null ? ' · $pabrikLabel' : ''}',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AppColors.textSecondary,
                       ),
-                    ],
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '$merk · PIC: $pic',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AppColors.textSecondary,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ],
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  'No: ${item.invNo}${item.invPabrikKode != null ? ' · $pabrikLabel' : ''}',
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: AppColors.textSecondary,
+              ),
+              // Kondisi badge
+              _KondisiBadge(kondisi: item.invKondisi),
+              const SizedBox(width: 6),
+              IconButton(
+                icon: const Icon(Icons.edit_rounded,
+                    size: 16, color: AppColors.warning),
+                onPressed: onEdit,
+                tooltip: 'Edit Unit',
+                style: IconButton.styleFrom(
+                  backgroundColor:
+                      AppColors.warning.withValues(alpha: 0.08),
+                  padding: const EdgeInsets.all(7),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(9),
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  '$merk · PIC: $pic',
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: AppColors.textSecondary,
+              ),
+              const SizedBox(width: 6),
+              Tooltip(
+                message: 'Lihat jadwal unit ini',
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: onTap,
+                    borderRadius: BorderRadius.circular(10),
+                    child: Ink(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: AppColors.primarySoft,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: AppColors.primary.withValues(alpha: 0.18),
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.calendar_month_rounded,
+                            size: 14,
+                            color: AppColors.primary,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Lihat Jadwal',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-          // Kondisi badge
-          _KondisiBadge(kondisi: item.invKondisi),
-          const SizedBox(width: 6),
-          IconButton(
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
-            icon: const Icon(Icons.edit_outlined, size: 16, color: AppColors.textSecondary),
-            onPressed: onEdit,
-          ),
-        ],
+        ),
       ),
     );
 
     if (isInactive) {
-      return Opacity(opacity: 0.6, child: row);
+      return Opacity(opacity: 0.6, child: cardContent);
     }
-    return row;
+    return cardContent;
   }
 }
 
