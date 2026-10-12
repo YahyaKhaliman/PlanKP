@@ -2976,153 +2976,161 @@ class _JadwalCard extends StatelessWidget {
                   const SizedBox(height: 8),
                   const Divider(height: 1, color: AppColors.border),
                   const SizedBox(height: 4),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      if (jadwal.jdwStatus == 'Draft') ...[
-                        TextButton.icon(
-                          onPressed: onAktifkan,
-                          style: TextButton.styleFrom(
-                            foregroundColor: const Color(0xFF15803D),
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 4),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8)),
-                          ),
-                          icon: const Icon(Icons.check_circle_outline_rounded,
-                              size: 14),
-                          label: Text('Aktifkan',
-                              style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 11.5, fontWeight: FontWeight.w700)),
-                        ),
-                        const SizedBox(width: 4),
-                        TextButton.icon(
-                          onPressed: onEdit,
-                          style: TextButton.styleFrom(
-                            foregroundColor: AppColors.warning,
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 4),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8)),
-                          ),
-                          icon: const Icon(Icons.edit_rounded, size: 14),
-                          label: Text('Edit',
-                              style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 11.5, fontWeight: FontWeight.w700)),
-                        ),
-                        const SizedBox(width: 4),
-                        TextButton.icon(
-                          onPressed: onBatalkan ?? onDelete,
-                          style: TextButton.styleFrom(
-                            foregroundColor: AppColors.danger,
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 4),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8)),
-                          ),
-                          icon: const Icon(Icons.close_rounded, size: 14),
-                          label: Text('Batalkan',
-                              style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 11.5, fontWeight: FontWeight.w700)),
-                        ),
-                      ] else if (jadwal.jdwStatus == 'Aktif') ...[
-                        if (onRenew != null) ...[
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: Wrap(
+                      alignment: WrapAlignment.end,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 4,
+                      runSpacing: 4,
+                      children: [
+                        if (jadwal.jdwStatus == 'Draft') ...[
                           TextButton.icon(
-                            onPressed: onRenew,
+                            onPressed: onAktifkan,
                             style: TextButton.styleFrom(
-                              foregroundColor: AppColors.primary,
+                              foregroundColor: const Color(0xFF15803D),
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 8, vertical: 4),
                               shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(8)),
                             ),
-                            icon: const Icon(Icons.autorenew_rounded, size: 14),
-                            label: Text('Perbarui (Renew)',
+                            icon: const Icon(Icons.check_circle_outline_rounded,
+                                size: 14),
+                            label: Text('Aktifkan',
                                 style: GoogleFonts.plusJakartaSans(
                                     fontSize: 11.5,
                                     fontWeight: FontWeight.w700)),
                           ),
-                          const SizedBox(width: 4),
-                        ],
-                        TextButton.icon(
-                          onPressed: onEdit,
-                          style: TextButton.styleFrom(
-                            foregroundColor: AppColors.warning,
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 4),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8)),
-                          ),
-                          icon: const Icon(Icons.edit_rounded, size: 14),
-                          label: Text('Edit',
-                              style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 11.5, fontWeight: FontWeight.w700)),
-                        ),
-                        const SizedBox(width: 4),
-                        TextButton.icon(
-                          onPressed: onSelesaikan,
-                          style: TextButton.styleFrom(
-                            foregroundColor: const Color(0xFF475569),
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 4),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8)),
-                          ),
-                          icon: const Icon(Icons.done_all_rounded, size: 14),
-                          label: Text('Selesaikan',
-                              style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 11.5, fontWeight: FontWeight.w700)),
-                        ),
-                        const SizedBox(width: 4),
-                        TextButton.icon(
-                          onPressed: onBatalkan ?? onDelete,
-                          style: TextButton.styleFrom(
-                            foregroundColor: AppColors.danger,
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 4),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8)),
-                          ),
-                          icon: const Icon(Icons.close_rounded, size: 14),
-                          label: Text('Batalkan',
-                              style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 11.5, fontWeight: FontWeight.w700)),
-                        ),
-                      ] else if (jadwal.jdwStatus == 'Selesai') ...[
-                        if (onRenew != null) ...[
                           TextButton.icon(
-                            onPressed: onRenew,
+                            onPressed: onEdit,
                             style: TextButton.styleFrom(
-                              foregroundColor: AppColors.primary,
+                              foregroundColor: AppColors.warning,
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 8, vertical: 4),
                               shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(8)),
                             ),
-                            icon: const Icon(Icons.autorenew_rounded, size: 14),
-                            label: Text('Mulai Siklus Baru (Renew)',
+                            icon: const Icon(Icons.edit_rounded, size: 14),
+                            label: Text('Edit',
+                                style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w700)),
+                          ),
+                          TextButton.icon(
+                            onPressed: onBatalkan ?? onDelete,
+                            style: TextButton.styleFrom(
+                              foregroundColor: AppColors.danger,
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 4),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8)),
+                            ),
+                            icon: const Icon(Icons.close_rounded, size: 14),
+                            label: Text('Batalkan',
+                                style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w700)),
+                          ),
+                        ] else if (jadwal.jdwStatus == 'Aktif') ...[
+                          if (onRenew != null)
+                            TextButton.icon(
+                              onPressed: onRenew,
+                              style: TextButton.styleFrom(
+                                foregroundColor: AppColors.primary,
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 4),
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8)),
+                              ),
+                              icon: const Icon(Icons.autorenew_rounded,
+                                  size: 14),
+                              label: Text('Perbarui',
+                                  style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.w700)),
+                            ),
+                          TextButton.icon(
+                            onPressed: onEdit,
+                            style: TextButton.styleFrom(
+                              foregroundColor: AppColors.warning,
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 4),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8)),
+                            ),
+                            icon: const Icon(Icons.edit_rounded, size: 14),
+                            label: Text('Edit',
+                                style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w700)),
+                          ),
+                          TextButton.icon(
+                            onPressed: onSelesaikan,
+                            style: TextButton.styleFrom(
+                              foregroundColor: const Color(0xFF475569),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 4),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8)),
+                            ),
+                            icon: const Icon(Icons.done_all_rounded, size: 14),
+                            label: Text('Selesaikan',
+                                style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w700)),
+                          ),
+                          TextButton.icon(
+                            onPressed: onBatalkan ?? onDelete,
+                            style: TextButton.styleFrom(
+                              foregroundColor: AppColors.danger,
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 4),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8)),
+                            ),
+                            icon: const Icon(Icons.close_rounded, size: 14),
+                            label: Text('Batalkan',
+                                style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w700)),
+                          ),
+                        ] else if (jadwal.jdwStatus == 'Selesai') ...[
+                          if (onRenew != null)
+                            TextButton.icon(
+                              onPressed: onRenew,
+                              style: TextButton.styleFrom(
+                                foregroundColor: AppColors.primary,
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 4),
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8)),
+                              ),
+                              icon: const Icon(Icons.autorenew_rounded,
+                                  size: 14),
+                              label: Text('Mulai Siklus Baru',
+                                  style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.w700)),
+                            ),
+                        ] else if (jadwal.jdwStatus == 'Dibatalkan') ...[
+                          TextButton.icon(
+                            onPressed: onAktifkan,
+                            style: TextButton.styleFrom(
+                              foregroundColor: const Color(0xFF15803D),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 4),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8)),
+                            ),
+                            icon: const Icon(Icons.replay_rounded, size: 14),
+                            label: Text('Aktifkan Kembali',
                                 style: GoogleFonts.plusJakartaSans(
                                     fontSize: 11.5,
                                     fontWeight: FontWeight.w700)),
                           ),
                         ],
-                      ] else if (jadwal.jdwStatus == 'Dibatalkan') ...[
-                        TextButton.icon(
-                          onPressed: onAktifkan,
-                          style: TextButton.styleFrom(
-                            foregroundColor: const Color(0xFF15803D),
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 4),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8)),
-                          ),
-                          icon: const Icon(Icons.replay_rounded, size: 14),
-                          label: Text('Aktifkan Kembali',
-                              style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 11.5, fontWeight: FontWeight.w700)),
-                        ),
                       ],
-                    ],
+                    ),
                   )
                 ]
               ],
