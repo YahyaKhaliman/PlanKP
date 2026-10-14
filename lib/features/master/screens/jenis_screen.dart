@@ -161,7 +161,7 @@ class _JenisScreenState extends State<JenisScreen> {
                                     crossAxisCount: columns,
                                     mainAxisSpacing: 12,
                                     crossAxisSpacing: 12,
-                                    mainAxisExtent: 115,
+                                    mainAxisExtent: 130,
                                   ),
                                   itemCount: 6,
                                   itemBuilder: (_, __) => const AppSkeletonListCard(),
@@ -213,7 +213,7 @@ class _JenisScreenState extends State<JenisScreen> {
                               crossAxisCount: columns,
                               mainAxisSpacing: 12,
                               crossAxisSpacing: 12,
-                              mainAxisExtent: 115,
+                              mainAxisExtent: 130,
                             ),
                             itemCount: filtered.length,
                             itemBuilder: (_, i) {

@@ -185,187 +185,216 @@ class _UserScreenState extends State<UserScreen> {
                                   offset: Offset(0, 3)),
                             ],
                           ),
-                          child: ListTile(
-                            contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 14, vertical: 6),
-                            leading: Container(
-                              width: 38,
-                              height: 38,
-                              decoration: BoxDecoration(
-                                color: AppColors.primarySoft,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Center(
-                                child: Text(
-                                  user.userNama.isNotEmpty
-                                      ? user.userNama[0].toUpperCase()
-                                      : 'U',
-                                  style: GoogleFonts.plusJakartaSans(
-                                    color: AppColors.primary,
-                                    fontWeight: FontWeight.w800,
-                                    fontSize: 15,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            title: Text(
-                              user.userNama,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: GoogleFonts.plusJakartaSans(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 13.5,
-                                color: AppColors.textPrimary,
-                              ),
-                            ),
-                            subtitle: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    'NIK: ${user.userNik}',
-                                    style: GoogleFonts.plusJakartaSans(
-                                      fontSize: 11.5,
-                                      color: AppColors.textSecondary,
-                                      fontWeight: FontWeight.w500,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 14, vertical: 12),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                // Baris 1: Avatar + Nama & NIK + Actions
+                                Row(
+                                  children: [
+                                    Container(
+                                      width: 36,
+                                      height: 36,
+                                      decoration: BoxDecoration(
+                                        color: AppColors.primarySoft,
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: Center(
+                                        child: Text(
+                                          user.userNama.isNotEmpty
+                                              ? user.userNama[0].toUpperCase()
+                                              : 'U',
+                                          style: GoogleFonts.plusJakartaSans(
+                                            color: AppColors.primary,
+                                            fontWeight: FontWeight.w800,
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                      ),
                                     ),
-                                  ),
-                                  const SizedBox(height: 6),
-                                  Wrap(
-                                    spacing: 6,
-                                    runSpacing: 4,
-                                    crossAxisAlignment:
-                                        WrapCrossAlignment.center,
-                                    children: [
-                                      _JabatanBadge(user.jabatanLabel),
-                                      if (user.userDivisi.isNotEmpty)
-                                        Builder(builder: (context) {
-                                          final divColor = AppDivisiColors.getColor(user.userDivisi);
-                                          final divIcon = AppDivisiColors.getIcon(user.userDivisi);
-                                          return Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            user.userNama,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: GoogleFonts.plusJakartaSans(
+                                              fontWeight: FontWeight.w700,
+                                              fontSize: 13.5,
+                                              color: AppColors.textPrimary,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 1),
+                                          Text(
+                                            'NIK: ',
+                                            style: GoogleFonts.plusJakartaSans(
+                                              fontSize: 11.5,
+                                              color: AppColors.textSecondary,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    if (!isSelfOnly && !isCurrentUser) ...[
+                                      _MinimalSwitch(
+                                        value: user.aktif,
+                                        loading: isToggling,
+                                        onChanged: () =>
+                                            _toggleUserStatus(p, user),
+                                      ),
+                                      const SizedBox(width: 4),
+                                    ],
+                                    IconButton(
+                                      icon: const Icon(Icons.edit_rounded,
+                                          size: 17, color: AppColors.warning),
+                                      onPressed: () => _openForm(user),
+                                      tooltip: 'Edit User',
+                                      padding: EdgeInsets.zero,
+                                      constraints: const BoxConstraints(
+                                        minWidth: 30,
+                                        minHeight: 30,
+                                      ),
+                                      style: IconButton.styleFrom(
+                                        backgroundColor: AppColors.warning
+                                            .withValues(alpha: 0.08),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(8),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Tooltip(
+                                      message: 'Lihat jadwal user ini',
+                                      child: Material(
+                                        color: Colors.transparent,
+                                        child: InkWell(
+                                          onTap: () {
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (_) => JadwalScreen(
+                                                  initialSearchQuery:
+                                                      user.userNama,
+                                                ),
+                                              ),
+                                            );
+                                          },
+                                          borderRadius:
+                                              BorderRadius.circular(8),
+                                          child: Ink(
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 7, vertical: 6),
                                             decoration: BoxDecoration(
-                                              color: divColor.withValues(alpha: 0.12),
-                                              borderRadius: BorderRadius.circular(8),
+                                              color: AppColors.primarySoft,
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                              border: Border.all(
+                                                color: AppColors.primary
+                                                    .withValues(alpha: 0.18),
+                                                width: 1,
+                                              ),
                                             ),
                                             child: Row(
                                               mainAxisSize: MainAxisSize.min,
                                               children: [
-                                                Icon(divIcon, size: 11, color: divColor),
-                                                const SizedBox(width: 3),
-                                                Text(
-                                                  user.userDivisi.toUpperCase(),
-                                                  style: TextStyle(
-                                                    fontSize: 11,
-                                                    fontWeight: FontWeight.w700,
-                                                    color: divColor,
-                                                  ),
+                                                const Icon(
+                                                  Icons.calendar_month_rounded,
+                                                  size: 14,
+                                                  color: AppColors.primary,
                                                 ),
+                                                if (!isMobile) ...[
+                                                  const SizedBox(width: 4),
+                                                  Text(
+                                                    'Jadwal',
+                                                    style: GoogleFonts
+                                                        .plusJakartaSans(
+                                                      fontSize: 11,
+                                                      fontWeight:
+                                                          FontWeight.w700,
+                                                      color: AppColors.primary,
+                                                    ),
+                                                  ),
+                                                ],
                                               ],
-                                            ),
-                                          );
-                                        }),
-                                      if (isCurrentUser) const _SelfBadge(),
-                                      _StatusBadge(isActive: user.aktif),
-                                      if (user.userCabang != null)
-                                        Padding(
-                                          padding:
-                                              const EdgeInsets.only(left: 2),
-                                          child: Text(
-                                            p.displayPabrik(user.userCabang),
-                                            style: const TextStyle(
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.w700,
-                                              color: AppColors.textSecondary,
                                             ),
                                           ),
                                         ),
-                                    ],
-                                  ),
-                                ]),
-                            trailing: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  if (!isSelfOnly && !isCurrentUser)
-                                    _MinimalSwitch(
-                                      value: user.aktif,
-                                      loading: isToggling,
-                                      onChanged: () =>
-                                          _toggleUserStatus(p, user),
-                                    ),
-                                  const SizedBox(width: 4),
-                                  IconButton(
-                                    icon: const Icon(Icons.edit_rounded,
-                                        size: 18, color: AppColors.warning),
-                                    onPressed: () => _openForm(user),
-                                    tooltip: 'Edit User',
-                                    style: IconButton.styleFrom(
-                                      backgroundColor: AppColors.warning
-                                          .withValues(alpha: 0.08),
-                                      padding: const EdgeInsets.all(8),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius:
-                                            BorderRadius.circular(10),
                                       ),
                                     ),
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Tooltip(
-                                    message: 'Lihat jadwal user ini',
-                                    child: Material(
-                                      color: Colors.transparent,
-                                      child: InkWell(
-                                        onTap: () {
-                                          Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder: (_) => JadwalScreen(
-                                                initialSearchQuery:
-                                                    user.userNama,
-                                              ),
-                                            ),
-                                          );
-                                        },
-                                        borderRadius:
-                                            BorderRadius.circular(10),
-                                        child: Ink(
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+
+                                // Baris 2: Badges
+                                Wrap(
+                                  spacing: 6,
+                                  runSpacing: 4,
+                                  crossAxisAlignment:
+                                      WrapCrossAlignment.center,
+                                  children: [
+                                    _JabatanBadge(user.jabatanLabel),
+                                    if (user.userDivisi.isNotEmpty)
+                                      Builder(builder: (context) {
+                                        final divColor =
+                                            AppDivisiColors.getColor(
+                                                user.userDivisi);
+                                        final divIcon = AppDivisiColors.getIcon(
+                                            user.userDivisi);
+                                        return Container(
                                           padding: const EdgeInsets.symmetric(
-                                              horizontal: 9, vertical: 6),
+                                              horizontal: 7, vertical: 2),
                                           decoration: BoxDecoration(
-                                            color: AppColors.primarySoft,
+                                            color:
+                                                divColor.withValues(alpha: 0.12),
                                             borderRadius:
-                                                BorderRadius.circular(10),
-                                            border: Border.all(
-                                              color: AppColors.primary
-                                                  .withValues(alpha: 0.18),
-                                              width: 1,
-                                            ),
+                                                BorderRadius.circular(8),
                                           ),
                                           child: Row(
                                             mainAxisSize: MainAxisSize.min,
                                             children: [
-                                              const Icon(
-                                                Icons.calendar_month_rounded,
-                                                size: 14,
-                                                color: AppColors.primary,
-                                              ),
-                                              const SizedBox(width: 4),
+                                              Icon(divIcon,
+                                                  size: 11, color: divColor),
+                                              const SizedBox(width: 3),
                                               Text(
-                                                'Lihat Jadwal',
-                                                style:
-                                                    GoogleFonts.plusJakartaSans(
-                                                  fontSize: 11.5,
+                                                user.userDivisi.toUpperCase(),
+                                                style: TextStyle(
+                                                  fontSize: 11,
                                                   fontWeight: FontWeight.w700,
-                                                  color: AppColors.primary,
+                                                  color: divColor,
                                                 ),
                                               ),
                                             ],
                                           ),
+                                        );
+                                      }),
+                                    if (isCurrentUser) const _SelfBadge(),
+                                    _StatusBadge(isActive: user.aktif),
+                                    if (user.userCabang != null)
+                                      Padding(
+                                        padding: const EdgeInsets.only(left: 2),
+                                        child: Text(
+                                          p.displayPabrik(user.userCabang),
+                                          style: const TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w700,
+                                            color: AppColors.textSecondary,
+                                          ),
                                         ),
                                       ),
-                                    ),
-                                  ),
-                                ]),
+                                  ],
+                                ),
+                              ],
+                            ),
                           ),
                         );
                       }
@@ -391,7 +420,7 @@ class _UserScreenState extends State<UserScreen> {
                           crossAxisCount: columns,
                           mainAxisSpacing: 10,
                           crossAxisSpacing: 10,
-                          mainAxisExtent: 118,
+                          mainAxisExtent: 138,
                         ),
                         itemCount: filteredUsers.length,
                         itemBuilder: (_, i) => buildUserCard(filteredUsers[i]),
@@ -437,7 +466,7 @@ class _UserScreenState extends State<UserScreen> {
                 crossAxisCount: columns,
                 mainAxisSpacing: 10,
                 crossAxisSpacing: 10,
-                mainAxisExtent: 118,
+                mainAxisExtent: 138,
               ),
               itemCount: columns * 3,
               itemBuilder: (_, __) => _buildSkeletonUserCard(),

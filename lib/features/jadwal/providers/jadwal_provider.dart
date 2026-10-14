@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/utils/api_client.dart';
+import '../../../core/utils/date_formatter.dart';
 import '../models/jadwal_model.dart';
 import '../models/realisasi_model.dart';
 import '../models/checklist_hasil_model.dart';
@@ -63,9 +64,21 @@ class JadwalProvider extends ChangeNotifier {
   // (sisanya tetap sama, mari kita sesuaikan fetchMonitoringDivisi di bawah)
   
   final Map<String, List<dynamic>> _monitoringDivisiByMonth = {};
+  final Map<String, double> _divisiMonthlyPctCache = {};
 
   List<dynamic> getMonitoringDivisiForMonth(int bulan, int tahun) {
     return _monitoringDivisiByMonth['$tahun-$bulan'] ?? const [];
+  }
+
+  double? getCachedDivisiMonthlyPct(String divisi, int bulan, int tahun) {
+    return _divisiMonthlyPctCache['${divisi.toUpperCase()}-$tahun-$bulan'];
+  }
+
+  void cacheDivisiMonthlyPct(String divisi, int bulan, int tahun, double pct) {
+    final key = '${divisi.toUpperCase()}-$tahun-$bulan';
+    if (pct > 0 || !_divisiMonthlyPctCache.containsKey(key)) {
+      _divisiMonthlyPctCache[key] = pct;
+    }
   }
 
   Future<void> fetchMonitoringDivisiHistory({
@@ -100,7 +113,28 @@ class JadwalProvider extends ChangeNotifier {
       } else if (responseData is List) {
         list = responseData;
       }
-      _monitoringDivisiByMonth['$tahun-$bulan'] = list;
+      if (list.isNotEmpty) {
+        _monitoringDivisiByMonth['$tahun-$bulan'] = list;
+        for (final item in list) {
+          final String div =
+              (item['divisi'] ?? '').toString().trim().toUpperCase();
+          if (div.isEmpty) continue;
+          int divTarget = 0;
+          int divRealisasi = 0;
+          final List<dynamic> jenisList = item['jenis_list'] ?? [];
+          for (final jen in jenisList) {
+            final jadwalList = jen['jadwal'] as List<dynamic>? ?? [];
+            for (final jdw in jadwalList) {
+              divTarget += DateFormatter.toInt(jdw['jdw_target']);
+              divRealisasi += DateFormatter.toInt(jdw['jdw_realisasi']);
+            }
+          }
+          final double pct = divTarget > 0
+              ? ((divRealisasi / divTarget) * 100).clamp(0.0, 100.0)
+              : (divRealisasi > 0 ? 100.0 : 0.0);
+          cacheDivisiMonthlyPct(div, bulan, tahun, pct);
+        }
+      }
     } catch (_) {}
   }
 
@@ -122,9 +156,30 @@ class JadwalProvider extends ChangeNotifier {
         monitoringBulan = bulan;
         monitoringTahun = tahun;
       }
-      if (monitoringBulan != null && monitoringTahun != null) {
+      if (monitoringBulan != null &&
+          monitoringTahun != null &&
+          monitoringDivisiList.isNotEmpty) {
         _monitoringDivisiByMonth['$monitoringTahun-$monitoringBulan'] =
             monitoringDivisiList;
+        for (final item in monitoringDivisiList) {
+          final String div =
+              (item['divisi'] ?? '').toString().trim().toUpperCase();
+          if (div.isEmpty) continue;
+          int divTarget = 0;
+          int divRealisasi = 0;
+          final List<dynamic> jenisList = item['jenis_list'] ?? [];
+          for (final jen in jenisList) {
+            final jadwalList = jen['jadwal'] as List<dynamic>? ?? [];
+            for (final jdw in jadwalList) {
+              divTarget += DateFormatter.toInt(jdw['jdw_target']);
+              divRealisasi += DateFormatter.toInt(jdw['jdw_realisasi']);
+            }
+          }
+          final double pct = divTarget > 0
+              ? ((divRealisasi / divTarget) * 100).clamp(0.0, 100.0)
+              : (divRealisasi > 0 ? 100.0 : 0.0);
+          cacheDivisiMonthlyPct(div, monitoringBulan!, monitoringTahun!, pct);
+        }
       }
       _setError(null);
     } on ApiException catch (e) {

@@ -3242,6 +3242,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
       for (final m in dateList) {
         final monthNum = m.month;
         final yearNum = m.year;
+        final cachedPct =
+            p.getCachedDivisiMonthlyPct(div, monthNum, yearNum);
+        if (cachedPct != null && cachedPct > 0) {
+          monthlyPctList.add(cachedPct);
+          continue;
+        }
+
         final monthMonitoring =
             p.getMonitoringDivisiForMonth(monthNum, yearNum);
 
@@ -4674,7 +4681,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     crossAxisSpacing:
                         isDesktopLayout ? 14 : (isTablet ? 12 : 8),
                     mainAxisSpacing: 14,
-                    mainAxisExtent: 104,
+                    mainAxisExtent: 112,
                   ),
                   itemCount: count,
                   itemBuilder: (_, i) =>
