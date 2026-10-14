@@ -391,7 +391,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       } else if (role == 'admin') {
         await Future.wait([
           p.fetchJadwalByDivisi(),
-          p.fetchRealisasi(status: 'Selesai'),
+          p.fetchRealisasi(status: 'Selesai', byDivisi: true),
           p.fetchDashboardSummary(),
           p.fetchMonitoringDivisi(
               bulan: _selectedTargetMonth.month,
@@ -2460,7 +2460,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
         _selectedTargetMonth.year == currentYear;
 
     final summary =
-        isCurrentMonthSelected ? p.dashboardSummary['summary_cards'] : null;
+        isCurrentMonthSelected && role == 'manager'
+            ? p.dashboardSummary['summary_cards']
+            : null;
     if (summary != null) {
       jadwalAktif = summary['jadwal_aktif'] ?? 0;
       pendingTasks = summary['pending_tasks'] ?? 0;
@@ -2778,7 +2780,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                     ),
 
-                    if (role == 'manager')
+                    if (role == 'manager' || role == 'admin')
                       SliverToBoxAdapter(
                         child: _buildManagerDivisiOverview(context, p),
                       ),
@@ -2883,7 +2885,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                           MaterialTapTargetSize.shrinkWrap,
                                     ),
                                     onPressed: () {
-                                      final sorted = [...p.jadwalList]
+                                      final userDiv = auth.user?['user_divisi']
+                                              ?.toString()
+                                              .trim()
+                                              .toUpperCase() ??
+                                          '';
+                                      final sorted = p.jadwalList
+                                          .where((j) =>
+                                              role != 'admin' ||
+                                              userDiv.isEmpty ||
+                                              j.jdwDivisi.trim().toUpperCase() ==
+                                                  userDiv)
+                                          .toList()
                                         ..sort(_compareJadwal);
                                       _showAllPlansBottomSheet(
                                           context, sorted, p);
@@ -2913,7 +2926,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               child: SizedBox.shrink());
                         }
 
-                        final allSorted = [...pProvider.jadwalList]
+                        final userDiv = auth.user?['user_divisi']?.toString().trim().toUpperCase() ?? '';
+                        final allSorted = pProvider.jadwalList
+                            .where((j) =>
+                                role != 'admin' ||
+                                userDiv.isEmpty ||
+                                j.jdwDivisi.trim().toUpperCase() == userDiv)
+                            .toList()
                           ..sort(_compareJadwal);
                         final regularPlans = allSorted
                             .where((j) => _getRemainingDaysDiff(j) <= 7)
@@ -3060,6 +3079,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   List<Map<String, dynamic>> _getDivisiTargetRealisasiData(JadwalProvider p) {
+    final auth = context.read<AuthProvider>();
+    final role = auth.user?['user_jabatan']?.toString().toLowerCase();
+    final userDivisi =
+        auth.user?['user_divisi']?.toString().trim().toUpperCase() ?? '';
+    final bool isAdminOnly = role == 'admin' && userDivisi.isNotEmpty;
+
     // 1. Jika data monitoringDivisiList dari Backend tersedia, gunakan langsung 100%
     //    (Sama persis seperti pada Tab Progress Monitoring Divisi)
     if (p.monitoringDivisiList.isNotEmpty) {
@@ -3068,6 +3093,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         final String div =
             (item['divisi'] ?? '').toString().trim().toUpperCase();
         if (div.isEmpty) continue;
+        if (isAdminOnly && div != userDivisi) continue;
 
         int divTarget = 0;
         int divRealisasi = 0;
@@ -3106,6 +3132,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     for (final j in p.jadwalList) {
       final String div = j.jdwDivisi.trim().toUpperCase();
       if (div.isEmpty) continue;
+      if (isAdminOnly && div != userDivisi) continue;
 
       divisiMap.putIfAbsent(
           div,
@@ -3142,6 +3169,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final String div =
           (match.isNotEmpty ? match.first.jdwDivisi : '').trim().toUpperCase();
       if (div.isNotEmpty) {
+        if (isAdminOnly && div != userDivisi) continue;
         divisiMap.putIfAbsent(
             div,
             () => {
@@ -3172,6 +3200,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Map<String, dynamic> _getDivisiMonthlyData(JadwalProvider p) {
     final now = _selectedTargetMonth;
     final int currentYear = now.year;
+    final auth = context.read<AuthProvider>();
+    final role = auth.user?['user_jabatan']?.toString().toLowerCase();
+    final userDivisi =
+        auth.user?['user_divisi']?.toString().trim().toUpperCase() ?? '';
+    final bool isAdminOnly = role == 'admin' && userDivisi.isNotEmpty;
 
     final List<DateTime> dateList = [];
     final List<String> monthLabels = [];
@@ -3183,18 +3216,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
 
     final Set<String> divisions = {};
-    for (final j in p.jadwalList) {
-      final div = j.jdwDivisi.trim().toUpperCase();
-      if (div.isNotEmpty) divisions.add(div);
-    }
-    for (final item in p.monitoringDivisiList) {
-      final div = (item['divisi'] ?? '').toString().trim().toUpperCase();
-      if (div.isNotEmpty) divisions.add(div);
-    }
+    if (isAdminOnly) {
+      divisions.add(userDivisi);
+    } else {
+      for (final j in p.jadwalList) {
+        final div = j.jdwDivisi.trim().toUpperCase();
+        if (div.isNotEmpty) divisions.add(div);
+      }
+      for (final item in p.monitoringDivisiList) {
+        final div = (item['divisi'] ?? '').toString().trim().toUpperCase();
+        if (div.isNotEmpty) divisions.add(div);
+      }
 
-    if (divisions.isEmpty) {
-      divisions.addAll(
-          ['UTILITY', 'BOILER', 'ELECTRICAL', 'MAINTENANCE', 'PRODUKSI']);
+      if (divisions.isEmpty) {
+        divisions.addAll(
+            ['UTILITY', 'BOILER', 'ELECTRICAL', 'MAINTENANCE', 'PRODUKSI']);
+      }
     }
 
     final Map<String, List<double>> seriesMap = {};
@@ -3332,11 +3369,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   List<Map<String, dynamic>> _getDivisiPenjadwalanData(JadwalProvider p) {
+    final auth = context.read<AuthProvider>();
+    final role = auth.user?['user_jabatan']?.toString().toLowerCase();
+    final userDivisi =
+        auth.user?['user_divisi']?.toString().trim().toUpperCase() ?? '';
+    final bool isAdminOnly = role == 'admin' && userDivisi.isNotEmpty;
+
     final Map<String, Map<String, dynamic>> divisiMap = {};
 
     for (final item in p.monitoringDivisiList) {
       final div = (item['divisi'] ?? '').toString().trim().toUpperCase();
       if (div.isEmpty) continue;
+      if (isAdminOnly && div != userDivisi) continue;
 
       divisiMap[div] = {
         'divisi': div,
@@ -3350,6 +3394,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       for (final j in p.jadwalList) {
         final div = j.jdwDivisi.trim().toUpperCase();
         if (div.isEmpty) continue;
+        if (isAdminOnly && div != userDivisi) continue;
 
         schedJenisMap.putIfAbsent(div, () => {});
         schedJenisMap[div]!.add(j.jdwJenisId);
@@ -4014,6 +4059,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildManagerDivisiOverview(BuildContext context, JadwalProvider p) {
+    final auth = context.read<AuthProvider>();
+    final role = auth.user?['user_jabatan']?.toString().toLowerCase();
+    final userDivisi =
+        auth.user?['user_divisi']?.toString().trim().toUpperCase() ?? '';
+    final bool isAdminOnly = role == 'admin' && userDivisi.isNotEmpty;
+
     final data = _getDivisiTargetRealisasiData(p);
     final isLoading = p.loading || _isLoadingData;
     final isDesktop = MediaQuery.of(context).size.width > 900;
@@ -4028,13 +4079,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Grafik Monitoring Divisi',
-                      style: TextStyle(
+                      isAdminOnly
+                          ? 'Grafik Monitoring Divisi $userDivisi'
+                          : 'Grafik Monitoring Divisi',
+                      style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w800,
                         color: AppColors.textPrimary,
@@ -4148,10 +4201,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Expanded(
+                Expanded(
                   child: Text(
-                    'Target/Realisasi per Divisi',
-                    style: TextStyle(
+                    isAdminOnly
+                        ? 'Target/Realisasi Divisi $userDivisi'
+                        : 'Target/Realisasi per Divisi',
+                    style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w800,
                       color: AppColors.textPrimary,
