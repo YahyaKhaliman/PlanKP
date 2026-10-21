@@ -1,13 +1,14 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:printing/printing.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/api_client.dart';
 import '../../../core/utils/date_formatter.dart';
+import '../../../core/utils/file_downloader/file_downloader.dart';
 import '../../../core/widgets/app_notifier.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../master/providers/master_provider.dart';
@@ -31,13 +32,20 @@ class ExportPdfDialog extends StatefulWidget {
     required List<RealisasiModel> realisasiList,
     required List<JadwalModel> jadwalList,
   }) async {
-    await showDialog(
+    final downloadedFilename = await showDialog<String>(
       context: context,
       builder: (_) => ExportPdfDialog(
         realisasiList: realisasiList,
         jadwalList: jadwalList,
       ),
     );
+
+    if (downloadedFilename != null && context.mounted) {
+      await AppNotifier.showSuccess(
+        context,
+        'Berkas Excel berhasil diunduh: $downloadedFilename',
+      );
+    }
   }
 
   @override
@@ -283,17 +291,12 @@ class _ExportPdfDialogState extends State<ExportPdfDialog> {
     AppNotifier.showInfo(context, 'Memproses unduhan berkas Excel Laporan Maintenance...');
 
     try {
-      const baseUrl = ApiConfig.baseUrl;
-      final token = await ApiClient.getToken();
-
-      final queryParams = <String, String>{
+      final queryParams = <String, dynamic>{
         'bulan': '$_selectedMonth',
         'tahun': '$_selectedYear',
         'status': 'Selesai',
+        'base64': 'true', // Menggunakan JSON Base64 agar tidak dicegat oleh IDM
       };
-      if (token != null && token.isNotEmpty) {
-        queryParams['token'] = token;
-      }
       if (_selectedDivisi != 'Semua Divisi') {
         queryParams['divisi'] = _selectedDivisi;
       }
@@ -307,17 +310,41 @@ class _ExportPdfDialogState extends State<ExportPdfDialog> {
         }
       }
 
-      final queryString = Uri(queryParameters: queryParams).query;
-      final downloadUrl =
-          '$baseUrl${ApiConfig.realisasi}/export-excel?$queryString';
+      final res = await ApiClient.get(
+        '${ApiConfig.realisasi}/export-excel',
+        query: queryParams,
+      );
 
-      final uri = Uri.parse(downloadUrl);
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-        if (mounted) Navigator.pop(context);
+      final data = res['data'];
+      if (data is Map && data['base64'] != null) {
+        final String base64Str = data['base64'];
+        final filename =
+            data['filename']?.toString() ?? 'Laporan_Realisasi_Maintenance.xlsx';
+        final bytes = base64Decode(base64Str);
+
+        final success = await FileDownloader.downloadBytes(
+          bytes: bytes,
+          fileName: filename,
+        );
+
+        if (success) {
+          if (mounted) {
+            Navigator.of(context).pop(filename);
+          }
+        } else {
+          if (mounted) {
+            await AppNotifier.showError(
+              context,
+              'Gagal menyimpan berkas Excel ke perangkat',
+            );
+          }
+        }
       } else {
         if (mounted) {
-          await AppNotifier.showError(context, 'Tidak dapat membuka tautan unduhan Excel');
+          await AppNotifier.showError(
+            context,
+            'Gagal memproses berkas Excel: Format respons tidak valid',
+          );
         }
       }
     } catch (e) {

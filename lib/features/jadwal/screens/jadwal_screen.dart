@@ -20,6 +20,7 @@ import '../models/realisasi_model.dart';
 import '../providers/jadwal_provider.dart';
 import '../widgets/ai_jadwal.dart';
 import '../widgets/renew_jadwal_sheet.dart';
+import '../widgets/export_jadwal_dialog.dart';
 
 const _kPageBg = AppColors.surface;
 
@@ -1081,7 +1082,53 @@ class _JadwalScreenState extends State<JadwalScreen> {
 
     return Scaffold(
       backgroundColor: _kPageBg,
-      appBar: AppBar(title: const Text('Jadwal'), elevation: 0),
+      appBar: AppBar(
+        title: const Text('Jadwal'),
+        elevation: 0,
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 12, top: 8, bottom: 8),
+            child: InkWell(
+              onTap: () {
+                final p = context.read<JadwalProvider>();
+                ExportJadwalDialog.show(
+                  context,
+                  jadwalList: p.jadwalList,
+                );
+              },
+              borderRadius: BorderRadius.circular(20),
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppColors.accent,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: AppColors.accent,
+                    width: 1,
+                  ),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.file_download_rounded,
+                        size: 16, color: Colors.white),
+                    SizedBox(width: 5),
+                    Text(
+                      'Export',
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
       floatingActionButton: isAdmin
           ? _AnimatedSpeedDialFab(
               onManualPressed: () => _openForm(),

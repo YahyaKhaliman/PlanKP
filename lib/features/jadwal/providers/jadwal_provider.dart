@@ -726,6 +726,34 @@ class JadwalProvider extends ChangeNotifier {
     }
   }
 
+  Future<List<JadwalModel>> fetchJadwalForReport({
+    required int bulan,
+    required int tahun,
+    String? divisi,
+    int? assignedTo,
+    String? status = 'Aktif',
+    String? frekuensi,
+  }) async {
+    try {
+      final query = <String, dynamic>{
+        'bulan': bulan,
+        'tahun': tahun,
+        if (status != null && status != 'all' && status != '*') 'status': status,
+        if (divisi != null && divisi != 'Semua Divisi') 'divisi': divisi,
+        if (assignedTo != null) 'assigned_to': assignedTo,
+        if (frekuensi != null &&
+            frekuensi != 'Semua Frekuensi' &&
+            frekuensi != 'all')
+          'frekuensi': frekuensi,
+      };
+      final res = await ApiClient.get(ApiConfig.jadwal, query: query);
+      final raw = (res['data']['items'] ?? res['data']) as List;
+      return raw.map((e) => JadwalModel.fromJson(e)).toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
   Future<List<RealisasiModel>> fetchDraftRealisasi({bool? byDivisi}) async {
     try {
       final query = <String, dynamic>{
