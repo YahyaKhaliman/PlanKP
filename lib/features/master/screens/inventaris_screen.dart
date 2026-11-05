@@ -285,22 +285,25 @@ class _InventarisScreenState extends State<InventarisScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final auth = context.watch<AuthProvider>();
+    final user = auth.user;
+    final role = (user?['user_jabatan'] ?? '').toString().toLowerCase();
+    final isFullAccess = role == 'admin' || role == 'manager';
+
     return Scaffold(
       backgroundColor: _kPageBg,
       appBar: AppBar(title: const Text('Inventaris')),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _openForm(),
-        tooltip: 'Tambah Inventaris',
-        backgroundColor: AppColors.primary,
-        foregroundColor: AppColors.white,
-        child: const Icon(Icons.add),
-      ),
+      floatingActionButton: isFullAccess
+          ? FloatingActionButton(
+              onPressed: () => _openForm(),
+              tooltip: 'Tambah Inventaris',
+              backgroundColor: AppColors.primary,
+              foregroundColor: AppColors.white,
+              child: const Icon(Icons.add),
+            )
+          : null,
       body: Consumer<MasterProvider>(
         builder: (ctx, p, __) {
-          final auth = ctx.watch<AuthProvider>();
-          final user = auth.user;
-          final role = (user?['user_jabatan'] ?? '').toString().toLowerCase();
-          final isFullAccess = role == 'admin' || role == 'manager';
           final userDivisi = (user?['user_divisi'] ?? '').toString().trim();
 
           List<InventarisModel> displayList = isFullAccess || userDivisi.isEmpty
@@ -613,7 +616,7 @@ class _InventarisScreenState extends State<InventarisScreen> {
                                       },
                                       pabrikLabelBuilder: p.displayPabrik,
                                       onEditItem: _openForm,
-                                      onAddItem: (jId) => _openForm(null, jId),
+                                      onAddItem: isFullAccess ? (jId) => _openForm(null, jId) : null,
                                       onTapItem: _navigateToJadwal,
                                     );
                                   },
@@ -665,7 +668,7 @@ class _InventarisScreenState extends State<InventarisScreen> {
                                           },
                                           pabrikLabelBuilder: p.displayPabrik,
                                           onEditItem: _openForm,
-                                          onAddItem: (jId) => _openForm(null, jId),
+                                          onAddItem: isFullAccess ? (jId) => _openForm(null, jId) : null,
                                           onTapItem: _navigateToJadwal,
                                         ),
                                       );
@@ -698,7 +701,7 @@ class _InventarisGroupCard extends StatefulWidget {
   final VoidCallback onToggle;
   final String Function(String?) pabrikLabelBuilder;
   final ValueChanged<InventarisModel> onEditItem;
-  final ValueChanged<int> onAddItem;
+  final ValueChanged<int>? onAddItem;
   final ValueChanged<InventarisModel>? onTapItem;
 
   const _InventarisGroupCard({
@@ -710,7 +713,7 @@ class _InventarisGroupCard extends StatefulWidget {
     required this.onToggle,
     required this.pabrikLabelBuilder,
     required this.onEditItem,
-    required this.onAddItem,
+    this.onAddItem,
     this.onTapItem,
   });
 
@@ -836,16 +839,18 @@ class _InventarisGroupCardState extends State<_InventarisGroupCard>
                       ),
                     );
                   }),
-                  const SizedBox(width: 6),
-                  Builder(builder: (context) {
-                    final divColor = AppDivisiColors.getColor(widget.kategoriLabel);
-                    return IconButton(
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                      onPressed: () => widget.onAddItem(widget.jenisId),
-                      icon: Icon(Icons.add_circle_outline, size: 20, color: divColor),
-                    );
-                  }),
+                  if (widget.onAddItem != null) ...[
+                    const SizedBox(width: 6),
+                    Builder(builder: (context) {
+                      final divColor = AppDivisiColors.getColor(widget.kategoriLabel);
+                      return IconButton(
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                        onPressed: () => widget.onAddItem!(widget.jenisId),
+                        icon: Icon(Icons.add_circle_outline, size: 20, color: divColor),
+                      );
+                    }),
+                  ],
                   const SizedBox(width: 4),
                   RotationTransition(
                     turns: _iconTurns,
