@@ -4,6 +4,7 @@ class VoucherModel {
   final int voucherId;
   final String? voucherNoBon;
   final int voucherUserId;
+  final String? voucherUserNama;
   final int voucherInvId;
   final int voucherSpbuId;
   final String voucherJenisBbm;
@@ -24,6 +25,7 @@ class VoucherModel {
     required this.voucherId,
     this.voucherNoBon,
     required this.voucherUserId,
+    this.voucherUserNama,
     required this.voucherInvId,
     required this.voucherSpbuId,
     required this.voucherJenisBbm,
@@ -44,6 +46,7 @@ class VoucherModel {
       voucherId: json['voucher_id'] is int ? json['voucher_id'] : int.tryParse('${json['voucher_id']}') ?? 0,
       voucherNoBon: json['voucher_no_bon']?.toString(),
       voucherUserId: json['voucher_user_id'] is int ? json['voucher_user_id'] : int.tryParse('${json['voucher_user_id']}') ?? 0,
+      voucherUserNama: json['voucher_user_nama']?.toString(),
       voucherInvId: json['voucher_inv_id'] is int ? json['voucher_inv_id'] : int.tryParse('${json['voucher_inv_id']}') ?? 0,
       voucherSpbuId: json['voucher_spbu_id'] is int ? json['voucher_spbu_id'] : int.tryParse('${json['voucher_spbu_id']}') ?? 0,
       voucherJenisBbm: json['voucher_jenis_bbm']?.toString() ?? 'Pertalite',
@@ -67,7 +70,12 @@ class VoucherModel {
     );
   }
 
-  String get namaPemohon => pemohon?['user_nama'] ?? 'Driver';
+  String get namaPemohon {
+    if (voucherUserNama != null && voucherUserNama!.trim().isNotEmpty) {
+      return voucherUserNama!.trim();
+    }
+    return pemohon?['user_nama'] ?? 'Driver';
+  }
   String get noPolisi {
     final sn = inventaris?['inv_serial_number']?.toString().trim();
     if (sn != null && sn.isNotEmpty) return sn;
