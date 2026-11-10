@@ -9,6 +9,7 @@ import '../../../core/utils/date_formatter.dart';
 import '../../../core/widgets/app_notifier.dart';
 import '../models/voucher_model.dart';
 import '../providers/voucher_provider.dart';
+import '../screens/voucher_form_screen.dart';
 
 class VoucherBonDialog extends StatefulWidget {
   final VoucherModel voucher;
@@ -52,6 +53,16 @@ class _VoucherBonDialogState extends State<VoucherBonDialog> {
         text: widget.voucher.voucherJumlahLiter.toStringAsFixed(1));
     _selectedSpbuId = widget.voucher.voucherSpbuId;
     _selectedBbm = widget.voucher.voucherJenisBbm;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final p = context.read<VoucherProvider>();
+      if (p.spbuList.isEmpty) {
+        p.fetchSpbuList();
+      }
+      if (p.bbmTypes.isEmpty) {
+        p.fetchBbmTypes();
+      }
+    });
   }
 
   @override
@@ -333,31 +344,63 @@ class _VoucherBonDialogState extends State<VoucherBonDialog> {
                           label: 'Kepada',
                           child: _isEditing && canAdminAction
                               ? Consumer<VoucherProvider>(
-                                  builder: (_, p, __) =>
-                                      DropdownButtonFormField<int>(
-                                    value: _selectedSpbuId,
-                                    isDense: true,
-                                    isExpanded: true,
-                                    decoration: const InputDecoration(
-                                      isDense: true,
-                                      contentPadding: EdgeInsets.symmetric(
-                                          horizontal: 8, vertical: 5),
-                                      border: OutlineInputBorder(),
-                                    ),
-                                    items: p.spbuList.map((s) {
-                                      return DropdownMenuItem<int>(
-                                        value: s.spbuId,
-                                        child: Text(s.spbuNama,
-                                            style:
-                                                const TextStyle(fontSize: 12)),
+                                  builder: (_, p, __) {
+                                    if (p.spbuList.isEmpty) {
+                                      return const Row(
+                                        children: [
+                                          SizedBox(
+                                            width: 13,
+                                            height: 13,
+                                            child: CircularProgressIndicator(
+                                                strokeWidth: 2),
+                                          ),
+                                          SizedBox(width: 8),
+                                          Text(
+                                            'Memuat daftar SPBU...',
+                                            style: TextStyle(
+                                              fontSize: 11.5,
+                                              color: AppColors.textSecondary,
+                                            ),
+                                          ),
+                                        ],
                                       );
-                                    }).toList(),
-                                    onChanged: (val) {
-                                      if (val != null) {
-                                        setState(() => _selectedSpbuId = val);
-                                      }
-                                    },
-                                  ),
+                                    }
+
+                                    final hasSpbu = p.spbuList.any(
+                                        (s) => s.spbuId == _selectedSpbuId);
+                                    final effectiveSpbuId = hasSpbu
+                                        ? _selectedSpbuId
+                                        : (p.spbuList.isNotEmpty
+                                            ? p.spbuList.first.spbuId
+                                            : null);
+
+                                    return DropdownButtonFormField<int>(
+                                      value: effectiveSpbuId,
+                                      isDense: true,
+                                      isExpanded: true,
+                                      decoration: const InputDecoration(
+                                        isDense: true,
+                                        contentPadding: EdgeInsets.symmetric(
+                                            horizontal: 8, vertical: 5),
+                                        border: OutlineInputBorder(),
+                                      ),
+                                      items: p.spbuList.map((s) {
+                                        return DropdownMenuItem<int>(
+                                          value: s.spbuId,
+                                          child: Text(
+                                            s.spbuNama,
+                                            style: const TextStyle(fontSize: 12),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        );
+                                      }).toList(),
+                                      onChanged: (val) {
+                                        if (val != null) {
+                                          setState(() => _selectedSpbuId = val);
+                                        }
+                                      },
+                                    );
+                                  },
                                 )
                               : Text(
                                   _getSpbuDisplayName(),
@@ -485,30 +528,39 @@ class _VoucherBonDialogState extends State<VoucherBonDialog> {
                           label: 'Jenis',
                           child: _isEditing && canAdminAction
                               ? Consumer<VoucherProvider>(
-                                  builder: (_, p, __) =>
-                                      DropdownButtonFormField<String>(
-                                    value: _selectedBbm,
-                                    isDense: true,
-                                    decoration: const InputDecoration(
+                                  builder: (_, p, __) {
+                                    final hasBbm =
+                                        p.bbmTypes.contains(_selectedBbm);
+                                    final effectiveBbm = hasBbm
+                                        ? _selectedBbm
+                                        : (p.bbmTypes.isNotEmpty
+                                            ? p.bbmTypes.first
+                                            : null);
+
+                                    return DropdownButtonFormField<String>(
+                                      value: effectiveBbm,
                                       isDense: true,
-                                      contentPadding: EdgeInsets.symmetric(
-                                          horizontal: 8, vertical: 5),
-                                      border: OutlineInputBorder(),
-                                    ),
-                                    items: p.bbmTypes.map((t) {
-                                      return DropdownMenuItem<String>(
-                                        value: t,
-                                        child: Text(t,
-                                            style:
-                                                const TextStyle(fontSize: 12)),
-                                      );
-                                    }).toList(),
-                                    onChanged: (val) {
-                                      if (val != null) {
-                                        setState(() => _selectedBbm = val);
-                                      }
-                                    },
-                                  ),
+                                      decoration: const InputDecoration(
+                                        isDense: true,
+                                        contentPadding: EdgeInsets.symmetric(
+                                            horizontal: 8, vertical: 5),
+                                        border: OutlineInputBorder(),
+                                      ),
+                                      items: p.bbmTypes.map((t) {
+                                        return DropdownMenuItem<String>(
+                                          value: t,
+                                          child: Text(t,
+                                              style: const TextStyle(
+                                                  fontSize: 12)),
+                                        );
+                                      }).toList(),
+                                      onChanged: (val) {
+                                        if (val != null) {
+                                          setState(() => _selectedBbm = val);
+                                        }
+                                      },
+                                    );
+                                  },
                                 )
                               : Row(
                                   children: [
@@ -622,12 +674,60 @@ class _VoucherBonDialogState extends State<VoucherBonDialog> {
                           ),
                         ),
 
-                        // Tombol Toggle Sesuaikan Data (Khusus Admin Pending)
+                        // Tombol Toggle Sesuaikan Data & Edit Form Lengkap (Khusus Admin Pending)
                         if (canAdminAction) ...[
                           const SizedBox(height: 8),
                           Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
+                              InkWell(
+                                onTap: () async {
+                                  Navigator.of(context).pop();
+                                  final updated = await Navigator.push<bool>(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => VoucherFormScreen(
+                                        voucher: widget.voucher,
+                                      ),
+                                    ),
+                                  );
+                                  if (updated == true) {
+                                    context
+                                        .read<VoucherProvider>()
+                                        .fetchVouchers();
+                                    context
+                                        .read<VoucherProvider>()
+                                        .fetchPendingVouchers();
+                                    context
+                                        .read<VoucherProvider>()
+                                        .fetchApprovedVouchers();
+                                  }
+                                },
+                                borderRadius: BorderRadius.circular(6),
+                                child: const Padding(
+                                  padding: EdgeInsets.symmetric(
+                                      horizontal: 6, vertical: 3),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.open_in_new_rounded,
+                                        size: 13,
+                                        color: AppColors.primary,
+                                      ),
+                                      SizedBox(width: 4),
+                                      Text(
+                                        'Form Lengkap',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w700,
+                                          color: AppColors.primary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
                               InkWell(
                                 onTap: () {
                                   if (_isEditing) {
@@ -746,23 +846,99 @@ class _VoucherBonDialogState extends State<VoucherBonDialog> {
                             ),
                           ],
                         )
-                      : SizedBox(
-                          width: double.infinity,
-                          child: OutlinedButton(
-                            onPressed: () => Navigator.of(context).pop(),
-                            style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 10),
-                              minimumSize: const Size(0, 38),
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8)),
+                      : widget.isAdmin &&
+                              widget.voucher.voucherStatus == 'Disetujui'
+                          ? Row(
+                              children: [
+                                Expanded(
+                                  child: OutlinedButton(
+                                    onPressed: () =>
+                                        Navigator.of(context).pop(),
+                                    style: OutlinedButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(
+                                          vertical: 10),
+                                      minimumSize: const Size(0, 38),
+                                      shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(8)),
+                                    ),
+                                    child: const Text(
+                                      'Tutup',
+                                      style: TextStyle(
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 12.5),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  flex: 2,
+                                  child: ElevatedButton.icon(
+                                    onPressed: () async {
+                                      Navigator.of(context).pop();
+                                      final updated =
+                                          await Navigator.push<bool>(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => VoucherFormScreen(
+                                            voucher: widget.voucher,
+                                          ),
+                                        ),
+                                      );
+                                      if (updated == true) {
+                                        context
+                                            .read<VoucherProvider>()
+                                            .fetchVouchers();
+                                        context
+                                            .read<VoucherProvider>()
+                                            .fetchPendingVouchers();
+                                        context
+                                            .read<VoucherProvider>()
+                                            .fetchApprovedVouchers();
+                                      }
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: AppColors.primary,
+                                      foregroundColor: Colors.white,
+                                      elevation: 0,
+                                      padding: const EdgeInsets.symmetric(
+                                          vertical: 10),
+                                      minimumSize: const Size(0, 38),
+                                      shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(8)),
+                                    ),
+                                    icon: const Icon(Icons.edit_rounded,
+                                        size: 16),
+                                    label: const Text(
+                                      'Edit Data Voucher',
+                                      style: TextStyle(
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 12.5),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            )
+                          : SizedBox(
+                              width: double.infinity,
+                              child: OutlinedButton(
+                                onPressed: () => Navigator.of(context).pop(),
+                                style: OutlinedButton.styleFrom(
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 10),
+                                  minimumSize: const Size(0, 38),
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8)),
+                                ),
+                                child: const Text(
+                                  'Tutup',
+                                  style: TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 12.5),
+                                ),
+                              ),
                             ),
-                            child: const Text(
-                              'Tutup',
-                              style: TextStyle(
-                                  fontWeight: FontWeight.w700, fontSize: 12.5),
-                            ),
-                          ),
-                        ),
                 ),
               ],
             ),

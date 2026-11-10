@@ -420,7 +420,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final bool isDriverAdmin = role == 'admin' && userDivisi == 'DRIVER';
       final bool canSeeVoucherNotif = isManager || isDriverAdmin;
       if (canSeeVoucherNotif && mounted) {
-        context.read<VoucherProvider>().fetchPendingVouchers();
+        final vp = context.read<VoucherProvider>();
+        vp.fetchPendingVouchers();
+        vp.fetchSpbuList();
+        vp.fetchBbmTypes();
       }
 
       if (!isAdmin) {
@@ -644,8 +647,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   void _showVoucherPendingBottomSheet(BuildContext context) {
-    context.read<VoucherProvider>().fetchPendingVouchers();
-    context.read<VoucherProvider>().fetchApprovedVouchers();
+    final vp = context.read<VoucherProvider>();
+    vp.fetchPendingVouchers();
+    vp.fetchApprovedVouchers();
+    vp.fetchSpbuList();
+    vp.fetchBbmTypes();
     showResponsiveSheet(
       context,
       maxDesktopWidth: 680,
@@ -764,6 +770,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 onPressed: () {
                                   vp.fetchPendingVouchers();
                                   vp.fetchApprovedVouchers();
+                                  vp.fetchSpbuList();
+                                  vp.fetchBbmTypes();
                                 },
                               ),
                               IconButton(

@@ -212,6 +212,52 @@ class VoucherProvider with ChangeNotifier {
     }
   }
 
+  Future<bool> updateVoucher({
+    required int voucherId,
+    required int invId,
+    required int spbuId,
+    required String jenisBbm,
+    required double jumlahLiter,
+    int? odometer,
+    int? userIdTarget,
+    String? noBon,
+  }) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final body = <String, dynamic>{
+        'voucher_inv_id': invId,
+        'voucher_spbu_id': spbuId,
+        'voucher_jenis_bbm': jenisBbm,
+        'voucher_jumlah_liter': jumlahLiter,
+      };
+      if (odometer != null) body['voucher_odometer'] = odometer;
+      if (userIdTarget != null) body['user_id_target'] = userIdTarget;
+      if (noBon != null) body['voucher_no_bon'] = noBon;
+
+      final res = await ApiClient.put('${ApiConfig.voucher}/$voucherId', body);
+      if (res['success'] == true) {
+        await Future.wait([
+          fetchVouchers(),
+          fetchPendingVouchers(),
+          fetchApprovedVouchers(),
+        ]);
+        return true;
+      } else {
+        _errorMessage = res['message'] ?? 'Gagal memperbarui voucher';
+        return false;
+      }
+    } catch (e) {
+      _errorMessage = 'Terjadi kesalahan: $e';
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
   Future<bool> approveVoucher({
     required int voucherId,
     required String noBon,

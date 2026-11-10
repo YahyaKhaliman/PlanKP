@@ -9,12 +9,18 @@ import '../../../core/widgets/app_notifier.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../master/providers/master_provider.dart';
 import '../../master/models/user_model.dart';
+import '../models/voucher_model.dart';
 import '../providers/voucher_provider.dart';
 
 class VoucherFormScreen extends StatefulWidget {
   final int? targetUserId;
+  final VoucherModel? voucher;
 
-  const VoucherFormScreen({super.key, this.targetUserId});
+  const VoucherFormScreen({
+    super.key,
+    this.targetUserId,
+    this.voucher,
+  });
 
   @override
   State<VoucherFormScreen> createState() => _VoucherFormScreenState();
@@ -24,10 +30,14 @@ class _VoucherFormScreenState extends State<VoucherFormScreen> {
   static const _kPageBg = AppColors.surface;
   final _formKey = GlobalKey<FormState>();
 
+  VoucherModel? _activeVoucher;
+  bool get _isEdit => _activeVoucher != null;
+
   int? _targetUserId;
   int? _selectedInvId;
   int? _selectedSpbuId;
   String _selectedBbm = 'Pertalite';
+  final _noBonCtrl = TextEditingController();
   final _literCtrl = TextEditingController(text: '2.0');
   final _odometerCtrl = TextEditingController();
   bool _isSubmitting = false;
@@ -35,9 +45,33 @@ class _VoucherFormScreenState extends State<VoucherFormScreen> {
   @override
   void initState() {
     super.initState();
+    _activeVoucher = widget.voucher;
+    if (_activeVoucher != null) {
+      _initFromVoucher(_activeVoucher!);
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_activeVoucher == null) {
+        final args = ModalRoute.of(context)?.settings.arguments;
+        if (args is VoucherModel) {
+          _activeVoucher = args;
+          _initFromVoucher(args);
+        }
+      }
       _loadData();
     });
+  }
+
+  void _initFromVoucher(VoucherModel v) {
+    _targetUserId = v.voucherUserId;
+    _selectedInvId = v.voucherInvId;
+    _selectedSpbuId = v.voucherSpbuId;
+    _selectedBbm = v.voucherJenisBbm;
+    _noBonCtrl.text = v.voucherNoBon ?? '';
+    final literVal = v.voucherJumlahLiter;
+    _literCtrl.text = literVal % 1 == 0
+        ? literVal.toInt().toString()
+        : literVal.toString();
+    _odometerCtrl.text = v.voucherOdometer?.toString() ?? '';
   }
 
   Future<void> _loadData() async {
@@ -49,17 +83,19 @@ class _VoucherFormScreenState extends State<VoucherFormScreen> {
 
     if (isAdmin) {
       await master.fetchUsers(showLoading: false);
-      if (widget.targetUserId != null) {
-        _targetUserId = widget.targetUserId;
-      } else if (_targetUserId == null) {
-        // Prioritaskan user dengan divisi DRIVER
-        final drivers = master.userList
-            .where((u) => u.userDivisi.trim().toUpperCase() == 'DRIVER')
-            .toList();
-        if (drivers.isNotEmpty) {
-          _targetUserId = drivers.first.userId;
-        } else if (master.userList.isNotEmpty) {
-          _targetUserId = master.userList.first.userId;
+      if (_targetUserId == null) {
+        if (widget.targetUserId != null) {
+          _targetUserId = widget.targetUserId;
+        } else {
+          // Prioritaskan user dengan divisi DRIVER
+          final drivers = master.userList
+              .where((u) => u.userDivisi.trim().toUpperCase() == 'DRIVER')
+              .toList();
+          if (drivers.isNotEmpty) {
+            _targetUserId = drivers.first.userId;
+          } else if (master.userList.isNotEmpty) {
+            _targetUserId = master.userList.first.userId;
+          }
         }
       }
     } else {
@@ -73,14 +109,23 @@ class _VoucherFormScreenState extends State<VoucherFormScreen> {
     ]);
 
     if (mounted) {
-      if (p.spbuList.isNotEmpty && _selectedSpbuId == null) {
-        setState(() => _selectedSpbuId = p.spbuList.first.spbuId);
-      }
-      if (p.eligibleInventaris.isNotEmpty && _selectedInvId == null) {
-        setState(() => _selectedInvId = p.eligibleInventaris.first['inv_id']);
-      }
-      if (p.bbmTypes.isNotEmpty) {
-        setState(() => _selectedBbm = p.bbmTypes.first);
+      if (_isEdit) {
+        if (_selectedSpbuId == null && p.spbuList.isNotEmpty) {
+          setState(() => _selectedSpbuId = _activeVoucher!.voucherSpbuId);
+        }
+        if (_selectedInvId == null) {
+          setState(() => _selectedInvId = _activeVoucher!.voucherInvId);
+        }
+      } else {
+        if (p.spbuList.isNotEmpty && _selectedSpbuId == null) {
+          setState(() => _selectedSpbuId = p.spbuList.first.spbuId);
+        }
+        if (p.eligibleInventaris.isNotEmpty && _selectedInvId == null) {
+          setState(() => _selectedInvId = p.eligibleInventaris.first['inv_id']);
+        }
+        if (p.bbmTypes.isNotEmpty) {
+          setState(() => _selectedBbm = p.bbmTypes.first);
+        }
       }
     }
   }
@@ -104,6 +149,7 @@ class _VoucherFormScreenState extends State<VoucherFormScreen> {
 
   @override
   void dispose() {
+    _noBonCtrl.dispose();
     _literCtrl.dispose();
     _odometerCtrl.dispose();
     super.dispose();
@@ -144,26 +190,44 @@ class _VoucherFormScreenState extends State<VoucherFormScreen> {
 
     setState(() => _isSubmitting = true);
     final p = context.read<VoucherProvider>();
-    final success = await p.createVoucher(
-      invId: _selectedInvId!,
-      spbuId: _selectedSpbuId!,
-      jenisBbm: _selectedBbm,
-      jumlahLiter: liter,
-      odometer: odo,
-      userIdTarget: isAdmin ? _targetUserId : null,
-    );
+    final success = _isEdit
+        ? await p.updateVoucher(
+            voucherId: _activeVoucher!.voucherId,
+            invId: _selectedInvId!,
+            spbuId: _selectedSpbuId!,
+            jenisBbm: _selectedBbm,
+            jumlahLiter: liter,
+            odometer: odo,
+            userIdTarget: isAdmin ? _targetUserId : null,
+            noBon: _activeVoucher?.voucherStatus == 'Disetujui'
+                ? _noBonCtrl.text.trim()
+                : null,
+          )
+        : await p.createVoucher(
+            invId: _selectedInvId!,
+            spbuId: _selectedSpbuId!,
+            jenisBbm: _selectedBbm,
+            jumlahLiter: liter,
+            odometer: odo,
+            userIdTarget: isAdmin ? _targetUserId : null,
+          );
     setState(() => _isSubmitting = false);
 
     if (success) {
       await AppNotifier.showSuccess(
         context,
-        'Permintaan voucher BBM berhasil diajukan',
+        _isEdit
+            ? 'Data voucher BBM berhasil diperbarui'
+            : 'Permintaan voucher BBM berhasil diajukan',
       );
       if (mounted) Navigator.of(context).pop(true);
     } else {
       AppNotifier.showError(
         context,
-        p.errorMessage ?? 'Gagal mengajukan permintaan voucher',
+        p.errorMessage ??
+            (_isEdit
+                ? 'Gagal memperbarui voucher'
+                : 'Gagal mengajukan permintaan voucher'),
       );
     }
   }
@@ -200,7 +264,14 @@ class _VoucherFormScreenState extends State<VoucherFormScreen> {
     final master = context.watch<MasterProvider>();
     final role = (auth.user?['user_jabatan'] ?? '').toString().toLowerCase();
     final isAdmin = role == 'admin' || role == 'manager';
-    final eligibleInvs = voucherProvider.eligibleInventaris;
+    final rawEligibleInvs = voucherProvider.eligibleInventaris;
+    final eligibleInvs = List<Map<String, dynamic>>.from(rawEligibleInvs);
+    if (_isEdit && _activeVoucher?.inventaris != null) {
+      final currentInvId = _activeVoucher!.voucherInvId;
+      if (!eligibleInvs.any((inv) => inv['inv_id'] == currentInvId)) {
+        eligibleInvs.insert(0, _activeVoucher!.inventaris!);
+      }
+    }
 
     // Filter list user untuk admin (urutkan divisi Driver di atas)
     final sortedUserList = List<UserModel>.from(master.userList)
@@ -216,7 +287,10 @@ class _VoucherFormScreenState extends State<VoucherFormScreen> {
       backgroundColor: _kPageBg,
       appBar: AppBar(
         title: Text(
-            isAdmin ? 'Pengajuan Voucher (Admin)' : 'Pengajuan Voucher BBM'),
+          _isEdit
+              ? 'Edit Voucher BBM'
+              : (isAdmin ? 'Pengajuan Voucher (Admin)' : 'Pengajuan Voucher BBM'),
+        ),
       ),
       body: LayoutBuilder(
         builder: (context, constraints) {
@@ -380,6 +454,41 @@ class _VoucherFormScreenState extends State<VoucherFormScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
+                            // --- Nomor Bon Fisik (Hanya tampil jika voucher berstatus Disetujui) ---
+                            if (_isEdit &&
+                                _activeVoucher?.voucherStatus ==
+                                    'Disetujui') ...[
+                              _buildFieldLabel('Nomor Bon Fisik',
+                                  isRequired: true),
+                              const SizedBox(height: 6),
+                              TextFormField(
+                                controller: _noBonCtrl,
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 13.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: const Color(0xFF1E3A8A),
+                                ),
+                                decoration: InputDecoration(
+                                  prefixIcon: const Icon(
+                                      Icons.receipt_long_rounded,
+                                      size: 18),
+                                  hintText:
+                                      'Masukkan nomor seri bon fisik kertas',
+                                  border: OutlineInputBorder(
+                                    borderRadius:
+                                        BorderRadius.circular(AppRadius.md),
+                                  ),
+                                ),
+                                validator: (val) {
+                                  if (val == null || val.trim().isEmpty) {
+                                    return 'Nomor bon fisik wajib diisi untuk voucher yang sudah disetujui';
+                                  }
+                                  return null;
+                                },
+                              ),
+                              const SizedBox(height: 16),
+                            ],
+
                             // --- Kendaraan Inventaris ---
                             _buildFieldLabel('Kendaraan Operasional',
                                 isRequired: true),
@@ -701,9 +810,18 @@ class _VoucherFormScreenState extends State<VoucherFormScreen> {
                                   color: Colors.white,
                                 ),
                               )
-                            : const Icon(Icons.send_rounded, size: 18),
+                            : Icon(
+                                _isEdit ? Icons.save_rounded : Icons.send_rounded,
+                                size: 18,
+                              ),
                         label: Text(
-                          'Ajukan Permintaan Voucher',
+                          _isSubmitting
+                              ? (_isEdit
+                                  ? 'Menyimpan Perubahan...'
+                                  : 'Mengirim Permintaan...')
+                              : (_isEdit
+                                  ? 'Simpan Perubahan'
+                                  : 'Ajukan Permintaan Voucher'),
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 14,
                             fontWeight: FontWeight.w700,

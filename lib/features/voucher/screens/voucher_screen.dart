@@ -12,6 +12,7 @@ import '../../auth/providers/auth_provider.dart';
 import '../models/voucher_model.dart';
 import '../providers/voucher_provider.dart';
 import '../widgets/voucher_bon_dialog.dart';
+import 'voucher_form_screen.dart';
 
 class VoucherScreen extends StatefulWidget {
   const VoucherScreen({super.key});
@@ -417,6 +418,62 @@ class _VoucherScreenState extends State<VoucherScreen> {
                         ],
                       ),
                     ),
+                    if (isAdmin &&
+                        (voucher.voucherStatus.toLowerCase() == 'menunggu' ||
+                            voucher.voucherStatus.toLowerCase() ==
+                                'disetujui')) ...[
+                      const SizedBox(width: 8),
+                      Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(AppRadius.full),
+                          onTap: () async {
+                            final result = await Navigator.push<bool>(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) =>
+                                    VoucherFormScreen(voucher: voucher),
+                              ),
+                            );
+                            if (result == true) {
+                              context.read<VoucherProvider>().fetchVouchers();
+                            }
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 9, vertical: 3.5),
+                            decoration: BoxDecoration(
+                              color: AppColors.primarySoft,
+                              borderRadius:
+                                  BorderRadius.circular(AppRadius.full),
+                              border: Border.all(
+                                color: AppColors.primary
+                                    .withValues(alpha: 0.25),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons.edit_rounded,
+                                  size: 12.5,
+                                  color: AppColors.primary,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'Edit',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.primary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
                 const SizedBox(height: 12),
