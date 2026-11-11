@@ -80,7 +80,6 @@ class UpdateDownloader {
         'PlanKP_v$versionName.apk',
         'PlanKP-$versionName.apk',
         'PlanKP-v$cleanVersion.apk',
-        'PlanKP.apk',
       };
 
       for (final dir in dirs) {
@@ -126,6 +125,7 @@ class UpdateDownloader {
   Future<AppUpdateDownloadResult> downloadAndInstall({
     required String downloadUrl,
     required String versionName,
+    bool forceDownload = false,
     void Function(int percent)? onProgress,
   }) async {
     if (kIsWeb) {
@@ -138,17 +138,24 @@ class UpdateDownloader {
     );
 
     if (existingPath != null) {
-      debugPrint('[UpdateDownloader] File sudah ada & valid, langsung install...');
-      final installResult = await _tryInstallApk(existingPath);
-      if (installResult != null) return installResult;
-
-      // Jika install gagal meskipun file ada → cek apakah file corrupt sebelum dihapus
-      debugPrint('[UpdateDownloader] Install file lokal belum berhasil...');
-      if (!await isLikelyValidApk(File(existingPath))) {
-        debugPrint('[UpdateDownloader] File lokal terdeteksi corrupt, hapus dan download ulang...');
+      if (forceDownload) {
+        debugPrint('[UpdateDownloader] Force download aktif, hapus file lokal lama: $existingPath');
         try {
           await File(existingPath).delete();
         } catch (_) {}
+      } else {
+        debugPrint('[UpdateDownloader] File sudah ada & valid, langsung install...');
+        final installResult = await _tryInstallApk(existingPath);
+        if (installResult != null) return installResult;
+
+        // Jika install gagal meskipun file ada → cek apakah file corrupt sebelum dihapus
+        debugPrint('[UpdateDownloader] Install file lokal belum berhasil...');
+        if (!await isLikelyValidApk(File(existingPath))) {
+          debugPrint('[UpdateDownloader] File lokal terdeteksi corrupt, hapus dan download ulang...');
+          try {
+            await File(existingPath).delete();
+          } catch (_) {}
+        }
       }
     }
 
@@ -240,10 +247,13 @@ class UpdateDownloader {
   /// 2. Intent langsung via url_launcher
   /// Return null jika semua gagal (caller harus handle fallback browser)
   Future<AppUpdateDownloadResult?> _tryInstallApk(String filePath) async {
-    // Lapis 1: OpenFilex.open()
+    // Lapis 1: OpenFilex.open() dengan MIME type eksplisit APK
     try {
       debugPrint('[UpdateDownloader] Lapis 1: OpenFilex.open($filePath)');
-      final openResult = await OpenFilex.open(filePath);
+      final openResult = await OpenFilex.open(
+        filePath,
+        type: 'application/vnd.android.package-archive',
+      );
       if (openResult.type == ResultType.done) {
         return AppUpdateDownloadResult(
           status: AppUpdateDownloadStatus.downloadedOpenedInstaller,

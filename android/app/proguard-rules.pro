@@ -30,6 +30,7 @@
 
 # open_filex / FileProvider
 -keep class androidx.core.content.FileProvider { *; }
+-keep class com.crazecoder.openfile.** { *; }
 
 # Keep Kotlin metadata for reflection (minimal set)
 -keepattributes *Annotation*

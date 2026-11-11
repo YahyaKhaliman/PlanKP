@@ -396,9 +396,14 @@ class _MainAppWrapperState extends State<MainAppWrapper>
             if (isApkReadyLocally) ...[
               const SizedBox(height: 8),
               TextButton(
-                onPressed: () {
+                onPressed: () async {
                   Navigator.of(context).pop();
-                  _showDownloadProgressDialog(manifest);
+                  if (!kIsWeb) {
+                    try {
+                      await UpdateDownloader.deleteFile(localApkPath);
+                    } catch (_) {}
+                  }
+                  _showDownloadProgressDialog(manifest, forceDownload: true);
                 },
                 child: Text(
                   'Unduh ulang file pembaruan',
@@ -494,7 +499,7 @@ class _MainAppWrapperState extends State<MainAppWrapper>
                           } catch (_) {}
                         }
                         // Download ulang dari awal
-                        _showDownloadProgressDialog(manifest);
+                        _showDownloadProgressDialog(manifest, forceDownload: true);
                       },
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppColors.textSecondary,
@@ -546,7 +551,10 @@ class _MainAppWrapperState extends State<MainAppWrapper>
   }
 
   // ─── Dialog 3: Progress Download In-App ───
-  void _showDownloadProgressDialog(AppUpdateManifest manifest) {
+  void _showDownloadProgressDialog(
+    AppUpdateManifest manifest, {
+    bool forceDownload = false,
+  }) {
     final context = navigatorKey.currentContext;
     if (context == null) return;
 
@@ -632,6 +640,7 @@ class _MainAppWrapperState extends State<MainAppWrapper>
     _updateService
         .downloadAndInstall(
       manifest: manifest,
+      forceDownload: forceDownload,
       onProgress: (percent) {
         if (!isCancelled) {
           progressNotifier.value = (percent / 100.0).clamp(0.0, 1.0);
