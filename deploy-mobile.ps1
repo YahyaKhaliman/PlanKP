@@ -68,7 +68,7 @@ $LATEST_JSON = @"
   "version": "$VERSION_NAME",
   "buildNumber": "$BUILD_NUMBER",
   "mandatory": false,
-  "notes": "Rilis commit $SHORT_SHA",
+  "notes": "Rilis Version $VERSION_NAME",
   "pub_date": "$PUB_DATE",
   "url": "$BASE_URL/$APK_FILE",
   "sha256": "$SHA256"
