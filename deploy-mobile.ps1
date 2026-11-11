@@ -105,9 +105,22 @@ $scpOptions = @("-i", $SSH_KEY, "-o", "IdentitiesOnly=yes")
 
 # Pastikan direktori /var/www/PlanKP/build/apk tersedia di VPS
 ssh @sshOptions "${VPS_USER}@${VPS_HOST}" "mkdir -p $VPS_PATH"
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "Gagal membuat/mengakses direktori $VPS_PATH di VPS! Pastikan user '$VPS_USER' memiliki izin tulis (chown -R ${VPS_USER}:${VPS_USER} /var/www/PlanKP/build)."
+    exit 1
+}
 
 scp @scpOptions "build/deploy_out/$APK_FILE" "${VPS_USER}@${VPS_HOST}:${VPS_PATH}/${APK_FILE}"
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "Gagal mengunggah $APK_FILE ke $VPS_PATH! Cek permission folder di VPS (sudo chown -R ${VPS_USER}:${VPS_USER} $VPS_PATH)."
+    exit 1
+}
+
 scp @scpOptions "build/deploy_out/latest.json" "${VPS_USER}@${VPS_HOST}:${VPS_PATH}/latest.json"
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "Gagal mengunggah latest.json ke $VPS_PATH! Cek permission file/folder di VPS (sudo chown -R ${VPS_USER}:${VPS_USER} $VPS_PATH)."
+    exit 1
+}
 
 # ── 6. Bersihkan APK Versi Lama di VPS ──────────────────────────────────────
 Write-Host "`n>>> [5/5] Membersihkan file APK lama di VPS..." -ForegroundColor Cyan

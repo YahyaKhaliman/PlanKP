@@ -15,7 +15,13 @@ if (hasKeyProperties) {
     keystoreProperties.load(FileInputStream(keystorePropertiesFile))
 }
 
-val keystoreFile = file("upload-keystore.jks")
+val configuredStoreFile = keystoreProperties.getProperty("storeFile")
+val keystoreFile = if (configuredStoreFile != null) {
+    val f = file(configuredStoreFile)
+    if (f.exists()) f else rootProject.file(configuredStoreFile)
+} else {
+    file("upload-keystore.jks")
+}
 val hasValidKeystore = hasKeyProperties && keystoreFile.exists()
 
 android {
