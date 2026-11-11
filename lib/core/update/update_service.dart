@@ -170,6 +170,7 @@ class UpdateService {
   /// Download APK dan coba install. Termasuk cek file lokal + 3 lapis fallback.
   Future<AppUpdateDownloadResult> downloadAndInstall({
     required AppUpdateManifest manifest,
+    bool forceDownload = false,
     void Function(int percent)? onProgress,
   }) {
     if (kIsWeb) {
@@ -180,6 +181,7 @@ class UpdateService {
     return _downloader.downloadAndInstall(
       downloadUrl: manifest.url,
       versionName: manifest.version,
+      forceDownload: forceDownload,
       onProgress: onProgress,
     );
   }
